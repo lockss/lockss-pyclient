@@ -28,7 +28,7 @@
 
 [project]
 name = "lockss-pyclient"
-version = "0.1.0-dev1" # Always change in __init__.py, and at release time in README.rst and CHANGELOG.rst
+version = "0.1.0-dev2" # Always change in __init__.py, and at release time in README.rst and CHANGELOG.rst
 description = "LOCKSS Python clients"
 license = { text = "BSD-3-Clause" }
 readme = "README.rst"
@@ -42,10 +42,10 @@ maintainers = [
     { name = "Daniel Vargas",  email = "dlvargas@stanford.edu" },
 ]
 dependencies = [
-    "certifi (>=14.05.0,<14.06.0)",
-    "python_dateutil (>=2.5.0,<2.6.0)",
-    "six (>=1.10,<1.11)",
-    "urllib3 (>=1.15.0,<1.16.0)",
+    "certifi (>=2025.8.0,<2025.9.0)",
+    "python_dateutil (>=2.9.0,2.10.0)",
+    "six (>=1.17,<1.18)",
+    "urllib3 (>=2.5.0,<2.6.0)",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
