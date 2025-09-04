@@ -38,7 +38,7 @@ authors = [
     { name = "Daniel Vargas",  email = "dlvargas@stanford.edu" },
 ]
 maintainers = [
-    { name = "Thib Guicherd-Callin",  email = "thib@cs.stanford.edu" }
+    { name = "Thib Guicherd-Callin",  email = "thib@cs.stanford.edu" },
     { name = "Daniel Vargas",  email = "dlvargas@stanford.edu" },
 ]
 dependencies = [ ]
