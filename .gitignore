@@ -1,0 +1,15 @@
+# PyCharm artifacts
+/.idea/
+
+# Eclipse artifacts
+/.project
+
+# Python and Poetry artifacts
+/dist/
+/**/*.pyc
+/**/*.pyo
+
+# Temporary files
+*.bak
+*.tmp
+tmp*
