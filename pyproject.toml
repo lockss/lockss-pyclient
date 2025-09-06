@@ -43,9 +43,11 @@ maintainers = [
 ]
 dependencies = [
     "certifi (>=2025.8.0,<2025.9.0)",
+    "lockss-pybasic (==0.2.0-dev1)",
     "python_dateutil (>=2.9.0,<2.10.0)",
     "six (>=1.17,<1.18)",
     "urllib3 (>=2.5.0,<2.6.0)",
+    "pydantic (>=2.11.0,<2.12.0)",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -74,8 +76,8 @@ packages = [
     { include = "lockss", from = "src" }
 ]
 
-#[tool.poetry.scripts]
-#pyclient = 'lockss.pyclient.cli:main'
+[tool.poetry.scripts]
+lockssapi = 'lockss.pyclient.cli:main'
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
