@@ -31,66 +31,78 @@
 from typing import Optional
 import inspect
 
-from pydantic import NonNegativeInt
 from pydantic.v1 import BaseModel, Field, NonNegativeInt
 
-from .rs.api_client import ApiClient as RsApiClient
-from .rs.api import StatusApi as RsStatusApi, ArtifactsApi as RsArtifactsApi
-from .rs import Configuration as RsConfiguration, Artifact
 from lockss.pybasic.cliutil import BaseCli, StringCommand, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, \
     VERSION_DESCRIPTION
 from lockss.pybasic.errorutil import InternalError
+
 from . import __copyright__, __license__, __version__
+from .output import create_output_options
+from ..pyclient import rs
+
 
 RS_PORT: NonNegativeInt = NonNegativeInt(24610)
 RS_DESCRIPTION="LOCKSS Repository Service commands"
+
 
 class NodeOptions(BaseModel):
     host: str = Field(aliases=["-H"], description="The IP address or FQDN of the LOCKSS node")
     port: Optional[NonNegativeInt] = Field(aliases=["-P"], description="LOCKSS Service API port")
 
-    def make_conf(self, default_port: NonNegativeInt) -> RsConfiguration:
-        conf = RsConfiguration()
+    def make_conf(self, default_port: NonNegativeInt) -> rs.Configuration:
+        conf = rs.Configuration()
         conf.host = f'http://{self.host}:{self.port or default_port}'
         return conf
+
 
 class AuthOptions(NodeOptions):
     username: str = Field(aliases=["-u"], description="LOCKSS API username")
     password: str = Field(aliases=["-p"], description="LOCKSS API password")
 
-    def make_conf(self, default_port: NonNegativeInt) -> RsConfiguration:
+    def make_conf(self, default_port: NonNegativeInt) -> rs.Configuration:
         conf = super().make_conf(default_port)
         conf.username = self.username
         conf.password = self.password
         return conf
 
+
 class AuidOptions(BaseModel):
     namespace: Optional[str] = Field(
-        inspect.getfullargspec(Artifact.__init__).defaults[2],
+        inspect.getfullargspec(rs.Artifact.__init__).defaults[2],
         aliases=["-n"],
         description="LOCKSS namespace")
     auid: str = Field(aliases=["-a"], description="Archival Unit ID")
 
-class RsStatusCommand(NodeOptions):
+
+RsStatusOutputOptions = create_output_options('RsStatusOutputOptions', rs.ApiStatus)
+
+
+class RsStatusCommand(RsStatusOutputOptions, NodeOptions):
     pass
+
 
 class RsGetArtifactsCommand(AuidOptions, AuthOptions):
     pass
+
 
 class RsArtifactsCommand(BaseModel):
     get_artifacts: Optional[RsGetArtifactsCommand] = Field(
         alias="get-artifacts",
         description="Get a list of all artifacts in a namespace and Archival Unit")
 
+
 class RsCommand(BaseModel):
     status: Optional[RsStatusCommand] = Field(description="LOCKSS Repository Service API status commands")
     artifacts: Optional[RsArtifactsCommand] = Field(description="LOCKSS Repository Service API artifacts commands")
+
 
 class LockssApiCommand(BaseModel):
     copyright: Optional[StringCommand.type(__copyright__)] = Field(description=COPYRIGHT_DESCRIPTION)
     license: Optional[StringCommand.type(__license__)] = Field(description=LICENSE_DESCRIPTION)
     version: Optional[StringCommand.type(__version__)] = Field(description=VERSION_DESCRIPTION)
     rs: Optional[RsCommand] = Field(description=RS_DESCRIPTION)
+
 
 class LockssApiCli(BaseCli[LockssApiCommand]):
     def __init__(self):
@@ -121,12 +133,10 @@ class LockssApiCli(BaseCli[LockssApiCommand]):
 
     def _rs_status(self, status_command: RsStatusCommand) -> None:
         conf = status_command.make_conf(RS_PORT)
-        api_client = RsApiClient(conf)
-        api_instance = RsStatusApi(api_client)
-        api_response = api_instance.get_status()
-
-        print(type(api_response))
-        print(api_response.to_str())
+        api_client = rs.ApiClient(conf)
+        api_instance = rs.StatusApi(api_client)
+        api_response: rs.ApiStatus = api_instance.get_status()
+        status_command.display(api_response)
 
     def _rs_artifacts(self, rs_command: RsArtifactsCommand) -> None:
         raise InternalError()
@@ -134,8 +144,8 @@ class LockssApiCli(BaseCli[LockssApiCommand]):
     def _rs_artifacts_get_artifacts(self, rs_get_artifacts_command: RsGetArtifactsCommand) -> None:
         conf = rs_get_artifacts_command.make_conf(RS_PORT)
         print(conf.get_basic_auth_token())
-        api_client = RsApiClient(conf, "Authorization", conf.get_basic_auth_token())
-        api_instance = RsArtifactsApi(api_client)
+        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
+        api_instance = rs.ArtifactsApi(api_client)
         api_response = api_instance.get_artifacts(rs_get_artifacts_command.auid,
                                                   namespace=rs_get_artifacts_command.namespace,
                                                   limit=100)
@@ -145,7 +155,6 @@ class LockssApiCli(BaseCli[LockssApiCommand]):
 
     def _version(self, string_command: StringCommand) -> None:
         self._do_string_command(string_command)
-
 
 
 def main() -> None:
