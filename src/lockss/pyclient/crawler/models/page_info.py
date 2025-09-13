@@ -29,7 +29,7 @@ class PageInfo(object):
     """
     swagger_types = {
         'total_count': 'int',
-        'results_per_page': 'int',
+        'items_in_page': 'int',
         'continuation_token': 'str',
         'cur_link': 'str',
         'next_link': 'str'
@@ -37,23 +37,25 @@ class PageInfo(object):
 
     attribute_map = {
         'total_count': 'totalCount',
-        'results_per_page': 'resultsPerPage',
+        'items_in_page': 'itemsInPage',
         'continuation_token': 'continuationToken',
         'cur_link': 'curLink',
         'next_link': 'nextLink'
     }
 
-    def __init__(self, total_count=None, results_per_page=None, continuation_token=None, cur_link=None, next_link=None):  # noqa: E501
+    def __init__(self, total_count=None, items_in_page=None, continuation_token=None, cur_link=None, next_link=None):  # noqa: E501
         """PageInfo - a model defined in Swagger"""  # noqa: E501
         self._total_count = None
-        self._results_per_page = None
+        self._items_in_page = None
         self._continuation_token = None
         self._cur_link = None
         self._next_link = None
         self.discriminator = None
-        self.total_count = total_count
-        self.results_per_page = results_per_page
-        self.continuation_token = continuation_token
+        if total_count is not None:
+            self.total_count = total_count
+        self.items_in_page = items_in_page
+        if continuation_token is not None:
+            self.continuation_token = continuation_token
         self.cur_link = cur_link
         if next_link is not None:
             self.next_link = next_link
@@ -78,35 +80,33 @@ class PageInfo(object):
         :param total_count: The total_count of this PageInfo.  # noqa: E501
         :type: int
         """
-        if total_count is None:
-            raise ValueError("Invalid value for `total_count`, must not be `None`")  # noqa: E501
 
         self._total_count = total_count
 
     @property
-    def results_per_page(self):
-        """Gets the results_per_page of this PageInfo.  # noqa: E501
+    def items_in_page(self):
+        """Gets the items_in_page of this PageInfo.  # noqa: E501
 
-        The number of results per page.  # noqa: E501
+        The number of items in page.  # noqa: E501
 
-        :return: The results_per_page of this PageInfo.  # noqa: E501
+        :return: The items_in_page of this PageInfo.  # noqa: E501
         :rtype: int
         """
-        return self._results_per_page
+        return self._items_in_page
 
-    @results_per_page.setter
-    def results_per_page(self, results_per_page):
-        """Sets the results_per_page of this PageInfo.
+    @items_in_page.setter
+    def items_in_page(self, items_in_page):
+        """Sets the items_in_page of this PageInfo.
 
-        The number of results per page.  # noqa: E501
+        The number of items in page.  # noqa: E501
 
-        :param results_per_page: The results_per_page of this PageInfo.  # noqa: E501
+        :param items_in_page: The items_in_page of this PageInfo.  # noqa: E501
         :type: int
         """
-        if results_per_page is None:
-            raise ValueError("Invalid value for `results_per_page`, must not be `None`")  # noqa: E501
+        if items_in_page is None:
+            raise ValueError("Invalid value for `items_in_page`, must not be `None`")  # noqa: E501
 
-        self._results_per_page = results_per_page
+        self._items_in_page = items_in_page
 
     @property
     def continuation_token(self):
@@ -128,8 +128,6 @@ class PageInfo(object):
         :param continuation_token: The continuation_token of this PageInfo.  # noqa: E501
         :type: str
         """
-        if continuation_token is None:
-            raise ValueError("Invalid value for `continuation_token`, must not be `None`")  # noqa: E501
 
         self._continuation_token = continuation_token
 
