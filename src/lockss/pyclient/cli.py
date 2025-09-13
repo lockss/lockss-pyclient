@@ -143,15 +143,24 @@ class LockssApiCli(BaseCli[LockssApiCommand]):
 
     def _rs_artifacts_get_artifacts(self, rs_get_artifacts_command: RsGetArtifactsCommand) -> None:
         conf = rs_get_artifacts_command.make_conf(RS_PORT)
-        print(conf.get_basic_auth_token())
         api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
         api_instance = rs.ArtifactsApi(api_client)
-        api_response = api_instance.get_artifacts(rs_get_artifacts_command.auid,
-                                                  namespace=rs_get_artifacts_command.namespace,
-                                                  limit=100)
-
-        print(type(api_response))
-        print(api_response.to_str())
+        results = []
+        token = None
+        while True:
+            kw = {}
+            if token:
+                kw['continuation_token'] = token
+            api_response: rs.ArtifactPageInfo = api_instance.get_artifacts(rs_get_artifacts_command.auid,
+                                                                           namespace=rs_get_artifacts_command.namespace,
+                                                                           limit=100,
+                                                                           **kw)
+            results.extend(api_response.artifacts)
+            token = api_response.page_info.continuation_token
+            print(f'Progress: {api_response.page_info.items_in_page}, {len(results)}') ###FIXME
+            if token is None:
+                break
+        print(results)
 
     def _version(self, string_command: StringCommand) -> None:
         self._do_string_command(string_command)
