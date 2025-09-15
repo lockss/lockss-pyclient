@@ -30,40 +30,55 @@ class StorageInfo(object):
     swagger_types = {
         'type': 'str',
         'name': 'str',
-        'size': 'int',
-        'used': 'int',
-        'avail': 'int',
-        'percent_used_string': 'str',
-        'percent_used': 'float'
+        'path': 'str',
+        'components': 'list[StorageInfo]',
+        'size_kb': 'int',
+        'used_kb': 'int',
+        'avail_kb': 'int',
+        'percent_used': 'float',
+        'percent_used_string': 'str'
     }
 
     attribute_map = {
         'type': 'type',
         'name': 'name',
-        'size': 'size',
-        'used': 'used',
-        'avail': 'avail',
-        'percent_used_string': 'percentUsedString',
-        'percent_used': 'percentUsed'
+        'path': 'path',
+        'components': 'components',
+        'size_kb': 'sizeKB',
+        'used_kb': 'usedKB',
+        'avail_kb': 'availKB',
+        'percent_used': 'percentUsed',
+        'percent_used_string': 'percentUsedString'
     }
 
-    def __init__(self, type=None, name=None, size=None, used=None, avail=None, percent_used_string=None, percent_used=None):  # noqa: E501
+    def __init__(self, type=None, name=None, path=None, components=None, size_kb=None, used_kb=None, avail_kb=None, percent_used=None, percent_used_string=None):  # noqa: E501
         """StorageInfo - a model defined in Swagger"""  # noqa: E501
         self._type = None
         self._name = None
-        self._size = None
-        self._used = None
-        self._avail = None
-        self._percent_used_string = None
+        self._path = None
+        self._components = None
+        self._size_kb = None
+        self._used_kb = None
+        self._avail_kb = None
         self._percent_used = None
+        self._percent_used_string = None
         self.discriminator = None
         self.type = type
         self.name = name
-        self.size = size
-        self.used = used
-        self.avail = avail
-        self.percent_used_string = percent_used_string
-        self.percent_used = percent_used
+        if path is not None:
+            self.path = path
+        if components is not None:
+            self.components = components
+        if size_kb is not None:
+            self.size_kb = size_kb
+        if used_kb is not None:
+            self.used_kb = used_kb
+        if avail_kb is not None:
+            self.avail_kb = avail_kb
+        if percent_used is not None:
+            self.percent_used = percent_used
+        if percent_used_string is not None:
+            self.percent_used_string = percent_used_string
 
     @property
     def type(self):
@@ -116,110 +131,125 @@ class StorageInfo(object):
         self._name = name
 
     @property
-    def size(self):
-        """Gets the size of this StorageInfo.  # noqa: E501
+    def path(self):
+        """Gets the path of this StorageInfo.  # noqa: E501
 
-        Size in bytes of the storage area  # noqa: E501
+        Path, if applicable  # noqa: E501
 
-        :return: The size of this StorageInfo.  # noqa: E501
-        :rtype: int
-        """
-        return self._size
-
-    @size.setter
-    def size(self, size):
-        """Sets the size of this StorageInfo.
-
-        Size in bytes of the storage area  # noqa: E501
-
-        :param size: The size of this StorageInfo.  # noqa: E501
-        :type: int
-        """
-        if size is None:
-            raise ValueError("Invalid value for `size`, must not be `None`")  # noqa: E501
-
-        self._size = size
-
-    @property
-    def used(self):
-        """Gets the used of this StorageInfo.  # noqa: E501
-
-        Used size in bytes of the storage area  # noqa: E501
-
-        :return: The used of this StorageInfo.  # noqa: E501
-        :rtype: int
-        """
-        return self._used
-
-    @used.setter
-    def used(self, used):
-        """Sets the used of this StorageInfo.
-
-        Used size in bytes of the storage area  # noqa: E501
-
-        :param used: The used of this StorageInfo.  # noqa: E501
-        :type: int
-        """
-        if used is None:
-            raise ValueError("Invalid value for `used`, must not be `None`")  # noqa: E501
-
-        self._used = used
-
-    @property
-    def avail(self):
-        """Gets the avail of this StorageInfo.  # noqa: E501
-
-        Available size in bytes of the storage area  # noqa: E501
-
-        :return: The avail of this StorageInfo.  # noqa: E501
-        :rtype: int
-        """
-        return self._avail
-
-    @avail.setter
-    def avail(self, avail):
-        """Sets the avail of this StorageInfo.
-
-        Available size in bytes of the storage area  # noqa: E501
-
-        :param avail: The avail of this StorageInfo.  # noqa: E501
-        :type: int
-        """
-        if avail is None:
-            raise ValueError("Invalid value for `avail`, must not be `None`")  # noqa: E501
-
-        self._avail = avail
-
-    @property
-    def percent_used_string(self):
-        """Gets the percent_used_string of this StorageInfo.  # noqa: E501
-
-        Percentage of size used, formatted as a string  # noqa: E501
-
-        :return: The percent_used_string of this StorageInfo.  # noqa: E501
+        :return: The path of this StorageInfo.  # noqa: E501
         :rtype: str
         """
-        return self._percent_used_string
+        return self._path
 
-    @percent_used_string.setter
-    def percent_used_string(self, percent_used_string):
-        """Sets the percent_used_string of this StorageInfo.
+    @path.setter
+    def path(self, path):
+        """Sets the path of this StorageInfo.
 
-        Percentage of size used, formatted as a string  # noqa: E501
+        Path, if applicable  # noqa: E501
 
-        :param percent_used_string: The percent_used_string of this StorageInfo.  # noqa: E501
+        :param path: The path of this StorageInfo.  # noqa: E501
         :type: str
         """
-        if percent_used_string is None:
-            raise ValueError("Invalid value for `percent_used_string`, must not be `None`")  # noqa: E501
 
-        self._percent_used_string = percent_used_string
+        self._path = path
+
+    @property
+    def components(self):
+        """Gets the components of this StorageInfo.  # noqa: E501
+
+        Storage areas that comprise this one  # noqa: E501
+
+        :return: The components of this StorageInfo.  # noqa: E501
+        :rtype: list[StorageInfo]
+        """
+        return self._components
+
+    @components.setter
+    def components(self, components):
+        """Sets the components of this StorageInfo.
+
+        Storage areas that comprise this one  # noqa: E501
+
+        :param components: The components of this StorageInfo.  # noqa: E501
+        :type: list[StorageInfo]
+        """
+
+        self._components = components
+
+    @property
+    def size_kb(self):
+        """Gets the size_kb of this StorageInfo.  # noqa: E501
+
+        Size of the storage area (in KB)  # noqa: E501
+
+        :return: The size_kb of this StorageInfo.  # noqa: E501
+        :rtype: int
+        """
+        return self._size_kb
+
+    @size_kb.setter
+    def size_kb(self, size_kb):
+        """Sets the size_kb of this StorageInfo.
+
+        Size of the storage area (in KB)  # noqa: E501
+
+        :param size_kb: The size_kb of this StorageInfo.  # noqa: E501
+        :type: int
+        """
+
+        self._size_kb = size_kb
+
+    @property
+    def used_kb(self):
+        """Gets the used_kb of this StorageInfo.  # noqa: E501
+
+        Size of the used storage area (in KB)  # noqa: E501
+
+        :return: The used_kb of this StorageInfo.  # noqa: E501
+        :rtype: int
+        """
+        return self._used_kb
+
+    @used_kb.setter
+    def used_kb(self, used_kb):
+        """Sets the used_kb of this StorageInfo.
+
+        Size of the used storage area (in KB)  # noqa: E501
+
+        :param used_kb: The used_kb of this StorageInfo.  # noqa: E501
+        :type: int
+        """
+
+        self._used_kb = used_kb
+
+    @property
+    def avail_kb(self):
+        """Gets the avail_kb of this StorageInfo.  # noqa: E501
+
+        Size of the available storage area (in KB)  # noqa: E501
+
+        :return: The avail_kb of this StorageInfo.  # noqa: E501
+        :rtype: int
+        """
+        return self._avail_kb
+
+    @avail_kb.setter
+    def avail_kb(self, avail_kb):
+        """Sets the avail_kb of this StorageInfo.
+
+        Size of the available storage area (in KB)  # noqa: E501
+
+        :param avail_kb: The avail_kb of this StorageInfo.  # noqa: E501
+        :type: int
+        """
+
+        self._avail_kb = avail_kb
 
     @property
     def percent_used(self):
         """Gets the percent_used of this StorageInfo.  # noqa: E501
 
-        Percentage of size used  # noqa: E501
+        Percentage of the storage area used  # noqa: E501
 
         :return: The percent_used of this StorageInfo.  # noqa: E501
         :rtype: float
@@ -230,15 +260,36 @@ class StorageInfo(object):
     def percent_used(self, percent_used):
         """Sets the percent_used of this StorageInfo.
 
-        Percentage of size used  # noqa: E501
+        Percentage of the storage area used  # noqa: E501
 
         :param percent_used: The percent_used of this StorageInfo.  # noqa: E501
         :type: float
         """
-        if percent_used is None:
-            raise ValueError("Invalid value for `percent_used`, must not be `None`")  # noqa: E501
 
         self._percent_used = percent_used
+
+    @property
+    def percent_used_string(self):
+        """Gets the percent_used_string of this StorageInfo.  # noqa: E501
+
+        Percentage of the storage area used, formatted as a string  # noqa: E501
+
+        :return: The percent_used_string of this StorageInfo.  # noqa: E501
+        :rtype: str
+        """
+        return self._percent_used_string
+
+    @percent_used_string.setter
+    def percent_used_string(self, percent_used_string):
+        """Sets the percent_used_string of this StorageInfo.
+
+        Percentage of the storage area used, formatted as a string  # noqa: E501
+
+        :param percent_used_string: The percent_used_string of this StorageInfo.  # noqa: E501
+        :type: str
+        """
+
+        self._percent_used_string = percent_used_string
 
     def to_dict(self):
         """Returns the model properties as a dict"""

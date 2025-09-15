@@ -64,7 +64,7 @@ class PageInfo(object):
     def total_count(self):
         """Gets the total_count of this PageInfo.  # noqa: E501
 
-        The total number of results  # noqa: E501
+        The total number of items  # noqa: E501
 
         :return: The total_count of this PageInfo.  # noqa: E501
         :rtype: int
@@ -75,7 +75,7 @@ class PageInfo(object):
     def total_count(self, total_count):
         """Sets the total_count of this PageInfo.
 
-        The total number of results  # noqa: E501
+        The total number of items  # noqa: E501
 
         :param total_count: The total_count of this PageInfo.  # noqa: E501
         :type: int
@@ -87,7 +87,7 @@ class PageInfo(object):
     def items_in_page(self):
         """Gets the items_in_page of this PageInfo.  # noqa: E501
 
-        The number of items in page  # noqa: E501
+        The number of items in the page  # noqa: E501
 
         :return: The items_in_page of this PageInfo.  # noqa: E501
         :rtype: int
@@ -98,7 +98,7 @@ class PageInfo(object):
     def items_in_page(self, items_in_page):
         """Sets the items_in_page of this PageInfo.
 
-        The number of items in page  # noqa: E501
+        The number of items in the page  # noqa: E501
 
         :param items_in_page: The items_in_page of this PageInfo.  # noqa: E501
         :type: int
