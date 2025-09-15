@@ -75,74 +75,65 @@ class AuidOptions(BaseModel):
     auid: str = Field(aliases=["-a"], description="Archival Unit ID")
 
 
+RsRepoRepoInfoOptions = create_output_options('RsRepoRepoInfoOptions', rs.RepositoryInfo)
+
 RsStatusOutputOptions = create_output_options('RsStatusOutputOptions', rs.ApiStatus)
 
 
-class RsStatusCommand(RsStatusOutputOptions, NodeOptions):
-    pass
+class LockssApi(BaseModel):
 
+    class Rs(BaseModel):
 
-class RsGetArtifactsCommand(AuidOptions, AuthOptions):
-    pass
+        class Artifacts(BaseModel):
 
+            class GetArtifacts(AuidOptions, AuthOptions): pass
 
-class RsArtifactsCommand(BaseModel):
-    get_artifacts: Optional[RsGetArtifactsCommand] = Field(
-        alias="get-artifacts",
-        description="Get a list of all artifacts in a namespace and Archival Unit")
+            get_artifacts: Optional[GetArtifacts] = Field(alias="get-artifacts", description="Get a list of all artifacts in a namespace and Archival Unit")
 
+        class Repo(BaseModel):
 
-class RsCommand(BaseModel):
-    status: Optional[RsStatusCommand] = Field(description="LOCKSS Repository Service API status commands")
-    artifacts: Optional[RsArtifactsCommand] = Field(description="LOCKSS Repository Service API artifacts commands")
+            class RepoInfo(RsRepoRepoInfoOptions, AuthOptions): pass
 
+            repo_info: Optional[RepoInfo] = Field(alias='repo-info', description='Get properties of the repository')
 
-class LockssApiCommand(BaseModel):
+        class Status(RsStatusOutputOptions, NodeOptions): pass
+
+        artifacts: Optional[Artifacts] = Field(description="LOCKSS Repository Service API artifacts commands")
+        repo: Optional[Repo] = Field(description='LOCKSS Repository Service API repo commands')
+        status: Optional[Status] = Field(description="LOCKSS Repository Service API status commands")
+
     copyright: Optional[StringCommand.type(__copyright__)] = Field(description=COPYRIGHT_DESCRIPTION)
     license: Optional[StringCommand.type(__license__)] = Field(description=LICENSE_DESCRIPTION)
     version: Optional[StringCommand.type(__version__)] = Field(description=VERSION_DESCRIPTION)
-    rs: Optional[RsCommand] = Field(description=RS_DESCRIPTION)
+    rs: Optional[Rs] = Field(description=RS_DESCRIPTION)
 
 
-class LockssApiCli(BaseCli[LockssApiCommand]):
+class LockssApiCli(BaseCli[LockssApi]):
     def __init__(self):
         """
         Constructs a new ``DebugPanelCli`` instance.
         """
-        super().__init__(model=LockssApiCommand,
+        super().__init__(model=LockssApi,
                          prog='lockssapi',
                          description='LOCKSS Python client')
 
-    def _do_string_command(self, string_command: StringCommand) -> None:
+    def _do_string_command(self, cmd: StringCommand) -> None:
         """
         Performs one string command.
 
-        :param string_command: A ``StringCommand`` model.
+        :param cmd: A ``StringCommand`` model.
         :type auid_command: StringCommand
         """
-        string_command()
+        cmd()
 
-    def _copyright(self, string_command: StringCommand) -> None:
-        self._do_string_command(string_command)
+    def _copyright(self, cmd: StringCommand) -> None:
+        self._do_string_command(cmd)
 
-    def _license(self, string_command: StringCommand) -> None:
-        self._do_string_command(string_command)
+    def _license(self, cmd: StringCommand) -> None:
+        self._do_string_command(cmd)
 
-    def _rs(self, rs_command: RsCommand) -> None:
-        raise InternalError()
-
-    def _rs_status(self, status_command: RsStatusCommand) -> None:
-        conf = status_command.make_conf(RS_PORT)
-        api_client = rs.ApiClient(conf)
-        api_instance = rs.StatusApi(api_client)
-        api_response: rs.ApiStatus = api_instance.get_status()
-        status_command.display(api_response)
-
-    def _rs_artifacts(self, rs_command: RsArtifactsCommand) -> None:
-        raise InternalError()
-
-    def _rs_artifacts_get_artifacts(self, rs_get_artifacts_command: RsGetArtifactsCommand) -> None:
-        conf = rs_get_artifacts_command.make_conf(RS_PORT)
+    def _rs_artifacts_get_artifacts(self, cmd: LockssApi.Rs.Artifacts.GetArtifacts) -> None:
+        conf = cmd.make_conf(RS_PORT)
         api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
         api_instance = rs.ArtifactsApi(api_client)
         results = []
@@ -151,19 +142,32 @@ class LockssApiCli(BaseCli[LockssApiCommand]):
             kw = {}
             if token:
                 kw['continuation_token'] = token
-            api_response: rs.ArtifactPageInfo = api_instance.get_artifacts(rs_get_artifacts_command.auid,
-                                                                           namespace=rs_get_artifacts_command.namespace,
+            api_response: rs.ArtifactPageInfo = api_instance.get_artifacts(cmd.auid,
+                                                                           namespace=cmd.namespace,
                                                                            limit=100,
                                                                            **kw)
             results.extend(api_response.artifacts)
             token = api_response.page_info.continuation_token
-            print(f'Progress: {api_response.page_info.items_in_page}, {len(results)}') ###FIXME
             if token is None:
                 break
         print(results)
 
-    def _version(self, string_command: StringCommand) -> None:
-        self._do_string_command(string_command)
+    def _rs_repo_repo_info(self, cmd: LockssApi.Rs.Repo.RepoInfo) -> None:
+        conf = cmd.make_conf(RS_PORT)
+        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
+        api_instance = rs.RepoApi(api_client)
+        api_response: rs.RepositoryInfo = api_instance.get_repository_information()
+        cmd.display(api_response)
+
+    def _rs_status(self, cmd: LockssApi.Rs.Status) -> None:
+        conf = cmd.make_conf(RS_PORT)
+        api_client = rs.ApiClient(conf)
+        api_instance = rs.StatusApi(api_client)
+        api_response: rs.ApiStatus = api_instance.get_status()
+        cmd.display(api_response)
+
+    def _version(self, cmd: StringCommand) -> None:
+        self._do_string_command(cmd)
 
 
 def main() -> None:
