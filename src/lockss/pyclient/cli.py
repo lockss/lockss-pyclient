@@ -79,7 +79,7 @@ class AuidOptions(NamespaceOptions):
 
 
 class UuidOptions(NamespaceOptions):
-    uuid: str = Field(aliases=["-u"], description="Identifier of the artifact")
+    uuid: str = Field(aliases=["-w"], description="Identifier of the artifact")
 
 
 class RsIncludeContentOptions(BaseModel):
