@@ -35,7 +35,7 @@ class PollerPollsApi(object):
     def get_poller_poll_details(self, poll_key, **kwargs):  # noqa: E501
         """PollerDetails  # noqa: E501
 
-        Return the detailed information about a poll.  # noqa: E501
+        Return the detailed information about a poll in which this peer is the poller.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.get_poller_poll_details(poll_key, async_req=True)
@@ -57,7 +57,7 @@ class PollerPollsApi(object):
     def get_poller_poll_details_with_http_info(self, poll_key, **kwargs):  # noqa: E501
         """PollerDetails  # noqa: E501
 
-        Return the detailed information about a poll.  # noqa: E501
+        Return the detailed information about a poll in which this peer is the poller.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.get_poller_poll_details_with_http_info(poll_key, async_req=True)
@@ -128,9 +128,9 @@ class PollerPollsApi(object):
             collection_formats=collection_formats)
 
     def get_polls_as_poller(self, **kwargs):  # noqa: E501
-        """Get the list of recent polls as poller.  # noqa: E501
+        """Get the list of recent polls in which this peer is the poller.  # noqa: E501
 
-        Get the list of recent polls as poller from the poll queue. if size and page are passed in use those arguments to limit return data.  # noqa: E501
+        Get the list of recent polls in which this peer is the poller from the poll queue. If size and page are passed in, use those arguments to limit return data.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.get_polls_as_poller(async_req=True)
@@ -151,9 +151,9 @@ class PollerPollsApi(object):
             return data
 
     def get_polls_as_poller_with_http_info(self, **kwargs):  # noqa: E501
-        """Get the list of recent polls as poller.  # noqa: E501
+        """Get the list of recent polls in which this peer is the poller.  # noqa: E501
 
-        Get the list of recent polls as poller from the poll queue. if size and page are passed in use those arguments to limit return data.  # noqa: E501
+        Get the list of recent polls in which this peer is the poller from the poll queue. If size and page are passed in, use those arguments to limit return data.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.get_polls_as_poller_with_http_info(async_req=True)

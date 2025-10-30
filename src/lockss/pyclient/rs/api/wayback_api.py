@@ -126,10 +126,10 @@ class WaybackApi(object):
         body_params = None
         # HTTP header `Accept`
         header_params['Accept'] = self.api_client.select_header_accept(
-            ['application/xml', 'application/json'])  # noqa: E501
+            ['application/xml', 'application/json;q=0.9'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/wayback/cdx/owb/{namespace}', 'GET',
@@ -257,10 +257,10 @@ class WaybackApi(object):
         body_params = None
         # HTTP header `Accept`
         header_params['Accept'] = self.api_client.select_header_accept(
-            ['text/plain', 'application/json'])  # noqa: E501
+            ['text/plain', 'application/json;q=0.9'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/wayback/cdx/pywb/{namespace}', 'GET',
@@ -364,10 +364,10 @@ class WaybackApi(object):
         body_params = None
         # HTTP header `Accept`
         header_params['Accept'] = self.api_client.select_header_accept(
-            ['application/warc', 'application/json'])  # noqa: E501
+            ['application/warc', 'application/json;q=0.9'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/wayback/warcs/{fileName}', 'GET',

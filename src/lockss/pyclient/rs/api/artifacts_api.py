@@ -131,7 +131,7 @@ class ArtifactsApi(object):
             ['multipart/form-data'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/archives', 'POST',
@@ -232,7 +232,7 @@ class ArtifactsApi(object):
             ['multipart/form-data'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/artifacts', 'POST',
@@ -329,7 +329,7 @@ class ArtifactsApi(object):
             ['application/json'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/artifacts/{uuid}', 'DELETE',
@@ -427,10 +427,10 @@ class ArtifactsApi(object):
         body_params = None
         # HTTP header `Accept`
         header_params['Accept'] = self.api_client.select_header_accept(
-            ['multipart/form-data', 'application/json'])  # noqa: E501
+            ['multipart/form-data', 'application/json;q=0.9'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/artifacts/{uuid}', 'GET',
@@ -528,10 +528,10 @@ class ArtifactsApi(object):
         body_params = None
         # HTTP header `Accept`
         header_params['Accept'] = self.api_client.select_header_accept(
-            ['application/octet-stream', 'application/json'])  # noqa: E501
+            ['application/octet-stream', 'application/json;q=0.9'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/artifacts/{uuid}/payload', 'GET',
@@ -629,10 +629,10 @@ class ArtifactsApi(object):
         body_params = None
         # HTTP header `Accept`
         header_params['Accept'] = self.api_client.select_header_accept(
-            ['application/http;msgtype=response', 'application/json'])  # noqa: E501
+            ['application/http;msgtype=response', 'application/json;q=0.9'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/artifacts/{uuid}/response', 'GET',
@@ -755,7 +755,7 @@ class ArtifactsApi(object):
             ['application/json'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/aus/{auid}/artifacts', 'GET',
@@ -864,7 +864,7 @@ class ArtifactsApi(object):
             ['application/json'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/artifacts', 'GET',
@@ -969,7 +969,7 @@ class ArtifactsApi(object):
             ['application/json'])  # noqa: E501
 
         # Authentication setting
-        auth_settings = []  # noqa: E501
+        auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
             '/artifacts/{uuid}', 'PUT',

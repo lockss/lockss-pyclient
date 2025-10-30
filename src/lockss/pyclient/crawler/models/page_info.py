@@ -51,11 +51,9 @@ class PageInfo(object):
         self._cur_link = None
         self._next_link = None
         self.discriminator = None
-        if total_count is not None:
-            self.total_count = total_count
+        self.total_count = total_count
         self.items_in_page = items_in_page
-        if continuation_token is not None:
-            self.continuation_token = continuation_token
+        self.continuation_token = continuation_token
         self.cur_link = cur_link
         if next_link is not None:
             self.next_link = next_link
@@ -80,6 +78,8 @@ class PageInfo(object):
         :param total_count: The total_count of this PageInfo.  # noqa: E501
         :type: int
         """
+        if total_count is None:
+            raise ValueError("Invalid value for `total_count`, must not be `None`")  # noqa: E501
 
         self._total_count = total_count
 
@@ -128,6 +128,8 @@ class PageInfo(object):
         :param continuation_token: The continuation_token of this PageInfo.  # noqa: E501
         :type: str
         """
+        if continuation_token is None:
+            raise ValueError("Invalid value for `continuation_token`, must not be `None`")  # noqa: E501
 
         self._continuation_token = continuation_token
 

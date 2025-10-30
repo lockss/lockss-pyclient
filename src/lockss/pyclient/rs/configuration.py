@@ -46,7 +46,7 @@ class Configuration(six.with_metaclass(TypeWithDefault, object)):
     def __init__(self):
         """Constructor"""
         # Default Base url
-        self.host = "http://laaws.lockss.org:443/"
+        self.host = "/"
         # Temp file folder for downloading files
         self.temp_folder_path = None
 
@@ -232,6 +232,13 @@ class Configuration(six.with_metaclass(TypeWithDefault, object)):
         :return: The Auth Settings information dict.
         """
         return {
+            'basicAuth':
+                {
+                    'type': 'basic',
+                    'in': 'header',
+                    'key': 'Authorization',
+                    'value': self.get_basic_auth_token()
+                },
         }
 
     def to_debug_report(self):

@@ -33,9 +33,9 @@ class VoterPollsApi(object):
         self.api_client = api_client
 
     def get_polls_as_voter(self, **kwargs):  # noqa: E501
-        """Get the list of recent voter only polls.  # noqa: E501
+        """Get the list of recent polls in which this peer is a voter.  # noqa: E501
 
-        Get the list of recent polls as voter from the poll queue. if size and page are passed in use those arguments to limit return data.  # noqa: E501
+        Get the list of recent polls in which this peer is a voter from the poll queue. If size and page are passed in, use those arguments to limit return data.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.get_polls_as_voter(async_req=True)
@@ -56,9 +56,9 @@ class VoterPollsApi(object):
             return data
 
     def get_polls_as_voter_with_http_info(self, **kwargs):  # noqa: E501
-        """Get the list of recent voter only polls.  # noqa: E501
+        """Get the list of recent polls in which this peer is a voter.  # noqa: E501
 
-        Get the list of recent polls as voter from the poll queue. if size and page are passed in use those arguments to limit return data.  # noqa: E501
+        Get the list of recent polls in which this peer is a voter from the poll queue. If size and page are passed in, use those arguments to limit return data.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.get_polls_as_voter_with_http_info(async_req=True)
@@ -130,7 +130,7 @@ class VoterPollsApi(object):
     def get_voter_poll_details(self, poll_key, **kwargs):  # noqa: E501
         """VoterDetails  # noqa: E501
 
-        Return the detailed information about a poll.  # noqa: E501
+        Return the detailed information about a poll in which this peer is a voter.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.get_voter_poll_details(poll_key, async_req=True)
@@ -152,7 +152,7 @@ class VoterPollsApi(object):
     def get_voter_poll_details_with_http_info(self, poll_key, **kwargs):  # noqa: E501
         """VoterDetails  # noqa: E501
 
-        Return the detailed information about a poll.  # noqa: E501
+        Return the detailed information about a poll in which this peer is a voter.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.get_voter_poll_details_with_http_info(poll_key, async_req=True)

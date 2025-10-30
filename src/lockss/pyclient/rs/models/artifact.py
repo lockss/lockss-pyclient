@@ -28,132 +28,60 @@ class Artifact(object):
                             and the value is json key in definition.
     """
     swagger_types = {
-        'committed': 'bool',
-        'storage_url': 'str',
-        'namespace': 'str',
         'uuid': 'str',
+        'namespace': 'str',
         'auid': 'str',
         'uri': 'str',
         'version': 'int',
+        'committed': 'bool',
+        'storage_url': 'str',
         'content_length': 'int',
         'content_digest': 'str',
         'collection_date': 'int'
     }
 
     attribute_map = {
-        'committed': 'committed',
-        'storage_url': 'storageUrl',
-        'namespace': 'namespace',
         'uuid': 'uuid',
+        'namespace': 'namespace',
         'auid': 'auid',
         'uri': 'uri',
         'version': 'version',
+        'committed': 'committed',
+        'storage_url': 'storageUrl',
         'content_length': 'contentLength',
         'content_digest': 'contentDigest',
         'collection_date': 'collectionDate'
     }
 
-    def __init__(self, committed=None, storage_url=None, namespace='lockss', uuid=None, auid=None, uri=None, version=None, content_length=None, content_digest=None, collection_date=None):  # noqa: E501
+    def __init__(self, uuid=None, namespace='lockss', auid=None, uri=None, version=None, committed=None, storage_url=None, content_length=None, content_digest=None, collection_date=None):  # noqa: E501
         """Artifact - a model defined in Swagger"""  # noqa: E501
-        self._committed = None
-        self._storage_url = None
-        self._namespace = None
         self._uuid = None
+        self._namespace = None
         self._auid = None
         self._uri = None
         self._version = None
+        self._committed = None
+        self._storage_url = None
         self._content_length = None
         self._content_digest = None
         self._collection_date = None
         self.discriminator = None
-        if committed is not None:
-            self.committed = committed
-        if storage_url is not None:
-            self.storage_url = storage_url
-        if namespace is not None:
-            self.namespace = namespace
-        if uuid is not None:
-            self.uuid = uuid
-        if auid is not None:
-            self.auid = auid
-        if uri is not None:
-            self.uri = uri
-        if version is not None:
-            self.version = version
-        if content_length is not None:
-            self.content_length = content_length
-        if content_digest is not None:
-            self.content_digest = content_digest
-        if collection_date is not None:
-            self.collection_date = collection_date
-
-    @property
-    def committed(self):
-        """Gets the committed of this Artifact.  # noqa: E501
-
-
-        :return: The committed of this Artifact.  # noqa: E501
-        :rtype: bool
-        """
-        return self._committed
-
-    @committed.setter
-    def committed(self, committed):
-        """Sets the committed of this Artifact.
-
-
-        :param committed: The committed of this Artifact.  # noqa: E501
-        :type: bool
-        """
-
-        self._committed = committed
-
-    @property
-    def storage_url(self):
-        """Gets the storage_url of this Artifact.  # noqa: E501
-
-
-        :return: The storage_url of this Artifact.  # noqa: E501
-        :rtype: str
-        """
-        return self._storage_url
-
-    @storage_url.setter
-    def storage_url(self, storage_url):
-        """Sets the storage_url of this Artifact.
-
-
-        :param storage_url: The storage_url of this Artifact.  # noqa: E501
-        :type: str
-        """
-
-        self._storage_url = storage_url
-
-    @property
-    def namespace(self):
-        """Gets the namespace of this Artifact.  # noqa: E501
-
-
-        :return: The namespace of this Artifact.  # noqa: E501
-        :rtype: str
-        """
-        return self._namespace
-
-    @namespace.setter
-    def namespace(self, namespace):
-        """Sets the namespace of this Artifact.
-
-
-        :param namespace: The namespace of this Artifact.  # noqa: E501
-        :type: str
-        """
-
-        self._namespace = namespace
+        self.uuid = uuid
+        self.namespace = namespace
+        self.auid = auid
+        self.uri = uri
+        self.version = version
+        self.committed = committed
+        self.storage_url = storage_url
+        self.content_length = content_length
+        self.content_digest = content_digest
+        self.collection_date = collection_date
 
     @property
     def uuid(self):
         """Gets the uuid of this Artifact.  # noqa: E501
 
+        The artifact's UUID  # noqa: E501
 
         :return: The uuid of this Artifact.  # noqa: E501
         :rtype: str
@@ -164,17 +92,46 @@ class Artifact(object):
     def uuid(self, uuid):
         """Sets the uuid of this Artifact.
 
+        The artifact's UUID  # noqa: E501
 
         :param uuid: The uuid of this Artifact.  # noqa: E501
         :type: str
         """
+        if uuid is None:
+            raise ValueError("Invalid value for `uuid`, must not be `None`")  # noqa: E501
 
         self._uuid = uuid
+
+    @property
+    def namespace(self):
+        """Gets the namespace of this Artifact.  # noqa: E501
+
+        The artifact's namespace  # noqa: E501
+
+        :return: The namespace of this Artifact.  # noqa: E501
+        :rtype: str
+        """
+        return self._namespace
+
+    @namespace.setter
+    def namespace(self, namespace):
+        """Sets the namespace of this Artifact.
+
+        The artifact's namespace  # noqa: E501
+
+        :param namespace: The namespace of this Artifact.  # noqa: E501
+        :type: str
+        """
+        if namespace is None:
+            raise ValueError("Invalid value for `namespace`, must not be `None`")  # noqa: E501
+
+        self._namespace = namespace
 
     @property
     def auid(self):
         """Gets the auid of this Artifact.  # noqa: E501
 
+        The artifact's AUID  # noqa: E501
 
         :return: The auid of this Artifact.  # noqa: E501
         :rtype: str
@@ -185,10 +142,13 @@ class Artifact(object):
     def auid(self, auid):
         """Sets the auid of this Artifact.
 
+        The artifact's AUID  # noqa: E501
 
         :param auid: The auid of this Artifact.  # noqa: E501
         :type: str
         """
+        if auid is None:
+            raise ValueError("Invalid value for `auid`, must not be `None`")  # noqa: E501
 
         self._auid = auid
 
@@ -196,6 +156,7 @@ class Artifact(object):
     def uri(self):
         """Gets the uri of this Artifact.  # noqa: E501
 
+        The artifact's URI  # noqa: E501
 
         :return: The uri of this Artifact.  # noqa: E501
         :rtype: str
@@ -206,10 +167,13 @@ class Artifact(object):
     def uri(self, uri):
         """Sets the uri of this Artifact.
 
+        The artifact's URI  # noqa: E501
 
         :param uri: The uri of this Artifact.  # noqa: E501
         :type: str
         """
+        if uri is None:
+            raise ValueError("Invalid value for `uri`, must not be `None`")  # noqa: E501
 
         self._uri = uri
 
@@ -217,6 +181,7 @@ class Artifact(object):
     def version(self):
         """Gets the version of this Artifact.  # noqa: E501
 
+        The artifact's version number  # noqa: E501
 
         :return: The version of this Artifact.  # noqa: E501
         :rtype: int
@@ -227,17 +192,71 @@ class Artifact(object):
     def version(self, version):
         """Sets the version of this Artifact.
 
+        The artifact's version number  # noqa: E501
 
         :param version: The version of this Artifact.  # noqa: E501
         :type: int
         """
+        if version is None:
+            raise ValueError("Invalid value for `version`, must not be `None`")  # noqa: E501
 
         self._version = version
+
+    @property
+    def committed(self):
+        """Gets the committed of this Artifact.  # noqa: E501
+
+        The artifact's committed flag  # noqa: E501
+
+        :return: The committed of this Artifact.  # noqa: E501
+        :rtype: bool
+        """
+        return self._committed
+
+    @committed.setter
+    def committed(self, committed):
+        """Sets the committed of this Artifact.
+
+        The artifact's committed flag  # noqa: E501
+
+        :param committed: The committed of this Artifact.  # noqa: E501
+        :type: bool
+        """
+        if committed is None:
+            raise ValueError("Invalid value for `committed`, must not be `None`")  # noqa: E501
+
+        self._committed = committed
+
+    @property
+    def storage_url(self):
+        """Gets the storage_url of this Artifact.  # noqa: E501
+
+        The artifact's storage URL  # noqa: E501
+
+        :return: The storage_url of this Artifact.  # noqa: E501
+        :rtype: str
+        """
+        return self._storage_url
+
+    @storage_url.setter
+    def storage_url(self, storage_url):
+        """Sets the storage_url of this Artifact.
+
+        The artifact's storage URL  # noqa: E501
+
+        :param storage_url: The storage_url of this Artifact.  # noqa: E501
+        :type: str
+        """
+        if storage_url is None:
+            raise ValueError("Invalid value for `storage_url`, must not be `None`")  # noqa: E501
+
+        self._storage_url = storage_url
 
     @property
     def content_length(self):
         """Gets the content_length of this Artifact.  # noqa: E501
 
+        The length of the artifact's content  # noqa: E501
 
         :return: The content_length of this Artifact.  # noqa: E501
         :rtype: int
@@ -248,10 +267,13 @@ class Artifact(object):
     def content_length(self, content_length):
         """Sets the content_length of this Artifact.
 
+        The length of the artifact's content  # noqa: E501
 
         :param content_length: The content_length of this Artifact.  # noqa: E501
         :type: int
         """
+        if content_length is None:
+            raise ValueError("Invalid value for `content_length`, must not be `None`")  # noqa: E501
 
         self._content_length = content_length
 
@@ -259,6 +281,7 @@ class Artifact(object):
     def content_digest(self):
         """Gets the content_digest of this Artifact.  # noqa: E501
 
+        The digest of the artifact's content  # noqa: E501
 
         :return: The content_digest of this Artifact.  # noqa: E501
         :rtype: str
@@ -269,10 +292,13 @@ class Artifact(object):
     def content_digest(self, content_digest):
         """Sets the content_digest of this Artifact.
 
+        The digest of the artifact's content  # noqa: E501
 
         :param content_digest: The content_digest of this Artifact.  # noqa: E501
         :type: str
         """
+        if content_digest is None:
+            raise ValueError("Invalid value for `content_digest`, must not be `None`")  # noqa: E501
 
         self._content_digest = content_digest
 
@@ -280,6 +306,7 @@ class Artifact(object):
     def collection_date(self):
         """Gets the collection_date of this Artifact.  # noqa: E501
 
+        The artifact's collection date  # noqa: E501
 
         :return: The collection_date of this Artifact.  # noqa: E501
         :rtype: int
@@ -290,10 +317,13 @@ class Artifact(object):
     def collection_date(self, collection_date):
         """Sets the collection_date of this Artifact.
 
+        The artifact's collection date  # noqa: E501
 
         :param collection_date: The collection_date of this Artifact.  # noqa: E501
         :type: int
         """
+        if collection_date is None:
+            raise ValueError("Invalid value for `collection_date`, must not be `None`")  # noqa: E501
 
         self._collection_date = collection_date
 

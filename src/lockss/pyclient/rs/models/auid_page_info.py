@@ -49,7 +49,7 @@ class AuidPageInfo(object):
     def auids(self):
         """Gets the auids of this AuidPageInfo.  # noqa: E501
 
-        The Archival Unit identifiers included in the page  # noqa: E501
+        The AUIDs included in the page  # noqa: E501
 
         :return: The auids of this AuidPageInfo.  # noqa: E501
         :rtype: list[str]
@@ -60,7 +60,7 @@ class AuidPageInfo(object):
     def auids(self, auids):
         """Sets the auids of this AuidPageInfo.
 
-        The Archival Unit identifiers included in the page  # noqa: E501
+        The AUIDs included in the page  # noqa: E501
 
         :param auids: The auids of this AuidPageInfo.  # noqa: E501
         :type: list[str]

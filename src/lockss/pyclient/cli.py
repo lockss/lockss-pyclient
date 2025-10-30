@@ -31,6 +31,8 @@
 from typing import Optional
 import inspect
 
+from io import BytesIO, StringIO
+from multipart import MultipartParser
 from pydantic.v1 import BaseModel, Field, NonNegativeInt
 
 from lockss.pybasic.cliutil import BaseCli, StringCommand, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, \
@@ -195,8 +197,13 @@ class LockssApiCli(BaseCli[LockssApi]):
         api_instance = rs.ArtifactsApi(api_client)
         api_response = api_instance.get_artifact_data_by_multipart(cmd.uuid,
                                                                    namespace=cmd.namespace,
-                                                                   include_content='NEVER' if cmd.never else 'IF_SMALL' if cmd.if_small else 'NEVER')
-        print(api_response)
+                                                                   include_content='NEVER' if cmd.never else 'IF_SMALL' if cmd.if_small else 'ALWAYS')
+        # api_response is of type str but seems to be a repr() string!
+        byte_input = eval(api_response)
+        boundary = byte_input.partition(b'\r\n')[0].partition(b'--')[2]
+        parser = MultipartParser(BytesIO(byte_input), boundary)
+        for part in parser:
+            print(f'{part.name} {part.size}')
 
     def _rs_aus_auids(self, cmd: LockssApi.Rs.Aus.Auids) -> None:
         conf = cmd.make_conf(RS_PORT)
