@@ -71,7 +71,7 @@ class AuthOptions(NodeOptions):
 
 class NamespaceOptions(BaseModel):
     namespace: Optional[str] = Field(
-        inspect.getfullargspec(rs.Artifact.__init__).defaults[2],
+        inspect.getfullargspec(rs.Artifact.__init__).defaults[1],
         aliases=["-n"],
         description="LOCKSS namespace")
 
