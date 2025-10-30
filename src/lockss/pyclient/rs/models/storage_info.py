@@ -65,13 +65,20 @@ class StorageInfo(object):
         self.discriminator = None
         self.type = type
         self.name = name
-        self.path = path
-        self.components = components
-        self.size_kb = size_kb
-        self.used_kb = used_kb
-        self.avail_kb = avail_kb
-        self.percent_used = percent_used
-        self.percent_used_string = percent_used_string
+        if path is not None:
+            self.path = path
+        if components is not None:
+            self.components = components
+        if size_kb is not None:
+            self.size_kb = size_kb
+        if used_kb is not None:
+            self.used_kb = used_kb
+        if avail_kb is not None:
+            self.avail_kb = avail_kb
+        if percent_used is not None:
+            self.percent_used = percent_used
+        if percent_used_string is not None:
+            self.percent_used_string = percent_used_string
 
     @property
     def type(self):
@@ -143,8 +150,6 @@ class StorageInfo(object):
         :param path: The path of this StorageInfo.  # noqa: E501
         :type: str
         """
-        if path is None:
-            raise ValueError("Invalid value for `path`, must not be `None`")  # noqa: E501
 
         self._path = path
 
@@ -168,8 +173,6 @@ class StorageInfo(object):
         :param components: The components of this StorageInfo.  # noqa: E501
         :type: list[StorageInfo]
         """
-        if components is None:
-            raise ValueError("Invalid value for `components`, must not be `None`")  # noqa: E501
 
         self._components = components
 
@@ -193,8 +196,6 @@ class StorageInfo(object):
         :param size_kb: The size_kb of this StorageInfo.  # noqa: E501
         :type: int
         """
-        if size_kb is None:
-            raise ValueError("Invalid value for `size_kb`, must not be `None`")  # noqa: E501
 
         self._size_kb = size_kb
 
@@ -218,8 +219,6 @@ class StorageInfo(object):
         :param used_kb: The used_kb of this StorageInfo.  # noqa: E501
         :type: int
         """
-        if used_kb is None:
-            raise ValueError("Invalid value for `used_kb`, must not be `None`")  # noqa: E501
 
         self._used_kb = used_kb
 
@@ -243,8 +242,6 @@ class StorageInfo(object):
         :param avail_kb: The avail_kb of this StorageInfo.  # noqa: E501
         :type: int
         """
-        if avail_kb is None:
-            raise ValueError("Invalid value for `avail_kb`, must not be `None`")  # noqa: E501
 
         self._avail_kb = avail_kb
 
@@ -268,8 +265,6 @@ class StorageInfo(object):
         :param percent_used: The percent_used of this StorageInfo.  # noqa: E501
         :type: float
         """
-        if percent_used is None:
-            raise ValueError("Invalid value for `percent_used`, must not be `None`")  # noqa: E501
 
         self._percent_used = percent_used
 
@@ -293,8 +288,6 @@ class StorageInfo(object):
         :param percent_used_string: The percent_used_string of this StorageInfo.  # noqa: E501
         :type: str
         """
-        if percent_used_string is None:
-            raise ValueError("Invalid value for `percent_used_string`, must not be `None`")  # noqa: E501
 
         self._percent_used_string = percent_used_string
 

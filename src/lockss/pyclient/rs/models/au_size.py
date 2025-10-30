@@ -45,9 +45,12 @@ class AuSize(object):
         self._total_all_versions = None
         self._total_warc_size = None
         self.discriminator = None
-        self.total_latest_versions = total_latest_versions
-        self.total_all_versions = total_all_versions
-        self.total_warc_size = total_warc_size
+        if total_latest_versions is not None:
+            self.total_latest_versions = total_latest_versions
+        if total_all_versions is not None:
+            self.total_all_versions = total_all_versions
+        if total_warc_size is not None:
+            self.total_warc_size = total_warc_size
 
     @property
     def total_latest_versions(self):
@@ -69,8 +72,6 @@ class AuSize(object):
         :param total_latest_versions: The total_latest_versions of this AuSize.  # noqa: E501
         :type: int
         """
-        if total_latest_versions is None:
-            raise ValueError("Invalid value for `total_latest_versions`, must not be `None`")  # noqa: E501
 
         self._total_latest_versions = total_latest_versions
 
@@ -94,8 +95,6 @@ class AuSize(object):
         :param total_all_versions: The total_all_versions of this AuSize.  # noqa: E501
         :type: int
         """
-        if total_all_versions is None:
-            raise ValueError("Invalid value for `total_all_versions`, must not be `None`")  # noqa: E501
 
         self._total_all_versions = total_all_versions
 
@@ -119,8 +118,6 @@ class AuSize(object):
         :param total_warc_size: The total_warc_size of this AuSize.  # noqa: E501
         :type: int
         """
-        if total_warc_size is None:
-            raise ValueError("Invalid value for `total_warc_size`, must not be `None`")  # noqa: E501
 
         self._total_warc_size = total_warc_size
 
