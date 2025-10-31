@@ -31,27 +31,26 @@
 from typing import Optional
 import inspect
 
-from io import BytesIO, StringIO
+from io import BytesIO
 from multipart import MultipartParser
-from pydantic.v1 import BaseModel, Field, NonNegativeInt
+from pydantic.v1 import BaseModel as BaseModel1, Field as Field1, NonNegativeInt as NonNegativeInt1
 
-from lockss.pybasic.cliutil import BaseCli, StringCommand, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, \
-    VERSION_DESCRIPTION
+from lockss.pybasic.cliutil import BaseCli, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, VERSION_DESCRIPTION
 from lockss.pybasic.errorutil import InternalError
 
 from . import __copyright__, __license__, __version__
 from .output import create_output_options
-from ..pyclient import rs
+from lockss.pyclient import rs
 
 
-RS_PORT: NonNegativeInt = NonNegativeInt(24610)
+RS_PORT: NonNegativeInt1 = NonNegativeInt1(24610)
 RS_DESCRIPTION="LOCKSS Repository Service commands"
 
 
-class NodeOptions(BaseModel):
-    host: str = Field(aliases=["-H"], description="The IP address or FQDN of the LOCKSS node, optionally followed by a colon and a port number")
+class NodeOptions(BaseModel1):
+    host: str = Field1(aliases=["-H"], description="The IP address or FQDN of the LOCKSS node, optionally followed by a colon and a port number")
 
-    def make_conf(self, default_port: NonNegativeInt) -> rs.Configuration:
+    def make_conf(self, default_port: NonNegativeInt1) -> rs.Configuration:
         conf = rs.Configuration()
         h, _, p = self.host.partition(':')
         conf.host = f'http://{self.host}{"" if p else f":{default_port}"}'
@@ -59,94 +58,104 @@ class NodeOptions(BaseModel):
 
 
 class AuthOptions(NodeOptions):
-    username: str = Field(aliases=["-U"], description="LOCKSS API username")
-    password: str = Field(aliases=["-P"], description="LOCKSS API password")
+    username: str = Field1(aliases=["-U"], description="LOCKSS API username")
+    password: str = Field1(aliases=["-P"], description="LOCKSS API password")
 
-    def make_conf(self, default_port: NonNegativeInt) -> rs.Configuration:
+    def make_conf(self, default_port: NonNegativeInt1) -> rs.Configuration:
         conf = super().make_conf(default_port)
         conf.username = self.username
         conf.password = self.password
         return conf
 
 
-class NamespaceOptions(BaseModel):
-    namespace: Optional[str] = Field(
-        inspect.getfullargspec(rs.Artifact.__init__).defaults[1],
-        aliases=["-n"],
-        description="LOCKSS namespace")
+class NamespaceOptions(BaseModel1):
+    namespace: Optional[str] = Field1(inspect.getfullargspec(rs.Artifact.__init__).defaults[1],
+                                      aliases=["-n"],
+                                      description="LOCKSS namespace")
 
 
 class AuidOptions(NamespaceOptions):
-    auid: str = Field(aliases=["-a"], description="Archival Unit ID")
+    auid: str = Field1(aliases=["-a"], description="Archival Unit ID")
+
+
+class UrlOptions(BaseModel1):
+    url: Optional[str] = Field1(aliases=["-u"], description="URL")
+
+
+class UrlPrefixOptions(UrlOptions):
+    url_prefix: Optional[str] = Field1(aliases=["-p"], description="URL prefix")
 
 
 class UuidOptions(NamespaceOptions):
-    uuid: str = Field(aliases=["-w"], description="Identifier of the artifact")
+    uuid: str = Field1(aliases=["-w"], description="Identifier of the artifact")
 
 
-class RsIncludeContentOptions(BaseModel):
-    always: Optional[bool] = Field(description='Always include the content in the multipart response')
-    if_small: Optional[bool] = Field(alias='if-small', description='Include the content in the multipart response if it is relatively small')
-    never: Optional[bool] = Field(description='Never include the content in the multipart response')
+class IncludeContentOptions(BaseModel1):
+    always: Optional[bool] = Field1(description='Always include the content in the multipart response')
+    if_small: Optional[bool] = Field1(description='Include the content in the multipart response if it is relatively small')
+    never: Optional[bool] = Field1(description='Never include the content in the multipart response')
 
 
-RsAusSizeOutputOptions = create_output_options('RsAusSizeOutputOptions', rs.AuSize)
+RepoAusSizeOutputOptions = create_output_options('RsAusSizeOutputOptions', rs.AuSize)
 
 
-RsRepoRepoInfoOptions = create_output_options('RsRepoRepoInfoOptions', rs.RepositoryInfo)
+RepoInfoOptions = create_output_options('RsRepoRepoInfoOptions', rs.RepositoryInfo)
 
 
-RsStatusOutputOptions = create_output_options('RsStatusOutputOptions', rs.ApiStatus)
+RepoStatusOutputOptions = create_output_options('RsStatusOutputOptions', rs.ApiStatus)
 
 
-class LockssApi(BaseModel):
+class LockssApi(BaseModel1):
 
-    class Rs(BaseModel):
+    class Repo(BaseModel1):
 
-        class Artifacts(BaseModel):
+        class Artifacts(BaseModel1):
 
-            class ByUrl(AuidOptions, AuthOptions): pass
+            class ByAuid(AuidOptions, AuthOptions): pass
 
-            class ByUuid(RsIncludeContentOptions, UuidOptions, AuthOptions): pass
+            class ByUrl(UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
 
-            by_url: Optional[ByUrl] = Field(alias="by-url", description="Returns all artifacts that match a given URL or URL prefix and/or version")
-            by_uuid: Optional[ByUuid] = Field(alias="by-uuid", description="Get artifact and metadata")
+            class ByUuid(IncludeContentOptions, UuidOptions, AuthOptions): pass
 
-        class Aus(BaseModel):
+            by_auid: Optional[ByAuid] = Field1(alias='by-auid', description='Get artifacts in an Archival Unit')
+            by_url: Optional[ByUrl] = Field1(alias="by-url", description="Returns all artifacts that match a given URL or URL prefix and/or version")
+            by_uuid: Optional[ByUuid] = Field1(alias="by-uuid", description="Get artifact and metadata")
+
+        class Aus(BaseModel1):
 
             class Auids(NamespaceOptions, AuthOptions): pass
 
-            class Size(RsAusSizeOutputOptions, AuidOptions, AuthOptions): pass
+            class Size(RepoAusSizeOutputOptions, AuidOptions, AuthOptions): pass
 
-            auids: Optional[Auids] = Field(description='Get Archival Unit IDs (AUIDs) in a namespace')
-            size: Optional[Size] = Field(description='Get the size of Archival Unit artifacts in a namespace')
+            auids: Optional[Auids] = Field1(description='Get Archival Unit IDs (AUIDs) in a namespace')
+            size: Optional[Size] = Field1(description='Get the size of Archival Unit artifacts in a namespace')
 
-        class Repo(BaseModel):
+        class ChecksumAlgorithms(AuthOptions): pass
 
-            class ChecksumAlgorithms(AuthOptions): pass
+        class Info(RepoInfoOptions, AuthOptions): pass
 
-            class RepoInfo(RsRepoRepoInfoOptions, AuthOptions): pass
+        class Namespaces(AuthOptions): pass
 
-            class Namespaces(AuthOptions): pass
+        class Status(RepoStatusOutputOptions, NodeOptions): pass
 
-            checksum_algorithms: Optional[ChecksumAlgorithms] = Field(alias='checksum-algorithms', description='Get the supported checksum algorithms')
-            repo_info: Optional[RepoInfo] = Field(alias='repo-info', description='Get properties of the repository')
-            namespaces: Optional[Namespaces] = Field(description='Get namespaces of the committed artifacts in the repository')
+        class Storage(BaseModel1): pass # FIXME
 
-        class Status(RsStatusOutputOptions, NodeOptions): pass
+        artifacts: Optional[Artifacts] = Field1(description="LOCKSS Repository Service API artifacts commands")
+        aus: Optional[Aus] = Field1(description='LOCKSS Repository Service API archival unit (AU) commands')
+        checksum_algorithms: Optional[ChecksumAlgorithms] = Field1(alias='checksum-algorithms', description='Get the supported checksum algorithms')
+        info: Optional[Info] = Field1(description='Get repository information')
+        namespaces: Optional[Namespaces] = Field1(description='Get namespaces of the committed artifacts in the repository')
+        status: Optional[Status] = Field1(description="Get the status of the service")
+        storage: Optional[Storage] = Field1(description="Get repository storage information")
 
-        artifacts: Optional[Artifacts] = Field(description="LOCKSS Repository Service API artifacts commands")
-        aus: Optional[Aus] = Field(description='LOCKSS Repository Service API archival unit (AU) commands')
-        repo: Optional[Repo] = Field(description='LOCKSS Repository Service API repo commands')
-        status: Optional[Status] = Field(description="LOCKSS Repository Service API status commands")
-
-    copyright: Optional[StringCommand.type(__copyright__)] = Field(description=COPYRIGHT_DESCRIPTION)
-    license: Optional[StringCommand.type(__license__)] = Field(description=LICENSE_DESCRIPTION)
-    version: Optional[StringCommand.type(__version__)] = Field(description=VERSION_DESCRIPTION)
-    rs: Optional[Rs] = Field(description=RS_DESCRIPTION)
+    copyright: Optional[BaseModel1] = Field1(description=COPYRIGHT_DESCRIPTION)
+    license: Optional[BaseModel1] = Field1(description=LICENSE_DESCRIPTION)
+    repo: Optional[Repo] = Field1(description=RS_DESCRIPTION)
+    version: Optional[BaseModel1] = Field1(description=VERSION_DESCRIPTION)
 
 
 class LockssApiCli(BaseCli[LockssApi]):
+
     def __init__(self):
         """
         Constructs a new ``DebugPanelCli`` instance.
@@ -155,22 +164,13 @@ class LockssApiCli(BaseCli[LockssApi]):
                          prog='lockssapi',
                          description='LOCKSS Python client')
 
-    def _do_string_command(self, cmd: StringCommand) -> None:
-        """
-        Performs one string command.
+    def _copyright(self, cmd: BaseModel1) -> None:
+        self._parser.exit(0, __copyright__)
 
-        :param cmd: A ``StringCommand`` model.
-        :type auid_command: StringCommand
-        """
-        cmd()
+    def _license(self, cmd: BaseModel1) -> None:
+        self._parser.exit(0, __license__)
 
-    def _copyright(self, cmd: StringCommand) -> None:
-        self._do_string_command(cmd)
-
-    def _license(self, cmd: StringCommand) -> None:
-        self._do_string_command(cmd)
-
-    def _rs_artifacts_by_url(self, cmd: LockssApi.Rs.Artifacts.ByUrl) -> None:
+    def _repo_artifacts_by_auid(self, cmd: LockssApi.Repo.Artifacts.ByAuid) -> None:
         conf = cmd.make_conf(RS_PORT)
         api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
         api_instance = rs.ArtifactsApi(api_client)
@@ -191,7 +191,35 @@ class LockssApiCli(BaseCli[LockssApi]):
         for result in results:
             print(result)
 
-    def _rs_artifacts_by_uuid(self, cmd: LockssApi.Rs.Artifacts.ByUuid) -> None:
+    def _repo_artifacts_by_url(self, cmd: LockssApi.Repo.Artifacts.ByUrl) -> None:
+        if cmd.url and cmd.url_prefix:
+            self._parser.error('--url/-u and --url-prefix/-p are mutually exclusive')
+        conf = cmd.make_conf(RS_PORT)
+        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
+        api_instance = rs.ArtifactsApi(api_client)
+        kw = {}
+        if cmd.url:
+            kw['url'] = cmd.url
+        if cmd.url_prefix:
+            kw['url_prefix'] = cmd.url_prefix
+        token = None
+        results = []
+        while True:
+            if token:
+                kw['continuation_token'] = token
+            else:
+                kw.pop('continuation_token', None)
+            api_response: rs.ArtifactPageInfo = api_instance.get_artifacts_from_all_aus(namespace=cmd.namespace,
+                                                                                        limit=100,
+                                                                                        **kw)
+            results.extend(api_response.artifacts)
+            token = api_response.page_info.continuation_token
+            if token is None:
+                break
+        for result in results:
+            print(result)
+
+    def _repo_artifacts_by_uuid(self, cmd: LockssApi.Repo.Artifacts.ByUuid) -> None:
         conf = cmd.make_conf(RS_PORT)
         api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
         api_instance = rs.ArtifactsApi(api_client)
@@ -205,7 +233,7 @@ class LockssApiCli(BaseCli[LockssApi]):
         for part in parser:
             print(f'{part.name} {part.size}')
 
-    def _rs_aus_auids(self, cmd: LockssApi.Rs.Aus.Auids) -> None:
+    def _repo_aus_auids(self, cmd: LockssApi.Repo.Aus.Auids) -> None:
         conf = cmd.make_conf(RS_PORT)
         api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
         api_instance = rs.AusApi(api_client)
@@ -225,7 +253,7 @@ class LockssApiCli(BaseCli[LockssApi]):
         for auid in results:
             print(auid)
 
-    def _rs_aus_size(self, cmd: LockssApi.Rs.Aus.Size) -> None:
+    def _repo_aus_size(self, cmd: LockssApi.Repo.Aus.Size) -> None:
         conf = cmd.make_conf(RS_PORT)
         api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
         api_instance = rs.AusApi(api_client)
@@ -233,7 +261,7 @@ class LockssApiCli(BaseCli[LockssApi]):
                                                                   auid=cmd.auid)
         print(api_response)
 
-    def _rs_repo_checksum_algorithms(self, cmd: LockssApi.Rs.Repo.ChecksumAlgorithms) -> None:
+    def _repo_checksum_algorithms(self, cmd: LockssApi.Repo.ChecksumAlgorithms) -> None:
         conf = cmd.make_conf(RS_PORT)
         api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
         api_instance = rs.RepoApi(api_client)
@@ -241,14 +269,14 @@ class LockssApiCli(BaseCli[LockssApi]):
         for algorithm in sorted(api_response, key=lambda s: s.lower()):
             print(algorithm)
 
-    def _rs_repo_repo_info(self, cmd: LockssApi.Rs.Repo.RepoInfo) -> None:
+    def _repo_info(self, cmd: LockssApi.Repo.Info) -> None:
         conf = cmd.make_conf(RS_PORT)
         api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
         api_instance = rs.RepoApi(api_client)
         api_response: rs.RepositoryInfo = api_instance.get_repository_information()
         cmd.display(api_response)
 
-    def _rs_repo_namespaces(self, cmd: LockssApi.Rs.Repo.Namespaces) -> None:
+    def _repo_namespaces(self, cmd: LockssApi.Repo.Namespaces) -> None:
         conf = cmd.make_conf(RS_PORT)
         api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
         api_instance = rs.RepoApi(api_client)
@@ -256,15 +284,15 @@ class LockssApiCli(BaseCli[LockssApi]):
         for namespace in sorted(api_response):
             print(namespace)
 
-    def _rs_status(self, cmd: LockssApi.Rs.Status) -> None:
+    def _repo_status(self, cmd: LockssApi.Repo.Status) -> None:
         conf = cmd.make_conf(RS_PORT)
         api_client = rs.ApiClient(conf)
         api_instance = rs.StatusApi(api_client)
         api_response: rs.ApiStatus = api_instance.get_status()
         cmd.display(api_response)
 
-    def _version(self, cmd: StringCommand) -> None:
-        self._do_string_command(cmd)
+    def _version(self, cmd: BaseModel1) -> None:
+        self._parser.exit(0, __version__)
 
 
 def main() -> None:
