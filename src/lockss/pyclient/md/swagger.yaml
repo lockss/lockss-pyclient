@@ -1,0 +1,568 @@
+# Copyright (c) 2000-2025, Board of Trustees of Leland Stanford Jr. University
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+openapi: 3.0.3
+info:
+  title: LOCKSS Metadata Service REST API
+  description: REST API of the LOCKSS Metadata Service
+  contact:
+    name: LOCKSS Support
+    url: http://www.lockss.org/
+    email: lockss-support@lockss.org
+  license:
+    name: BSD-3-Clause
+    url: https://opensource.org/licenses/BSD-3-Clause
+  version: 2.0.0
+security:
+- basicAuth: []
+tags:
+- name: mdupdates
+  description: Metadata update operations
+- name: metadata
+  description: Metadata operations
+- name: status
+  description: Status operations
+- name: urls
+  description: URL operations
+paths:
+  /metadata/aus/{auid}:
+    get:
+      tags:
+      - metadata
+      summary: Get the metadata stored for an AU
+      description: Get the full metadata stored for an AU given the AU identifier
+        or a pageful of the metadata defined by the continuation token and size
+      operationId: getMetadataAusAuid
+      # new roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+      - name: auid
+        in: path
+        description: The identifier of the AU for which the metadata is requested
+        required: true
+        schema:
+          type: string
+      - name: limit
+        in: query
+        description: The number of items per page
+        schema:
+          type: integer
+          default: 50
+      - name: continuationToken
+        in: query
+        description: The continuation token of the next page of metadata to be returned
+        schema:
+          type: string
+      responses:
+        200:
+          description: The metadata of the specified AU
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/auMetadataPageInfo'
+        default:
+          description: The resulting error payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorResult'
+  /urls/openurl:
+    get:
+      tags:
+      - urls
+      summary: Performs an OpenURL query
+      description: Provides the URL that results from performing an OpenURL query.
+        With query parameters inline
+      operationId: getUrlsOpenUrl
+      # new roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+      - name: params
+        in: query
+        description: The OpenURL parameters
+        required: true
+        style: form
+        explode: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        200:
+          description: The data related to the performed OpenURL query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/urlInfo'
+        default:
+          description: The resulting error payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorResult'
+  /urls/doi:
+    get:
+      tags:
+      - urls
+      summary: Gets the URL for a DOI
+      description: Provides the URL for a DOI given the DOI
+      operationId: getUrlsDoi
+      # new roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+      - name: doi
+        in: query
+        description: The DOI for which the URL is requested
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: The URL for the specified DOI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/urlInfo'
+        default:
+          description: The resulting error payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorResult'
+  /mdupdates:
+    get:
+      tags:
+        - mdupdates
+      summary: Get a list of currently active jobs
+      description: Get a list of all currently active jobs or a pageful of the list
+        defined by the continuation token and size
+      operationId: getMdupdates
+      # new roles: ROLE_AU_ADMIN
+      parameters:
+        - name: limit
+          in: query
+          description: The number of jobs per page
+          schema:
+            type: integer
+            default: 50
+        - name: continuationToken
+          in: query
+          description: The continuation token of the next page of jobs to be returned
+          schema:
+            type: string
+      responses:
+        200:
+          description: The requested jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jobPageInfo'
+        default:
+          description: The resulting error payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorResult'
+    post:
+      tags:
+        - mdupdates
+      summary: Perform an AU metadata update operation
+      description: Perform an AU metadata update operation given the update specification
+      operationId: postMdupdates
+      # new roles: ROLE_AU_ADMIN
+      parameters:
+        - name: force
+          in: query
+          description: An indication of whether to force the operation regardless of
+            the current state of the AU
+          schema:
+            type: boolean
+            default: true
+      requestBody:
+        description: The information defining the AU metadata update operation
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metadataUpdateSpec'
+        required: true
+      responses:
+        202:
+          description: The job created to perform the AU metadata update operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/job'
+        default:
+          description: The resulting error payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorResult'
+      x-codegen-request-body-name: metadataUpdateSpec
+    delete:
+      tags:
+        - mdupdates
+      summary: Delete all of the currently queued and active jobs
+      description: Delete all of the currently queued and active jobs
+      operationId: deleteMdupdates
+      # new roles: ROLE_AU_ADMIN
+      responses:
+        200:
+          description: Count of jobs successfully deleted
+          content:
+            application/json:
+              schema:
+                type: integer
+                format: int32
+        default:
+          description: The resulting error payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorResult'
+  /mdupdates/{jobid}:
+    get:
+      tags:
+        - mdupdates
+      summary: Get a job
+      description: Get a job given the job identifier
+      operationId: getMdupdatesJobid
+      # new roles: ROLE_AU_ADMIN
+      parameters:
+        - name: jobid
+          in: path
+          description: The identifier of the requested job
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: The status of the requested job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/status'
+        default:
+          description: The resulting error payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorResult'
+    delete:
+      tags:
+        - mdupdates
+      summary: Delete a job
+      description: Delete a job given the job identifier, stopping any current processing,
+        if necessary
+      operationId: deleteMdupdatesJobid
+      # new roles: ROLE_AU_ADMIN
+      parameters:
+        - name: jobid
+          in: path
+          description: The identifier of the job to be deleted
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: The deleted job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/job'
+        default:
+          description: The resulting error payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorResult'
+  /status:
+    get:
+      tags:
+      - status
+      summary: Get the status of the service
+      description: Get the status of the service
+      operationId: getStatus
+      # no credentials required
+      responses:
+        200:
+          description: The status of the service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apiStatus'
+        default:
+          description: The resulting error payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorResult'
+components:
+  schemas:
+    errorResult:
+      type: object
+      required:
+      - message
+      - code
+      properties:
+        message:
+          type: string
+        code:
+          type: integer
+        rootCause:
+          type: string
+    auMetadataPageInfo:
+      required:
+      - items
+      - pageInfo
+      type: object
+      properties:
+        items:
+          type: array
+          description: The metadata for the AU items in the page
+          items:
+            $ref: '#/components/schemas/itemMetadata'
+        pageInfo:
+          $ref: '#/components/schemas/pageInfo'
+      description: The display page of AU metadata
+    itemMetadata:
+      type: object
+      properties:
+        scalarMap:
+          type: object
+          additionalProperties:
+            type: string
+            description: The scalar value of the metadata for the key
+          description: The map of scalar metadata elements for this item
+        setMap:
+          type: object
+          additionalProperties:
+            type: array
+            description: The set value of the metadata for the key
+            items:
+              type: string
+          description: The map of set-bound metadata elements for this item
+        listMap:
+          type: object
+          additionalProperties:
+            type: array
+            description: The list value of the metadata for the key
+            items:
+              type: string
+          description: The map of listed metadata elements for this item
+        mapMap:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: string
+            description: The map value of the metadata for the key
+          description: The map of mapped metadata elements for this item
+      description: The metadata generated for a single item
+    jobPageInfo:
+      required:
+        - jobs
+        - pageInfo
+      type: object
+      properties:
+        jobs:
+          type: array
+          description: The jobs displayed in the page
+          items:
+            $ref: '#/components/schemas/job'
+        pageInfo:
+          $ref: '#/components/schemas/pageInfo'
+      description: A display page of jobs
+    job:
+      required:
+        - au
+        - creationDate
+        - id
+        - status
+      type: object
+      properties:
+        au:
+          $ref: '#/components/schemas/au'
+        id:
+          type: string
+          description: The identifier of this job
+        description:
+          type: string
+          description: A description of the task being performed by this job
+        creationDate:
+          type: string
+          description: The timestamp when this job was created
+          format: date
+        startDate:
+          type: string
+          description: The timestamp when this job processing started
+          format: date
+        endDate:
+          type: string
+          description: The timestamp when this job processing ended
+          format: date
+        status:
+          $ref: '#/components/schemas/status'
+      description: An asynchronous task to be performed
+    au:
+      required:
+        - id
+      type: object
+      properties:
+        id:
+          type: string
+          description: The identifier of this AU
+        job:
+          type: string
+          description: The identifier of the job associated with this AU
+        name:
+          type: string
+          description: The name of the AU, for display purposes
+      description: An Archival Unit
+    metadataUpdateSpec:
+      required:
+        - auid
+        - updateType
+      type: object
+      properties:
+        auid:
+          type: string
+          description: The identifier of the AU for which the metadata update is to
+            be performed
+        updateType:
+          type: string
+          description: The type of metadata update to be performed
+          example: full_extraction | incremental_extraction | delete
+      description: The information defining an AU metadata update operation
+    status:
+        required:
+          - code
+          - msg
+        type: object
+        properties:
+          code:
+            type: integer
+            description: The numeric value for the current state
+            format: int32
+          msg:
+            type: string
+            description: A text message defining the current state
+        description: The existing state of a job
+    pageInfo:
+      required:
+      - continuationToken
+      - curLink
+      - itemsInPage
+      - totalCount
+      type: object
+      properties:
+        totalCount:
+          type: integer
+          description: The total number of elements to be paginated
+          format: int32
+          nullable: true
+        itemsInPage:
+          type: integer
+          description: The number of items in page
+          format: int32
+        continuationToken:
+          type: string
+          description: The continuation token
+          nullable: true
+        curLink:
+          type: string
+          description: The link to the current page
+        nextLink:
+          type: string
+          description: The link to the next page
+          nullable: true
+      description: The information related to pagination of content
+    urlInfo:
+      required:
+      - params
+      - urls
+      type: object
+      properties:
+        params:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value of the parameter for the parameter name
+          description: The parameters that define the resulting URLs
+        urls:
+          type: array
+          description: The URLs
+          items:
+            type: string
+      description: The information related to a resulting list of URLs
+    apiStatus:
+      required:
+      - apiVersion
+      - ready
+      type: object
+      properties:
+        apiVersion:
+          type: string
+          description: The version of the API
+        componentName:
+          type: string
+          description: The name of the component
+        componentVersion:
+          type: string
+          description: The version of the component software
+        lockssVersion:
+          type: string
+          description: The version of the LOCKSS system
+        ready:
+          type: boolean
+          description: The indication of whether the service is available
+        serviceName:
+          type: string
+          description: The name of the service
+        readyTime:
+          type: integer
+          description: The time the service last became ready.
+          format: int64
+        reason:
+          type: string
+          description: The reason the service isn't ready.
+        startupStatus:
+          type: string
+          description: Enum indicating progress of plugin/AU processing at startup.
+          enum:
+          - NONE
+          - PLUGINS_CRAWLING
+          - PLUGINS_COLLECTED
+          - PLUGINS_LOADING
+          - PLUGINS_LOADED
+          - AUS_STARTING
+          - AUS_STARTED
+      description: The status information of the service
+  securitySchemes:
+    basicAuth:
+      type: http
+      description: HTTP Basic Authentication. Works over HTTP and HTTPS.
+      scheme: basic
+

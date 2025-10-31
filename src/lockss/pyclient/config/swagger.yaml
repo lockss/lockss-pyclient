@@ -1,0 +1,1523 @@
+# Copyright (c) 2000-2025, Board of Trustees of Leland Stanford Jr. University
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+openapi: 3.0.3
+info:
+  title: LOCKSS Configuration Service REST API
+  description: REST API of the LOCKSS Configuration Service
+  contact:
+    name: LOCKSS Support
+    url: https://www.lockss.org/
+    email: lockss-support@lockss.org
+  license:
+    name: BSD-3-Clause
+    url: https://opensource.org/licenses/BSD-3-Clause
+  version: 2.0.0
+security:
+  - basicAuth: []
+tags:
+  - name: aus
+    description: Archival unit (AU) operations
+  - name: config
+    description: Configuration operations
+  - name: plugin
+    description: Plugin operations
+  - name: status
+    description: Status operations
+  - name: tdb
+    description: Title database (TDB) operations
+  - name: users
+    description: User operations
+  - name: utils
+    description: Miscellaneous operations
+paths:
+  /config/file/{sectionName}:
+    get:
+      tags:
+        - config
+      summary: Get the named configuration file
+      description: Get the configuration file stored for a given name
+      operationId: getSectionConfig
+      # roles: ROLE_USER_ADMIN
+      parameters:
+        - name: sectionName
+          in: path
+          description: The name of the section for which the configuration file is
+            requested
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Modified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-None-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Unmodified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The named configuration file
+          content:
+            multipart/form-data:
+              schema:
+                type: string
+                format: binary
+        default:
+          description: The resulting error payload.
+          content: {}
+    put:
+      tags:
+        - config
+      summary: Store the named configuration file
+      description: Store the configuration file for a given name
+      operationId: putConfig
+      # roles: ROLE_USER_ADMIN, if section name is "proxyIpAccess" then also accept ROLE_CONTENT_ADMIN
+      parameters:
+        - name: sectionName
+          in: path
+          description: The name of the section for which the configuration file is
+            to be stored
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Modified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-None-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Unmodified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - configFile
+              type: object
+              properties:
+                configFile:
+                  type: string
+                  description: The configuration file to be stored
+                  format: binary
+        required: true
+      responses:
+        "200":
+          description: OK
+          content: {}
+        default:
+          description: The resulting error payload.
+          content: {}
+  /config/url:
+    get:
+      tags:
+        - config
+      summary: Get the configuration file for a URL
+      description: Get the configuration file stored for a given URL
+      operationId: getUrlConfig
+      # roles: ROLE_USER_ADMIN
+      parameters:
+        - name: url
+          in: query
+          description: The URL for which the configuration is requested
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Modified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-None-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Unmodified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The configuration file for the URL
+          content:
+            multipart/form-data:
+              schema:
+                type: string
+                format: binary
+        default:
+          description: The resulting error payload.
+          content: {}
+  /config/loadedurls:
+    get:
+      tags:
+        - config
+      summary: Get the URLs from which the configuration was loaded
+      description: Get the URLs from which the configuration was actually loaded,
+        reflecting any failover to local copies
+      operationId: getLoadedUrlList
+      # roles: ROLE_CAUTIOUS
+      responses:
+        "200":
+          description: The URLs from which the configuration was loaded
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        default:
+          description: The resulting error payload.
+          content: {}
+  /config/lastupdatetime:
+    get:
+      tags:
+        - config
+      summary: Get the timestamp when the configuration was last updated
+      description: Get the timestamp when the configuration was last updated
+      operationId: getLastUpdateTime
+      # roles: ROLE_CAUTIOUS
+      responses:
+        "200":
+          description: The timestamp when the configuration was last updated
+          content:
+            application/json:
+              schema:
+                type: string
+                format: date-time
+        default:
+          description: The resulting error payload.
+          content: {}
+  /config/reload:
+    put:
+      tags:
+        - config
+      summary: Request a configuration reload
+      description: Request that the stored configuration is reloaded
+      operationId: putConfigReload
+      # roles: ROLE_USER_ADMIN
+      responses:
+        "200":
+          description: OK
+          content: {}
+        default:
+          description: The resulting error payload.
+          content: {}
+  /config/platform:
+    get:
+      tags:
+        - config
+      summary: Get the platform configuration
+      description: Get the platform configuration
+      operationId: getPlatformConfig
+      # roles: ROLE_CAUTIOUS
+      responses:
+        "200":
+          description: The platform configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/platformConfigurationWsResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /auids:
+    post:
+      tags:
+        - aus
+      summary: Calculate an AUID for a hypothetical AU
+      description: Calculate an AUID for a hypothetical AU, given either a plugin
+        ID and an auConfig map (for traditional AUs), or a handle and an optional
+        plugin ID for NamedAUs
+      operationId: calculateAuid
+      # roles: ROLE_ANY
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                pluginId:
+                  type: string
+                  description: the plugin id
+                handle:
+                  type: string
+                  description: the handle of a NamedArchivalUnit
+                auConfig:
+                  description: The configuration information for this au (as a json
+                    map).
+      responses:
+        "200":
+          description: Map containing the resulting AUID
+          content:
+            application/json:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+        default:
+          description: The resulting error payload.
+          content: {}
+  /aus:
+    get:
+      tags:
+        - aus
+      summary: Get the configurations of all AUs
+      description: Get the configuration of all AUs
+      operationId: getAllAuConfig
+      # roles: ROLE_AU_ADMIN
+      responses:
+        "200":
+          description: The configuration of all AUs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/auConfiguration'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /aus/{auid}:
+    get:
+      tags:
+        - aus
+      summary: Get the configuration of an AU
+      description: Get the configuration of an AU given the AU identifier
+      operationId: getAuConfig
+      # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the configuration is\ \ requested
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The configuration of the specified AU
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/auConfiguration'
+        default:
+          description: The resulting error payload.
+          content: {}
+    put:
+      tags:
+        - aus
+      summary: Store the configuration of an AU
+      description: Store the configuration of an AU given the AU identifier
+      operationId: putAuConfig
+      # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for this configuration.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: The Archival Unit configuration to be stored
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/auConfiguration'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content: {}
+        default:
+          description: The resulting error payload.
+          content: {}
+      x-codegen-request-body-name: auConfiguration
+    delete:
+      tags:
+        - aus
+      summary: Delete the configuration of an AU
+      description: Delete the configuration of an AU given the AU identifier
+      operationId: deleteAuConfig
+      # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the configuration is\ \ to
+            be deleted
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The deleted configuration of the specified AU
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/auConfiguration'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /ws/aus/add:
+    post:
+      tags:
+        - aus
+      summary: Add AUs
+      description: Add a group of AUs given their identifiers
+      operationId: postAus
+      # roles: ROLE_AU_ADMIN
+      requestBody:
+        description: The identifiers of the Archival Units to be added
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+        required: true
+      responses:
+        "200":
+          description: Information about the added AUs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/contentConfigurationResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+      x-codegen-request-body-name: auIds
+  /ws/aus/deactivate:
+    put:
+      tags:
+        - aus
+      summary: Deactivate AUs
+      description: Deactivate a group of AUs given their identifiers
+      operationId: putAusDeactivate
+      # roles: ROLE_AU_ADMIN
+      requestBody:
+        description: The identifiers of the Archival Units to be deactivated
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+        required: true
+      responses:
+        "200":
+          description: Information about the deactivated AUs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/contentConfigurationResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+      x-codegen-request-body-name: auIds
+  /ws/aus/reactivate:
+    put:
+      tags:
+        - aus
+      summary: Reactivate AUs
+      description: Reactivate a group of AUs given their identifiers
+      operationId: putAusReactivate
+      # roles: ROLE_AU_ADMIN
+      requestBody:
+        description: The identifiers of the Archival Units to be reactivated
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+        required: true
+      responses:
+        "200":
+          description: Information about the reactivated AUs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/contentConfigurationResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+      x-codegen-request-body-name: auIds
+  /ws/aus/delete:
+    delete:
+      tags:
+        - aus
+      summary: Delete AUs
+      description: Delete a group of AUs given their identifiers
+      operationId: deleteAusDelete
+      # roles: ROLE_AU_ADMIN
+      requestBody:
+        description: The identifiers of the Archival Units to be deleted
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+        required: true
+      responses:
+        "200":
+          description: Information about the deleted AUs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/contentConfigurationResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+      x-codegen-request-body-name: auIds
+  /aus/{auid}/mddisable:
+    put:
+      tags:
+        - aus
+      summary: Disable AU metadata extraction
+      description: Disable the metadata extraction for an AU given its identifier
+      operationId: putAusMdDisable
+      # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the Archival Units for which metadata extraction
+            is to be disabled
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Information about the AU for which metadata extraction has
+            been disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/requestAuControlResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /aus/{auid}/mdenable:
+    put:
+      tags:
+        - aus
+      summary: Enable AU metadata extraction
+      description: Enable the metadata extraction for an AU given its identifier
+      operationId: putAusMdEnable
+      # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the Archival Units for which metadata extraction
+            is to be enabled
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Information about the AU for which metadata extraction has
+            been enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/requestAuControlResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /austates/{auid}:
+    get:
+      tags:
+        - aus
+      summary: Get the state of an AU
+      description: Get the state of an AU given the AU identifier
+      operationId: getAuState
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the state is requested
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The state of the specified AU
+          content:
+            application/json:
+              schema:
+                type: string
+        default:
+          description: The resulting error payload.
+          content: {}
+    patch:
+      tags:
+        - aus
+      summary: Update the state of an AU
+      description: Update the state of an AU given the AU identifier
+      operationId: patchAuState
+      # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the state is to be updated
+          required: true
+          schema:
+            type: string
+        - name: X-Lockss-Request-Cookie
+          in: header
+          description: The LOCKSS-specific request cookie header
+          schema:
+            type: string
+      requestBody:
+        description: The parts of the Archival Unit state to be updated
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content: {}
+        default:
+          description: The resulting error payload.
+          content: {}
+      x-codegen-request-body-name: auState
+  /auagreements/{auid}:
+    get:
+      tags:
+        - aus
+      summary: Get the poll agreements of an AU
+      description: Get the poll agreements of an AU given the AU identifier
+      operationId: getAuAgreements
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the poll agreements are
+            requested
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The poll agreements of the specified AU
+          content:
+            application/json:
+              schema:
+                type: string
+        default:
+          description: The resulting error payload.
+          content: {}
+    patch:
+      tags:
+        - aus
+      summary: Update the poll agreements of an AU
+      description: Update the poll agreements of an AU given the AU identifier
+      operationId: patchAuAgreements
+      # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the poll agreements are
+            to be updated
+          required: true
+          schema:
+            type: string
+        - name: X-Lockss-Request-Cookie
+          in: header
+          description: The LOCKSS-specific request cookie header
+          schema:
+            type: string
+      requestBody:
+        description: The parts of the Archival Unit poll agreements to be updated
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content: {}
+        default:
+          description: The resulting error payload.
+          content: {}
+      x-codegen-request-body-name: auAgreements
+  /aususpecturls/{auid}:
+    get:
+      tags:
+        - aus
+      summary: Get the suspect URL versions of an AU
+      description: Get the suspect URL versions of an AU given the AU identifier
+      operationId: getAuSuspectUrlVersions
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the suspect URL versions
+            are requested
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The suspect URL versions of the specified AU
+          content:
+            application/json:
+              schema:
+                type: string
+        default:
+          description: The resulting error payload.
+          content: {}
+    put:
+      tags:
+        - aus
+      summary: Update the suspect URL versions of an AU
+      description: Update the suspect URL versions of an AU given the AU identifier
+      operationId: putAuSuspectUrlVersions
+      # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the suspect URL versions
+            are to be updated
+          required: true
+          schema:
+            type: string
+        - name: X-Lockss-Request-Cookie
+          in: header
+          description: The LOCKSS-specific request cookie header
+          schema:
+            type: string
+      requestBody:
+        description: The parts of the Archival Unit suspect URL versions to be
+          updated
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content: {}
+        default:
+          description: The resulting error payload.
+          content: {}
+      x-codegen-request-body-name: auSuspectUrlVersions
+  /noaupeers/{auid}:
+    get:
+      tags:
+        - aus
+      summary: Get the NoAuPeerSet object of an AU
+      description: Get the NoAuPeerSet object of an AU given the AU identifier
+      operationId: getNoAuPeers
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the NoAuPeerSet object
+            is requested
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The NoAuPeerSet object of the specified AU
+          content:
+            application/json:
+              schema:
+                type: string
+        default:
+          description: The resulting error payload.
+          content: {}
+    put:
+      tags:
+        - aus
+      summary: Update the NoAuPeerSet object of an AU
+      description: Update the NoAuPeerSet object of an AU given the AU identifier
+      operationId: putNoAuPeers
+      # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the NoAuPeerSet object
+            is to be updated
+          required: true
+          schema:
+            type: string
+        - name: X-Lockss-Request-Cookie
+          in: header
+          description: The LOCKSS-specific request cookie header
+          schema:
+            type: string
+      requestBody:
+        description: The parts of the Archival Unit NoAuPeerSet object to be updated
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content: {}
+        default:
+          description: The resulting error payload.
+          content: {}
+      x-codegen-request-body-name: noAuPeerSet
+  /ws/tdbaus:
+    get:
+      tags:
+        - tdb
+      summary: Query the TDB for AUs
+      description: Query the TDB for AUs that meet a set of specified conditions
+      operationId: getTdbAus
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+        - name: tdbAuQuery
+          in: query
+          description: The query that specifies the TDB AUs to be returned
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Information about the requested TDB AUs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/tdbAuWsResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /ws/tdbtitles:
+    get:
+      tags:
+        - tdb
+      summary: Query the TDB for Titles
+      description: Query the TDB for Titles that meet a set of specified conditions
+      operationId: getTdbTitles
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+        - name: tdbTitleQuery
+          in: query
+          description: The query that specifies the TDB Titles to be returned
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Information about the requested TDB Titles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/tdbTitleWsResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /ws/tdbpublishers:
+    get:
+      tags:
+        - tdb
+      summary: Query the TDB for Publishers
+      description: Query the TDB for Publishers that meet a set of specifie conditions
+      operationId: getTdbPublishers
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+        - name: tdbPublisherQuery
+          in: query
+          description: The query that specifies the TDB Publishers to be returned
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Information about the requested TDB Publishers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/tdbPublisherWsResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /ws/plugins:
+    get:
+      tags:
+        - plugins
+      summary: Query for plugin properties
+      description: Query for plugins that meet a set of specified conditions
+      operationId: getPlugins
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+        - name: pluginQuery
+          in: query
+          description: The query that specifies the plugins to be returned
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Information about the requested plugins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/pluginWsResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /ws/auqueries:
+    get:
+      tags:
+        - aus
+      summary: Query for archival unit properties
+      description: Query for archival units that meet a set of specified conditions
+      operationId: getAuqueries
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+        - name: auQuery
+          in: query
+          description: The query that specifies the archival units to be returned
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Information about the requested archival units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/auWsResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /austatuses/{auid}:
+    get:
+      tags:
+        - aus
+      summary: Get the status of an AU
+      description: Get the status of an AU given the AU identifier
+      operationId: getAuStatus
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the status is requested
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The status of the specified AU
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/auStatus'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /ausubstances/{auid}:
+    put:
+      tags:
+        - aus
+      summary: Update the substance of an AU
+      description: Update the substance of an AU given the AU identifier
+      operationId: putAuSubstanceCheck
+      # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the substance check is
+            requested
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The substance check of the specified AU
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/checkSubstanceResult'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /status:
+    get:
+      tags:
+        - status
+      summary: Get the status of the service
+      description: Get the status of the service
+      operationId: getStatus
+      # no credentials needed
+      responses:
+        "200":
+          description: The status of the service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apiStatus'
+        default:
+          description: The resulting error payload.
+          content: {}
+  /usernames:
+    get:
+      tags:
+        - users
+      summary: Get the usernames configured in the system
+      description: Get the usernames configured in the system
+      operationId: getUserAccountNames
+      # roles: ROLE_USER_ADMIN
+      responses:
+        "200":
+          description: A list of usernames configured in the system
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+  /users:
+    post:
+      tags:
+        - users
+      summary: Adds user accounts to the system
+      description: Adds user accounts to the system
+      operationId: addUserAccounts
+      # roles: ROLE_USER_ADMIN
+      requestBody:
+        description: An array of user accounts to be stored
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: Successfully added user accounts
+          content:
+            application/json:
+              schema:
+                type: string
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+      x-codegen-request-body-name: userAccounts
+  /users/{username}:
+    get:
+      tags:
+        - users
+      summary: Get user account details
+      description: Get user account details
+      operationId: getUserAccount
+      # roles: ROLE_USER_ADMIN
+      parameters:
+        - name: username
+          in: path
+          description: Username
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A JSON serialization containing details of the user account
+          content:
+            application/json:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+    delete:
+      tags:
+        - users
+      summary: Remove a user account from the system
+      description: Remove a user account from the system
+      operationId: removeUserAccount
+      # roles: ROLE_USER_ADMIN
+      parameters:
+        - name: username
+          in: path
+          description: Username
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Removed user account
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+    patch:
+      tags:
+        - users
+      summary: Update properties of an existing user account
+      description: Update properties of an existing user account
+      operationId: updateUserAccount
+      # roles: ROLE_USER_ADMIN
+      parameters:
+        - name: username
+          in: path
+          description: Username
+          required: true
+          schema:
+            type: string
+        - name: X-Lockss-Request-Cookie
+          in: header
+          description: The LOCKSS-specific request cookie header
+          schema:
+            type: string
+      requestBody:
+        description: The user account details to be updated
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: Updated user account
+          content:
+            application/json:
+              schema:
+                type: string
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+      x-codegen-request-body-name: userAccount
+  /utils/normalizeUrl:
+    get:
+      tags:
+        - utils
+      summary: Normalize URL
+      description: Performs a LOCKSS URL normalization
+      operationId: normalizeUrl
+      parameters:
+        - name: url
+          in: query
+          description: URL to normalize
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The LOCKSS normalized URL
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "400":
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal Server Error
+          content: {}
+components:
+  schemas:
+    platformConfigurationWsResult:
+      required:
+        - hostName
+      type: object
+      properties:
+        hostName:
+          type: string
+          description: name of the host server
+      description: The configuration of the platform
+    auConfiguration:
+      required:
+        - auConfig
+        - auId
+      type: object
+      properties:
+        auId:
+          type: string
+          description: The identifier of the Archival Unit
+        auConfig:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value of the configuration for the key
+          description: The map of Archival Unit configuration items
+      description: The encapsulation of an Archival Unit configuration
+    contentConfigurationResult:
+      required:
+        - auId
+        - isSuccess
+        - message
+        - name
+      type: object
+      properties:
+        auId:
+          type: string
+          description: The identifier of the Archival Unit
+        name:
+          type: string
+          description: The name of the Archival Unit
+        isSuccess:
+          type: boolean
+          description: An indication of whether the AU was successfully added or not
+        message:
+          type: string
+          description: A descriptive message regarding the result of the operation
+      description: The encapsulation of the result of adding an Archival Unit
+    tdbAuWsResult:
+      type: object
+      properties:
+        auId:
+          type: string
+          description: The identifier of the Archival Unit
+        name:
+          type: string
+          description: The name of the Archival Unit
+        pluginName:
+          type: string
+          description: The name of the Archival Unit plugin
+        tdbTitle:
+          $ref: '#/components/schemas/tdbTitleWsResult'
+        tdbPublisher:
+          $ref: '#/components/schemas/tdbPublisherWsResult'
+        down:
+          type: boolean
+          description: An indication of whether the AU is marked as down or not
+        active:
+          type: boolean
+          description: An indication of whether the AU is active or not
+        params:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value of the parameter for the key
+          description: The map of Archival Unit parameters
+        attrs:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value of the attribute for the key
+          description: The map of Archival Unit attributes
+        props:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value of the property for the key
+          description: The map of Archival Unit properties
+      description: The properties of a TDB Archival Unit
+    tdbTitleWsResult:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the TDB Title
+        tdbPublisher:
+          $ref: '#/components/schemas/tdbPublisherWsResult'
+        id:
+          type: string
+          description: The identifier of the TDB Title
+        proprietaryid:
+          type: string
+          description: The proprietary identifier of the TDB Title
+        proprietaryids:
+          type: array
+          description: The proprietary identifiers of the TDB Title
+          items:
+            type: string
+        publicationtype:
+          type: string
+          description: The publication type of the TDB Title
+        issn:
+          type: string
+          description: The ISSN of the TDB Title
+        issnl:
+          type: string
+          description: The ISSNL of the TDB Title
+        eissn:
+          type: string
+          description: The eISSN of the TDB Title
+        printissn:
+          type: string
+          description: The print ISSN of the TDB Title
+        issns:
+          type: array
+          description: The ISSNs of the TDB Title
+          items:
+            type: string
+      description: The properties of a TDB Title
+    tdbPublisherWsResult:
+      required:
+        - name
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the TDB Publisher
+      description: The properties of a TDB Publisher
+    pluginWsResult:
+      required:
+        - auCount
+        - definition
+        - name
+        - pluginId
+        - publishingPlatform
+        - registry
+        - type
+        - url
+        - version
+      type: object
+      properties:
+        pluginId:
+          type: string
+          description: The identifier of the plugin
+        name:
+          type: string
+          description: The name of the plugin
+        version:
+          type: string
+          description: The version of the plugin
+        type:
+          type: string
+          description: The type of the plugin
+        definition:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value of the property for the key
+          description: The map of plugin definition properties
+        registry:
+          type: string
+          description: The registry of the plugin
+        url:
+          type: string
+          description: The URL of the plugin
+        auCount:
+          type: integer
+          description: The count of Archival Units linked to the plugin
+        publishingPlatform:
+          type: string
+          description: The publishing platform of the plugin
+      description: The properties of a plugin
+    auWsResult:
+      required:
+        - auId
+      type: object
+      properties:
+        auId:
+          type: string
+          description: The identifier of the archival unit
+      description: The properties of an archival unit
+    requestAuControlResult:
+      required:
+        - errorMessage
+        - id
+        - success
+      type: object
+      properties:
+        id:
+          type: string
+          description: The identifier of the archival unit
+        success:
+          type: boolean
+          description: An indication of whether the result is successful
+        errorMessage:
+          type: string
+          description: The error message as a result of the operation
+      description: The result of an archival unit generic control request
+    auStatus:
+      required:
+        - volume
+      type: object
+      properties:
+        volume:
+          type: string
+          description: The volume of the archival unit
+      description: The status of an archival unit
+    checkSubstanceResult:
+      required:
+        - errorMessage
+        - id
+        - newState
+        - oldState
+      type: object
+      properties:
+        id:
+          type: string
+          description: The identifier of the archival unit
+        oldState:
+          type: string
+          description: An indication of whether the result is successful
+          enum:
+            - Unknown
+            - "Yes"
+            - "No"
+        newState:
+          type: string
+          description: An indication of whether the result is successful
+          enum:
+            - Unknown
+            - "Yes"
+            - "No"
+        errorMessage:
+          type: string
+          description: The error message as a result of the operation
+      description: The status of an archival unit
+    apiStatus:
+      required:
+        - apiVersion
+        - ready
+      type: object
+      properties:
+        apiVersion:
+          type: string
+          description: The version of the API
+        componentName:
+          type: string
+          description: The name of the component
+        componentVersion:
+          type: string
+          description: The version of the component software
+        lockssVersion:
+          type: string
+          description: The version of the LOCKSS system
+        ready:
+          type: boolean
+          description: The indication of whether the service is available
+        serviceName:
+          type: string
+          description: The name of the service
+        readyTime:
+          type: integer
+          description: The time the service last became ready.
+          format: int64
+        reason:
+          type: string
+          description: The reason the service isn't ready.
+        startupStatus:
+          type: string
+          description: Enum indicating progress of plugin/AU processing at startup.
+          enum:
+            - NONE
+            - PLUGINS_CRAWLING
+            - PLUGINS_COLLECTED
+            - PLUGINS_LOADING
+            - PLUGINS_LOADED
+            - AUS_STARTING
+            - AUS_STARTED
+      description: The status information of the service
+  securitySchemes:
+    basicAuth:
+      type: http
+      description: HTTP Basic Authentication. Works over HTTP and HTTPS.
+      scheme: basic
+
