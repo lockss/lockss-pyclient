@@ -4,6 +4,9 @@
 LOCKSS Python clients
 """
 
+# Remove in Python 3.14; see https://stackoverflow.com/a/33533514
+from __future__ import annotations
+
 __version__ = '0.1.0-dev2'
 
 __copyright__ = '''
@@ -38,13 +41,13 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 '''.strip()
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from getpass import getpass
 from importlib import resources
 from io import BytesIO
 from jsonpath import query
 from multipart import MultipartParser
-from typing import Any, Callable, ClassVar, Optional, TypeVar, Union
+from typing import Any, ClassVar, Optional, TypeVar
 import yaml
 
 from lockss.pyclient import rs
@@ -75,20 +78,6 @@ ConfT = TypeVar('ConfT')
 ConfProducer = Callable[[], ConfT]
 
 
-def _make_conf_template(make_conf: ConfProducer,
-                        default_port: int):
-    def wrap(f):
-        def decorated(self, port: int = default_port, needs_auth: bool = True):
-            conf = make_conf()
-            conf.host = f'{self.get_host()}:{port}'
-            if needs_auth:
-                conf.username = self.get_username()
-                conf.password = self.get_password()()
-            return conf
-        return decorated
-    return wrap
-
-
 StrProducer = Callable[[], str]
 
 
@@ -96,26 +85,60 @@ class Node(object):
 
     DEFAULT_PROTOCOL: ClassVar[str] = 'http'
 
+    # Decorator
+    @staticmethod
+    def _make_conf_template(make_conf: ConfProducer,
+                            get_port_name: str):
+        def wrap(f):
+            def decorated(self, needs_auth: bool = True):
+                conf = make_conf()
+                conf.host = f'{self.get_host()}:{getattr(self, get_port_name)()}'
+                if needs_auth:
+                    conf.username = self.get_username()
+                    conf.password = self.get_password()()
+                return conf
+            return decorated
+        return wrap
+
+    # Decorator
+    @staticmethod
+    def _set_port_template(port_name: str):
+        def wrap(f):
+            def decorated(self, port: int) -> Node:
+                setattr(self, port_name, port)
+                return self
+            return decorated
+        return wrap
+
+    # Decorator
+    @staticmethod
+    def _get_port_template(port_name: str,
+                           default_port: int):
+        def wrap(f):
+            def decorated(self) -> int:
+                return getattr(self, port_name, default_port)
+            return decorated
+        return wrap
+
     def __init__(self,
                  node_reference: str,
                  username: Optional[str] = None,
                  password: Optional[StrProducer] = None,
-                 interactive: bool = True):
+                 interactive: bool = True,
+                 rs_port: int = RS_DEFAULT_PORT):
         super().__init__()
-        if node_reference.endswith('/'):
-            node_reference = node_reference[:-1]
-        x, y, z = node_reference.rpartition(':')
-        if z.isdigit():
-            node_reference = x # Ignore port if passed in
-        if '://' not in node_reference:
-            node_reference = f'{Node.DEFAULT_PROTOCOL}://{node_reference}'
-        self._host: str = node_reference
+        self._host: str = Node._compute_host(node_reference)
         self._username: Optional[str] = username
         self._password: Optional[StrProducer] = password
         self._interactive: bool = interactive
+        self._rs_port: int = rs_port
 
     def get_host(self) -> str:
         return self._host
+
+    @_get_port_template('_rs_port', RS_DEFAULT_PORT)
+    def get_rs_port(self) -> int:
+        pass
 
     def get_username(self) -> str:
         return self._username
@@ -128,9 +151,28 @@ class Node(object):
             self._password = lambda: _p
         return self._password
 
-    @_make_conf_template(rs.Configuration, RS_DEFAULT_PORT)
-    def make_repo_conf(self, port: int = RS_DEFAULT_PORT, needs_auth: bool = True) -> rs.Configuration:
+    @_make_conf_template(rs.Configuration, 'get_rs_port')
+    def make_repo_conf(self, needs_auth: bool = True) -> rs.Configuration:
         pass
+
+    @_set_port_template('_rs_port')
+    def set_rs_port(self, port: int) -> Node:
+        pass
+
+    def set_username(self, username: str) -> Node:
+        self._username = username
+        return self
+
+    @staticmethod
+    def _compute_host(node_reference: str) -> str:
+        if node_reference.endswith('/'):
+            node_reference = node_reference[:-1]
+        x, y, z = node_reference.rpartition(':')
+        if z.isdigit():
+            node_reference = x # Ignore port if passed in
+        if '://' not in node_reference:
+            node_reference = f'{Node.DEFAULT_PROTOCOL}://{node_reference}'
+        return node_reference
 
 
 ApiClientT = TypeVar('ApiClientT')
