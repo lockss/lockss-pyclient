@@ -247,13 +247,13 @@ def _paged_request_iterator_template(single_request: PageInfoResultProducer,
     return wrap
 
 
-def repo_artifact_by_uuid(node: Node,
-                          uuid: str,
-                          namespace: str = _first('$.paths["/artifacts/{uuid}"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> MultipartParser:
+def repo_get_artifact_by_uuid(node: Node,
+                              uuid: str,
+                              namespace: str = _first('$.paths["/artifacts/{uuid}"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> MultipartParser:
     @_single_request_template('make_repo_conf', rs.ApiClient, rs.ArtifactsApi, 'get_artifact_data_by_multipart')
-    def _repo_artifact_by_uuid(node: Node, uuid: str, namespace: str = None) -> str:
+    def _repo_get_artifact_by_uuid(node: Node, uuid: str, namespace: str = None) -> str:
         pass
-    result: str = _repo_artifact_by_uuid(node, uuid, namespace=namespace)
+    result: str = _repo_get_artifact_by_uuid(node, uuid, namespace=namespace)
     # Result is of type str but seems to be a repr() string!
     byte_input = eval(result)
     boundary = byte_input.partition(b'\r\n')[0].partition(b'--')[2]
@@ -261,99 +261,99 @@ def repo_artifact_by_uuid(node: Node,
 
 
 @_single_request_template('make_repo_conf', rs.ApiClient, rs.ArtifactsApi, 'get_artifacts')
-def repo_artifacts_by_auid_page(node: Node,
-                                auid: str,
-                                namespace: str = _first('$.paths["/aus/{auid}/artifacts"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> rs.ArtifactPageInfo:
+def repo_get_artifacts_by_auid_page(node: Node,
+                                    auid: str,
+                                    namespace: str = _first('$.paths["/aus/{auid}/artifacts"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> rs.ArtifactPageInfo:
     pass
 
 
-@_paged_request_iterator_template(repo_artifacts_by_auid_page)
-def repo_artifacts_by_auid_page_iter(node: Node,
-                                     auid: str,
-                                     namespace: str = _first('$.paths["/aus/{auid}/artifacts"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> Iterable[rs.ArtifactPageInfo]:
+@_paged_request_iterator_template(repo_get_artifacts_by_auid_page)
+def repo_get_artifacts_by_auid_page_iter(node: Node,
+                                         auid: str,
+                                         namespace: str = _first('$.paths["/aus/{auid}/artifacts"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> Iterable[rs.ArtifactPageInfo]:
     pass
 
 
-def repo_artifacts_by_auid(node: Node,
-                           auid: str,
-                           namespace: str = _first('$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> list[rs.Artifact]:
+def repo_get_artifacts_by_auid(node: Node,
+                               auid: str,
+                               namespace: str = _first('$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> list[rs.Artifact]:
     ret = []
-    for page in repo_artifacts_by_auid_page_iter(node, auid, namespace=namespace):
+    for page in repo_get_artifacts_by_auid_page_iter(node, auid, namespace=namespace):
         ret.extend(page.artifacts)
     return ret
 
 
 @_single_request_template('make_repo_conf', rs.ApiClient, rs.ArtifactsApi, 'get_artifacts_from_all_aus', remove_kwargs=['url', 'url_prefix'])
-def repo_artifacts_by_url_page(node: Node,
-                               url: Optional[str] = None,
-                               url_prefix: Optional[str] = None,
-                               namespace: Optional[str] = _first('$.paths["/artifacts"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> rs.ArtifactPageInfo:
+def repo_get_artifacts_by_url_page(node: Node,
+                                   url: Optional[str] = None,
+                                   url_prefix: Optional[str] = None,
+                                   namespace: Optional[str] = _first('$.paths["/artifacts"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> rs.ArtifactPageInfo:
     pass
 
 
-@_paged_request_iterator_template(repo_artifacts_by_url_page)
-def repo_artifacts_by_url_page_iter(node: Node,
-                                    url: Optional[str] = None,
-                                    url_prefix: Optional[str] = None,
-                                    namespace: Optional[str] = _first('$.paths["/artifacts"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> Iterable[rs.ArtifactPageInfo]:
+@_paged_request_iterator_template(repo_get_artifacts_by_url_page)
+def repo_get_artifacts_by_url_page_iter(node: Node,
+                                        url: Optional[str] = None,
+                                        url_prefix: Optional[str] = None,
+                                        namespace: Optional[str] = _first('$.paths["/artifacts"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> Iterable[rs.ArtifactPageInfo]:
     pass
 
 
-def repo_artifacts_by_url(node: Node,
-                          url: Optional[str] = None,
-                          url_prefix: Optional[str] = None,
-                          namespace: Optional[str] = _first('$.paths["/artifacts"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> list[rs.Artifact]:
+def repo_get_artifacts_by_url(node: Node,
+                              url: Optional[str] = None,
+                              url_prefix: Optional[str] = None,
+                              namespace: Optional[str] = _first('$.paths["/artifacts"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> list[rs.Artifact]:
     ret = []
-    for page in repo_artifacts_by_url_page_iter(node, url=url, url_prefix=url_prefix, namespace=namespace):
+    for page in repo_get_artifacts_by_url_page_iter(node, url=url, url_prefix=url_prefix, namespace=namespace):
         ret.extend(page.artifacts)
     return ret
 
 
 @_single_request_template('make_repo_conf', rs.ApiClient, rs.AusApi, 'get_artifacts_size')
-def repo_au_size(node: Node,
-                 auid: str,
-                 namespace: Optional[str] = _first('$.paths["/aus/{auid}/size"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> rs.AuSize:
+def repo_get_au_size(node: Node,
+                     auid: str,
+                     namespace: Optional[str] = _first('$.paths["/aus/{auid}/size"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> rs.AuSize:
     pass
 
 
 @_single_request_template('make_repo_conf', rs.ApiClient, rs.AusApi, 'get_aus')
-def repo_auids_page(node: Node,
-                    namespace: Optional[str] = _first('$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER),
-                    **kwargs) -> rs.AuidPageInfo:
+def repo_get_auids_page(node: Node,
+                        namespace: Optional[str] = _first('$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER),
+                        **kwargs) -> rs.AuidPageInfo:
     pass
 
 
-@_paged_request_iterator_template(repo_auids_page)
-def repo_auids_page_iter(node: Node,
-                         namespace: Optional[str] = _first('$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> Iterable[rs.AuidPageInfo]:
+@_paged_request_iterator_template(repo_get_auids_page)
+def repo_get_auids_page_iter(node: Node,
+                             namespace: Optional[str] = _first('$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> Iterable[rs.AuidPageInfo]:
     pass
 
 
-def repo_auids(node: Node,
-               namespace: Optional[str] = _first('$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> list[str]:
+def repo_get_auids(node: Node,
+                   namespace: Optional[str] = _first('$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> list[str]:
     ret = []
-    for page in repo_auids_page_iter(node, namespace=namespace):
+    for page in repo_get_auids_page_iter(node, namespace=namespace):
         ret.extend(page.auids)
     return ret
 
 
 @_single_request_template('make_repo_conf', rs.ApiClient, rs.RepoApi, 'get_supported_checksum_algorithms')
-def repo_checksum_algorithms(node: Node) -> list[str]:
+def repo_get_checksum_algorithms(node: Node) -> list[str]:
     pass
 
 
 @_single_request_template('make_repo_conf', rs.ApiClient, rs.RepoApi, 'get_repository_information')
-def repo_info(node: Node) -> rs.RepositoryInfo:
+def repo_get_info(node: Node) -> rs.RepositoryInfo:
     pass
 
 
 @_single_request_template('make_repo_conf', rs.ApiClient, rs.RepoApi, 'get_namespaces')
-def repo_namespaces(node: Node) -> list[str]:
+def repo_get_namespaces(node: Node) -> list[str]:
     pass
 
 
 @_single_request_template('make_repo_conf', rs.ApiClient, rs.StatusApi, 'get_status', needs_auth=False)
-def repo_status(node: Node) -> rs.ApiStatus:
+def repo_get_status(node: Node) -> rs.ApiStatus:
     pass
 
 
