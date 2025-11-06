@@ -285,10 +285,31 @@ def repo_get_artifact_by_uuid(node: Node,
     def _repo_get_artifact_by_uuid(node: Node, uuid: str, namespace: str = None) -> str:
         pass
     result: str = _repo_get_artifact_by_uuid(node, uuid, namespace=namespace)
-    # Result is of type str but seems to be a repr() string!
-    byte_input = eval(result)
-    boundary = byte_input.partition(b'\r\n')[0].partition(b'--')[2]
+    # Result is of type str but seems to be a repr() string "b'...'"
+    boundary = (byte_input := eval(result)).partition(b'\r\n')[0].partition(b'--')[2]
     return MultipartParser(BytesIO(byte_input), boundary)
+
+
+def repo_get_artifact_response_by_uuid(node: Node,
+                                       uuid: str,
+                                       namespace: str = _first('$.paths["/artifacts/{uuid}/response"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> str:
+    @_single_request_template(Node.make_repo_conf, rs.ApiClient, rs.ArtifactsApi, rs.ArtifactsApi.get_artifact_data_by_response)
+    def _repo_get_artifact_response_by_uuid(node: Node, uuid: str, namespace: str = None) -> str:
+        pass
+    result: str = _repo_get_artifact_response_by_uuid(node, uuid, namespace=namespace, include_content='NEVER')
+    # Result is of type str but seems to be a repr() string "b'...'"
+    return eval(result).decode()
+
+
+def repo_get_artifact_payload_by_uuid(node: Node,
+                                       uuid: str,
+                                       namespace: str = _first('$.paths["/artifacts/{uuid}/payload"].get.parameters[?(@.name == "namespace")].schema.default', __RS_SWAGGER)) -> bytes:
+    @_single_request_template(Node.make_repo_conf, rs.ApiClient, rs.ArtifactsApi, rs.ArtifactsApi.get_artifact_data_by_payload)
+    def _repo_get_artifact_payload_by_uuid(node: Node, uuid: str, namespace: str = None) -> str:
+        pass
+    result: str = _repo_get_artifact_payload_by_uuid(node, uuid, namespace=namespace, include_content='ALWAYS')
+    # Result is of type str but seems to be a repr() string "b'...'"
+    return eval(result)
 
 
 @_single_request_template(Node.make_repo_conf, rs.ApiClient, rs.ArtifactsApi, rs.ArtifactsApi.get_artifacts)
@@ -388,18 +409,20 @@ def repo_get_status(node: Node) -> rs.ApiStatus:
     pass
 
 
-# if __name__ == '__main__':
-#     node = Node('localhost', 'lockss-u')
-#     print(repo_get_status(node).to_dict())
-#     print(repo_get_namespaces(node))
-#     print(repo_get_checksum_algorithms(node))
-#     print(repo_get_info(node))
-#     print(repo_get_auids(node))
-#     auid1 = 'org|lockss|plugin|RegistryPlugin&base_url~http%3A%2F%2Fprops%2Elockss%2Eorg%3A8001%2Fplugins%2Faserl-etd%2F'
-#     print(repo_get_au_size(node, auid1))
-#     print(repo_get_artifacts_by_auid(node, auid1))
-#     url1 = 'http://props.lockss.org:8001/plugins/aserl-etd/FSUETDPlugin.jar'
-#     print(repo_get_artifacts_by_url(node, url=url1))
-#     uuid1 = '4fa8b54e-9cfb-46ab-a0d6-ed3d0a2910f4'
-#     for part in repo_get_artifact_by_uuid(node, uuid1):
-#         print(part.name)
+if __name__ == '__main__':
+    node = Node('localhost', 'lockss-u')
+    print(repo_get_status(node).to_dict())
+    print(repo_get_namespaces(node))
+    print(repo_get_checksum_algorithms(node))
+    print(repo_get_info(node))
+    print(repo_get_auids(node))
+    auid1 = 'org|lockss|plugin|RegistryPlugin&base_url~http%3A%2F%2Fprops%2Elockss%2Eorg%3A8001%2Fplugins%2Faserl-etd%2F'
+    print(repo_get_au_size(node, auid1))
+    print(repo_get_artifacts_by_auid(node, auid1))
+    url1 = 'http://props.lockss.org:8001/plugins/aserl-etd/FSUETDPlugin.jar'
+    print(repo_get_artifacts_by_url(node, url=url1))
+    uuid1 = '4fa8b54e-9cfb-46ab-a0d6-ed3d0a2910f4'
+    for part in repo_get_artifact_by_uuid(node, uuid1):
+        print(part.name)
+    print(repo_get_artifact_response_by_uuid(node, uuid1))
+    print(repo_get_artifact_payload_by_uuid(node, uuid1))
