@@ -34,6 +34,7 @@ from lockss.pyclient.rs.models.au_size import AuSize
 from lockss.pyclient.rs.models.auid_page_info import AuidPageInfo
 from lockss.pyclient.rs.models.error_result import ErrorResult
 from lockss.pyclient.rs.models.import_status import ImportStatus
+from lockss.pyclient.rs.models.include_content_enum import IncludeContentEnum
 from lockss.pyclient.rs.models.page_info import PageInfo
 from lockss.pyclient.rs.models.repository_info import RepositoryInfo
 from lockss.pyclient.rs.models.repository_statistics import RepositoryStatistics

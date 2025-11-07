@@ -358,7 +358,7 @@ class ArtifactsApi(object):
         :param async_req bool
         :param str uuid: Identifier of the artifact (required)
         :param str namespace: Namespace of the artifacts
-        :param str include_content: Controls whether to include the artifact content part in multipart response
+        :param IncludeContentEnum include_content: Controls whether to include the artifact content part in the multipart response
         :return: str
                  If the method is called asynchronously,
                  returns the request thread.
@@ -381,7 +381,7 @@ class ArtifactsApi(object):
         :param async_req bool
         :param str uuid: Identifier of the artifact (required)
         :param str namespace: Namespace of the artifacts
-        :param str include_content: Controls whether to include the artifact content part in multipart response
+        :param IncludeContentEnum include_content: Controls whether to include the artifact content part in the multipart response
         :return: str
                  If the method is called asynchronously,
                  returns the request thread.
@@ -459,7 +459,7 @@ class ArtifactsApi(object):
         :param async_req bool
         :param str uuid: Identifier of the artifact (required)
         :param str namespace: Namespace of the artifacts
-        :param str include_content: Controls whether to include the artifact content part in multipart response
+        :param IncludeContentEnum include_content: Controls whether to include the artifact content part in the multipart response
         :return: str
                  If the method is called asynchronously,
                  returns the request thread.
@@ -482,7 +482,7 @@ class ArtifactsApi(object):
         :param async_req bool
         :param str uuid: Identifier of the artifact (required)
         :param str namespace: Namespace of the artifacts
-        :param str include_content: Controls whether to include the artifact content part in multipart response
+        :param IncludeContentEnum include_content: Controls whether to include the artifact content part in the multipart response
         :return: str
                  If the method is called asynchronously,
                  returns the request thread.
@@ -560,7 +560,7 @@ class ArtifactsApi(object):
         :param async_req bool
         :param str uuid: Identifier of the artifact (required)
         :param str namespace: Namespace of the artifacts
-        :param str include_content: Controls whether to include the artifact content part in multipart response
+        :param IncludeContentEnum include_content: Controls whether to include the artifact content part in the multipart response
         :return: str
                  If the method is called asynchronously,
                  returns the request thread.
@@ -583,7 +583,7 @@ class ArtifactsApi(object):
         :param async_req bool
         :param str uuid: Identifier of the artifact (required)
         :param str namespace: Namespace of the artifacts
-        :param str include_content: Controls whether to include the artifact content part in multipart response
+        :param IncludeContentEnum include_content: Controls whether to include the artifact content part in the multipart response
         :return: str
                  If the method is called asynchronously,
                  returns the request thread.
