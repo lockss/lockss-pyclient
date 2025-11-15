@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LAAWS_BUILD_DIR=$1
+LAAWS_BUILD_DIR="$(realpath "$1")"
 
 LOCKSS_REST_SERVICES=(
   laaws-metadataservice
