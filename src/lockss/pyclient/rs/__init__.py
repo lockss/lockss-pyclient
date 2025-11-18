@@ -32,11 +32,16 @@ from lockss.pyclient.rs.models.artifact_properties import ArtifactProperties
 from lockss.pyclient.rs.models.artifacts_body import ArtifactsBody
 from lockss.pyclient.rs.models.au_size import AuSize
 from lockss.pyclient.rs.models.auid_page_info import AuidPageInfo
+from lockss.pyclient.rs.models.bulk_au_op_enum import BulkAuOpEnum
 from lockss.pyclient.rs.models.error_result import ErrorResult
 from lockss.pyclient.rs.models.import_status import ImportStatus
 from lockss.pyclient.rs.models.include_content_enum import IncludeContentEnum
 from lockss.pyclient.rs.models.page_info import PageInfo
+from lockss.pyclient.rs.models.pywb_match_enum import PywbMatchEnum
+from lockss.pyclient.rs.models.pywb_output_enum import PywbOutputEnum
+from lockss.pyclient.rs.models.pywb_sort_enum import PywbSortEnum
 from lockss.pyclient.rs.models.repository_info import RepositoryInfo
 from lockss.pyclient.rs.models.repository_statistics import RepositoryStatistics
 from lockss.pyclient.rs.models.storage_info import StorageInfo
 from lockss.pyclient.rs.models.streaming_response_body import StreamingResponseBody
+from lockss.pyclient.rs.models.versions_enum import VersionsEnum

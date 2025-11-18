@@ -33,7 +33,7 @@ class PollDesc(object):
         'poll_type': 'int',
         'protocol': 'int',
         'plugin_poll_version': 'str',
-        'variant': 'str',
+        'variant': 'PollVariantEnum',
         'modulus': 'int'
     }
 
@@ -190,10 +190,9 @@ class PollDesc(object):
     def variant(self):
         """Gets the variant of this PollDesc.  # noqa: E501
 
-        The V3 poll variation.  # noqa: E501
 
         :return: The variant of this PollDesc.  # noqa: E501
-        :rtype: str
+        :rtype: PollVariantEnum
         """
         return self._variant
 
@@ -201,17 +200,10 @@ class PollDesc(object):
     def variant(self, variant):
         """Sets the variant of this PollDesc.
 
-        The V3 poll variation.  # noqa: E501
 
         :param variant: The variant of this PollDesc.  # noqa: E501
-        :type: str
+        :type: PollVariantEnum
         """
-        allowed_values = ["PoR", "PoP", "Local", "NoPoll"]  # noqa: E501
-        if variant not in allowed_values:
-            raise ValueError(
-                "Invalid value for `variant` ({0}), must be one of {1}"  # noqa: E501
-                .format(variant, allowed_values)
-            )
 
         self._variant = variant
 

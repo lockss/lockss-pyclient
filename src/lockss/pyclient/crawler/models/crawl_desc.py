@@ -29,7 +29,7 @@ class CrawlDesc(object):
     """
     swagger_types = {
         'au_id': 'str',
-        'crawl_kind': 'str',
+        'crawl_kind': 'CrawlKindEnum',
         'crawler_id': 'str',
         'force_crawl': 'bool',
         'refetch_depth': 'int',
@@ -51,7 +51,7 @@ class CrawlDesc(object):
         'extra_crawler_data': 'extraCrawlerData'
     }
 
-    def __init__(self, au_id=None, crawl_kind=None, crawler_id='classic', force_crawl=False, refetch_depth=-1, priority=0, crawl_list=None, crawl_depth=None, extra_crawler_data=None):  # noqa: E501
+    def __init__(self, au_id=None, crawl_kind=None, crawler_id='classic', force_crawl=False, refetch_depth=-1, priority=None, crawl_list=None, crawl_depth=None, extra_crawler_data=None):  # noqa: E501
         """CrawlDesc - a model defined in Swagger"""  # noqa: E501
         self._au_id = None
         self._crawl_kind = None
@@ -109,10 +109,9 @@ class CrawlDesc(object):
     def crawl_kind(self):
         """Gets the crawl_kind of this CrawlDesc.  # noqa: E501
 
-        The kind of crawl being performed either 'newContent' or 'repair'.  # noqa: E501
 
         :return: The crawl_kind of this CrawlDesc.  # noqa: E501
-        :rtype: str
+        :rtype: CrawlKindEnum
         """
         return self._crawl_kind
 
@@ -120,19 +119,12 @@ class CrawlDesc(object):
     def crawl_kind(self, crawl_kind):
         """Sets the crawl_kind of this CrawlDesc.
 
-        The kind of crawl being performed either 'newContent' or 'repair'.  # noqa: E501
 
         :param crawl_kind: The crawl_kind of this CrawlDesc.  # noqa: E501
-        :type: str
+        :type: CrawlKindEnum
         """
         if crawl_kind is None:
             raise ValueError("Invalid value for `crawl_kind`, must not be `None`")  # noqa: E501
-        allowed_values = ["newContent", "repair"]  # noqa: E501
-        if crawl_kind not in allowed_values:
-            raise ValueError(
-                "Invalid value for `crawl_kind` ({0}), must be one of {1}"  # noqa: E501
-                .format(crawl_kind, allowed_values)
-            )
 
         self._crawl_kind = crawl_kind
 

@@ -238,7 +238,7 @@ class AusApi(object):
 
         :param async_req bool
         :param str auid: Archival Unit ID (required)
-        :param str op: (required)
+        :param BulkAuOpEnum op: Bulk AU operation (required)
         :param str namespace: Namespace of the artifacts
         :return: None
                  If the method is called asynchronously,
@@ -261,7 +261,7 @@ class AusApi(object):
 
         :param async_req bool
         :param str auid: Archival Unit ID (required)
-        :param str op: (required)
+        :param BulkAuOpEnum op: Bulk AU operation (required)
         :param str namespace: Namespace of the artifacts
         :return: None
                  If the method is called asynchronously,

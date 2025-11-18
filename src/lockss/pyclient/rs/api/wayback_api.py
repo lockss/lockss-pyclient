@@ -160,10 +160,10 @@ class WaybackApi(object):
         :param str namespace: Namespace of the artifacts (required)
         :param str url: The URL for which the CDX records are requested
         :param int limit: .
-        :param str match_type:
-        :param str sort:
+        :param PywbMatchEnum match_type: Match type
+        :param PywbSortEnum sort: Sorting behavior
         :param str closest: Timestamp for sort=closest mode
-        :param str output: Output format
+        :param PywbOutputEnum output: Output format
         :param str fl: Comma-separated list of fields to include in output
         :param str accept: The Accept header
         :param str accept_encoding: The Accept-Encoding header
@@ -191,10 +191,10 @@ class WaybackApi(object):
         :param str namespace: Namespace of the artifacts (required)
         :param str url: The URL for which the CDX records are requested
         :param int limit: .
-        :param str match_type:
-        :param str sort:
+        :param PywbMatchEnum match_type: Match type
+        :param PywbSortEnum sort: Sorting behavior
         :param str closest: Timestamp for sort=closest mode
-        :param str output: Output format
+        :param PywbOutputEnum output: Output format
         :param str fl: Comma-separated list of fields to include in output
         :param str accept: The Accept header
         :param str accept_encoding: The Accept-Encoding header

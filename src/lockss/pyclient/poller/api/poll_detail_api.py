@@ -44,7 +44,7 @@ class PollDetailApi(object):
         :param async_req bool
         :param str poll_key: The pollKey from the PollDetail. (required)
         :param str peer_id: The peerId from the Poll Detail.PeerData. (required)
-        :param str urls: The voter urls to return. (required)
+        :param VoterUrlsEnum urls: The voter urls to return. (required)
         :param int page: The page number
         :param int size: The page size
         :return: UrlPager
@@ -70,7 +70,7 @@ class PollDetailApi(object):
         :param async_req bool
         :param str poll_key: The pollKey from the PollDetail. (required)
         :param str peer_id: The peerId from the Poll Detail.PeerData. (required)
-        :param str urls: The voter urls to return. (required)
+        :param VoterUrlsEnum urls: The voter urls to return. (required)
         :param int page: The page number
         :param int size: The page size
         :return: UrlPager
@@ -162,7 +162,7 @@ class PollDetailApi(object):
 
         :param async_req bool
         :param str poll_key: The pollKey as listed in the PollDetail object. (required)
-        :param str repair: The repair queue elements to return. (required)
+        :param RepairTypeEnum repair: The repair queue elements to return. (required)
         :param int page: The page number.
         :param int size: The size of the page.
         :return: RepairPager
@@ -187,7 +187,7 @@ class PollDetailApi(object):
 
         :param async_req bool
         :param str poll_key: The pollKey as listed in the PollDetail object. (required)
-        :param str repair: The repair queue elements to return. (required)
+        :param RepairTypeEnum repair: The repair queue elements to return. (required)
         :param int page: The page number.
         :param int size: The size of the page.
         :return: RepairPager
@@ -273,7 +273,7 @@ class PollDetailApi(object):
 
         :param async_req bool
         :param str poll_key: The pollKey as listed in the PollDetail object. (required)
-        :param str tally: The kind of tally element to return. (required)
+        :param TallyTypeEnum tally: The kind of tally element to return. (required)
         :param int page: The page number.
         :param int size: The size of the page.
         :return: UrlPager
@@ -298,7 +298,7 @@ class PollDetailApi(object):
 
         :param async_req bool
         :param str poll_key: The pollKey as listed in the PollDetail object. (required)
-        :param str tally: The kind of tally element to return. (required)
+        :param TallyTypeEnum tally: The kind of tally element to return. (required)
         :param int page: The page number.
         :param int size: The size of the page.
         :return: UrlPager

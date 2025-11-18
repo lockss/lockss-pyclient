@@ -785,7 +785,7 @@ class ArtifactsApi(object):
         :param str namespace: Namespace of the artifacts
         :param str url: The URL contained by the artifacts
         :param str url_prefix: The prefix to be matched by the artifact URLs
-        :param str versions: Versions of the artifacts to return
+        :param VersionsEnum versions: Versions of the artifacts to return
         :param int limit: The requested maximum number of artifacts per response
         :param str continuation_token: The continuation token of the next page of artifacts to be returned
         :return: ArtifactPageInfo
@@ -811,7 +811,7 @@ class ArtifactsApi(object):
         :param str namespace: Namespace of the artifacts
         :param str url: The URL contained by the artifacts
         :param str url_prefix: The prefix to be matched by the artifact URLs
-        :param str versions: Versions of the artifacts to return
+        :param VersionsEnum versions: Versions of the artifacts to return
         :param int limit: The requested maximum number of artifacts per response
         :param str continuation_token: The continuation token of the next page of artifacts to be returned
         :return: ArtifactPageInfo

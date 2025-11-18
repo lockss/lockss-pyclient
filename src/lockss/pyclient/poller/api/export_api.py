@@ -43,10 +43,10 @@ class ExportApi(object):
 
         :param async_req bool
         :param str auid: Identifier of the Archival Unit containing the artifacts (required)
-        :param str file_type: The type of archive to create
+        :param ExportFileTypeEnum file_type: The type of archive to create
         :param bool is_compress: Indication of whether contents should be compressed
         :param bool is_exclude_dir_nodes: Indication of whether directories should be excluded
-        :param str xlate_filenames: Type of filename translation to be done
+        :param ExportFilenameTranslationEnum xlate_filenames: Type of filename translation to be done
         :param str file_prefix: The prefix to be used to name the exported file
         :param int max_size: The maximum size of the exported file
         :param int max_versions: The maximum number of versions of an artifact to be exported
@@ -72,10 +72,10 @@ class ExportApi(object):
 
         :param async_req bool
         :param str auid: Identifier of the Archival Unit containing the artifacts (required)
-        :param str file_type: The type of archive to create
+        :param ExportFileTypeEnum file_type: The type of archive to create
         :param bool is_compress: Indication of whether contents should be compressed
         :param bool is_exclude_dir_nodes: Indication of whether directories should be excluded
-        :param str xlate_filenames: Type of filename translation to be done
+        :param ExportFilenameTranslationEnum xlate_filenames: Type of filename translation to be done
         :param str file_prefix: The prefix to be used to name the exported file
         :param int max_size: The maximum size of the exported file
         :param int max_versions: The maximum number of versions of an artifact to be exported

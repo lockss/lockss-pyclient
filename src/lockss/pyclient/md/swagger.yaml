@@ -30,6 +30,7 @@ openapi: 3.0.3
 info:
   title: LOCKSS Metadata Service REST API
   description: REST API of the LOCKSS Metadata Service
+  version: 2.0.0
   contact:
     name: LOCKSS Support
     url: http://www.lockss.org/
@@ -37,7 +38,22 @@ info:
   license:
     name: BSD-3-Clause
     url: https://opensource.org/licenses/BSD-3-Clause
-  version: 2.0.0
+servers:
+  - url: "{proto}://{hostname}:{port}/"
+    description: LOCKSS Metadata Service
+    variables:
+      proto:
+        description: "The protocol (default: http)."
+        enum:
+          - http
+          - https
+        default: http
+      hostname:
+        description: The service host name (or IP address).
+        default: localhost
+      port:
+        description: "The service port (default: 24650)."
+        default: 24650
 security:
 - basicAuth: []
 tags:
@@ -321,202 +337,6 @@ paths:
                 $ref: '#/components/schemas/errorResult'
 components:
   schemas:
-    errorResult:
-      type: object
-      required:
-      - message
-      - code
-      properties:
-        message:
-          type: string
-        code:
-          type: integer
-        rootCause:
-          type: string
-    auMetadataPageInfo:
-      required:
-      - items
-      - pageInfo
-      type: object
-      properties:
-        items:
-          type: array
-          description: The metadata for the AU items in the page
-          items:
-            $ref: '#/components/schemas/itemMetadata'
-        pageInfo:
-          $ref: '#/components/schemas/pageInfo'
-      description: The display page of AU metadata
-    itemMetadata:
-      type: object
-      properties:
-        scalarMap:
-          type: object
-          additionalProperties:
-            type: string
-            description: The scalar value of the metadata for the key
-          description: The map of scalar metadata elements for this item
-        setMap:
-          type: object
-          additionalProperties:
-            type: array
-            description: The set value of the metadata for the key
-            items:
-              type: string
-          description: The map of set-bound metadata elements for this item
-        listMap:
-          type: object
-          additionalProperties:
-            type: array
-            description: The list value of the metadata for the key
-            items:
-              type: string
-          description: The map of listed metadata elements for this item
-        mapMap:
-          type: object
-          additionalProperties:
-            type: object
-            additionalProperties:
-              type: string
-            description: The map value of the metadata for the key
-          description: The map of mapped metadata elements for this item
-      description: The metadata generated for a single item
-    jobPageInfo:
-      required:
-        - jobs
-        - pageInfo
-      type: object
-      properties:
-        jobs:
-          type: array
-          description: The jobs displayed in the page
-          items:
-            $ref: '#/components/schemas/job'
-        pageInfo:
-          $ref: '#/components/schemas/pageInfo'
-      description: A display page of jobs
-    job:
-      required:
-        - au
-        - creationDate
-        - id
-        - status
-      type: object
-      properties:
-        au:
-          $ref: '#/components/schemas/au'
-        id:
-          type: string
-          description: The identifier of this job
-        description:
-          type: string
-          description: A description of the task being performed by this job
-        creationDate:
-          type: string
-          description: The timestamp when this job was created
-          format: date
-        startDate:
-          type: string
-          description: The timestamp when this job processing started
-          format: date
-        endDate:
-          type: string
-          description: The timestamp when this job processing ended
-          format: date
-        status:
-          $ref: '#/components/schemas/status'
-      description: An asynchronous task to be performed
-    au:
-      required:
-        - id
-      type: object
-      properties:
-        id:
-          type: string
-          description: The identifier of this AU
-        job:
-          type: string
-          description: The identifier of the job associated with this AU
-        name:
-          type: string
-          description: The name of the AU, for display purposes
-      description: An Archival Unit
-    metadataUpdateSpec:
-      required:
-        - auid
-        - updateType
-      type: object
-      properties:
-        auid:
-          type: string
-          description: The identifier of the AU for which the metadata update is to
-            be performed
-        updateType:
-          type: string
-          description: The type of metadata update to be performed
-          example: full_extraction | incremental_extraction | delete
-      description: The information defining an AU metadata update operation
-    status:
-        required:
-          - code
-          - msg
-        type: object
-        properties:
-          code:
-            type: integer
-            description: The numeric value for the current state
-            format: int32
-          msg:
-            type: string
-            description: A text message defining the current state
-        description: The existing state of a job
-    pageInfo:
-      required:
-      - continuationToken
-      - curLink
-      - itemsInPage
-      - totalCount
-      type: object
-      properties:
-        totalCount:
-          type: integer
-          description: The total number of elements to be paginated
-          format: int32
-          nullable: true
-        itemsInPage:
-          type: integer
-          description: The number of items in page
-          format: int32
-        continuationToken:
-          type: string
-          description: The continuation token
-          nullable: true
-        curLink:
-          type: string
-          description: The link to the current page
-        nextLink:
-          type: string
-          description: The link to the next page
-          nullable: true
-      description: The information related to pagination of content
-    urlInfo:
-      required:
-      - params
-      - urls
-      type: object
-      properties:
-        params:
-          type: object
-          additionalProperties:
-            type: string
-            description: The value of the parameter for the parameter name
-          description: The parameters that define the resulting URLs
-        urls:
-          type: array
-          description: The URLs
-          items:
-            type: string
-      description: The information related to a resulting list of URLs
     apiStatus:
       required:
       - apiVersion
@@ -560,9 +380,204 @@ components:
           - AUS_STARTING
           - AUS_STARTED
       description: The status information of the service
+    au:
+      required:
+        - id
+      type: object
+      properties:
+        id:
+          type: string
+          description: The identifier of this AU
+        job:
+          type: string
+          description: The identifier of the job associated with this AU
+        name:
+          type: string
+          description: The name of the AU, for display purposes
+      description: An Archival Unit
+    auMetadataPageInfo:
+      required:
+      - items
+      - pageInfo
+      type: object
+      properties:
+        items:
+          type: array
+          description: The metadata for the AU items in the page
+          items:
+            $ref: '#/components/schemas/itemMetadata'
+        pageInfo:
+          $ref: '#/components/schemas/pageInfo'
+      description: The display page of AU metadata
+    errorResult:
+      type: object
+      required:
+      - message
+      - code
+      properties:
+        message:
+          type: string
+        code:
+          type: integer
+        rootCause:
+          type: string
+    itemMetadata:
+      type: object
+      properties:
+        scalarMap:
+          type: object
+          additionalProperties:
+            type: string
+            description: The scalar value of the metadata for the key
+          description: The map of scalar metadata elements for this item
+        setMap:
+          type: object
+          additionalProperties:
+            type: array
+            description: The set value of the metadata for the key
+            items:
+              type: string
+          description: The map of set-bound metadata elements for this item
+        listMap:
+          type: object
+          additionalProperties:
+            type: array
+            description: The list value of the metadata for the key
+            items:
+              type: string
+          description: The map of listed metadata elements for this item
+        mapMap:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: string
+            description: The map value of the metadata for the key
+          description: The map of mapped metadata elements for this item
+      description: The metadata generated for a single item
+    job:
+      required:
+        - au
+        - creationDate
+        - id
+        - status
+      type: object
+      properties:
+        au:
+          $ref: '#/components/schemas/au'
+        id:
+          type: string
+          description: The identifier of this job
+        description:
+          type: string
+          description: A description of the task being performed by this job
+        creationDate:
+          type: string
+          description: The timestamp when this job was created
+          format: date
+        startDate:
+          type: string
+          description: The timestamp when this job processing started
+          format: date
+        endDate:
+          type: string
+          description: The timestamp when this job processing ended
+          format: date
+        status:
+          $ref: '#/components/schemas/status'
+      description: An asynchronous task to be performed
+    jobPageInfo:
+      required:
+        - jobs
+        - pageInfo
+      type: object
+      properties:
+        jobs:
+          type: array
+          description: The jobs displayed in the page
+          items:
+            $ref: '#/components/schemas/job'
+        pageInfo:
+          $ref: '#/components/schemas/pageInfo'
+      description: A display page of jobs
+    metadataUpdateSpec:
+      required:
+        - auid
+        - updateType
+      type: object
+      properties:
+        auid:
+          type: string
+          description: The identifier of the AU for which the metadata update is to
+            be performed
+        updateType:
+          type: string
+          description: The type of metadata update to be performed
+          example: full_extraction | incremental_extraction | delete
+      description: The information defining an AU metadata update operation
+    pageInfo:
+      required:
+      - continuationToken
+      - curLink
+      - itemsInPage
+      - totalCount
+      type: object
+      properties:
+        totalCount:
+          type: integer
+          description: The total number of elements to be paginated
+          format: int32
+          nullable: true
+        itemsInPage:
+          type: integer
+          description: The number of items in page
+          format: int32
+        continuationToken:
+          type: string
+          description: The continuation token
+          nullable: true
+        curLink:
+          type: string
+          description: The link to the current page
+        nextLink:
+          type: string
+          description: The link to the next page
+          nullable: true
+      description: The information related to pagination of content
+    status:
+        required:
+          - code
+          - msg
+        type: object
+        properties:
+          code:
+            type: integer
+            description: The numeric value for the current state
+            format: int32
+          msg:
+            type: string
+            description: A text message defining the current state
+        description: The existing state of a job
+    urlInfo:
+      required:
+      - params
+      - urls
+      type: object
+      properties:
+        params:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value of the parameter for the parameter name
+          description: The parameters that define the resulting URLs
+        urls:
+          type: array
+          description: The URLs
+          items:
+            type: string
+      description: The information related to a resulting list of URLs
   securitySchemes:
     basicAuth:
       type: http
       description: HTTP Basic Authentication. Works over HTTP and HTTPS.
       scheme: basic
-

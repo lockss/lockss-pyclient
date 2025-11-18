@@ -30,6 +30,7 @@ openapi: 3.0.3
 info:
   title: LOCKSS Poller Service REST API
   description: REST API of the LOCKSS Poller Service
+  version: 2.0.0
   contact:
     name: LOCKSS Support
     url: https://www.lockss.org/
@@ -37,7 +38,22 @@ info:
   license:
     name: BSD-3-Clause
     url: https://opensource.org/licenses/BSD-3-Clause
-  version: 2.0.0
+servers:
+  - url: "{proto}://{hostname}:{port}/"
+    description: LOCKSS Poller Service
+    variables:
+      proto:
+        description: "The protocol (default: http)."
+        enum:
+          - http
+          - https
+        default: http
+      hostname:
+        description: The service host name (or IP address).
+        default: localhost
+      port:
+        description: "The service port (default: 24630)."
+        default: 24630
 security:
 - basicAuth: []
 tags:
@@ -162,13 +178,7 @@ paths:
         description: The kind of tally element to return.
         required: true
         schema:
-          type: string
-          enum:
-          - agree
-          - disagree
-          - error
-          - noQuorum
-          - tooClose
+          $ref: '#/components/schemas/tallyTypeEnum'
       - name: page
         in: query
         description: The page number.
@@ -229,11 +239,7 @@ paths:
         description: The repair queue elements to return.
         required: true
         schema:
-          type: string
-          enum:
-          - pending
-          - active
-          - completed
+          $ref: '#/components/schemas/repairTypeEnum'
       - name: page
         in: query
         description: The page number.
@@ -301,12 +307,7 @@ paths:
         description: The voter urls to return.
         required: true
         schema:
-          type: string
-          enum:
-          - agreed
-          - disagreed
-          - pollerOnly
-          - voterOnly
+          $ref: '#/components/schemas/voterUrlsEnum'
       - name: page
         in: query
         description: The page number
@@ -534,14 +535,7 @@ paths:
         in: query
         description: The type of archive to create
         schema:
-          type: string
-          default: WARC_RESPONSE
-          enum:
-          - WARC_RESPONSE
-          - WARC_RESOURCE
-          - ARC_RESPONSE
-          - ARC_RESOURCE
-          - ZIP
+          $ref: '#/components/schemas/exportFileTypeEnum'
       - name: isCompress
         in: query
         description: Indication of whether contents should be compressed
@@ -558,12 +552,7 @@ paths:
         in: query
         description: Type of filename translation to be done
         schema:
-          type: string
-          default: XLATE_NONE
-          enum:
-          - XLATE_NONE
-          - XLATE_WINDOWS
-          - XLATE_MAC
+          $ref: '#/components/schemas/exportFilenameTranslationEnum'
       - name: filePrefix
         in: query
         description: The prefix to be used to name the exported file
@@ -930,6 +919,66 @@ paths:
                 $ref: '#/components/schemas/errorResult'
 components:
   schemas:
+    apiStatus:
+      required:
+      - apiVersion
+      - ready
+      type: object
+      properties:
+        apiVersion:
+          type: string
+          description: The version of the API
+        componentName:
+          type: string
+          description: The name of the component
+        componentVersion:
+          type: string
+          description: The version of the component software
+        lockssVersion:
+          type: string
+          description: The version of the LOCKSS system
+        ready:
+          type: boolean
+          description: The indication of whether the service is available
+        serviceName:
+          type: string
+          description: The name of the service
+        readyTime:
+          type: integer
+          description: The time the service last became ready.
+          format: int64
+        reason:
+          type: string
+          description: The reason the service isn't ready.
+        startupStatus:
+          type: string
+          description: Enum indicating progress of plugin/AU processing at startup.
+          enum:
+          - NONE
+          - PLUGINS_CRAWLING
+          - PLUGINS_COLLECTED
+          - PLUGINS_LOADING
+          - PLUGINS_LOADED
+          - AUS_STARTING
+          - AUS_STARTED
+      description: The status information of the service
+    CachedUriSetSpec:
+      required:
+      - urlPrefix
+      type: object
+      properties:
+        urlPrefix:
+          type: string
+          description: The base which roots the lower and upper bound
+        lowerBound:
+          type: string
+          description: lower bound of the prefix range, inclusive.
+        upperBound:
+          type: string
+          description: upper bound of prefix range, inclusive.
+      description: A set of urls bounded by  upper and lower restraints.  If lower
+        = "." this is a singleContentNode. If lower is null then start at the root
+        url, if upper is null end with the last.
     errorResult:
       type: object
       required:
@@ -942,6 +991,254 @@ components:
           type: integer
         rootCause:
           type: string
+    exportFileTypeEnum:
+      title: Export File Type
+      description: The type of archive to create
+      type: string
+      default: WARC_RESPONSE
+      enum:
+        - WARC_RESPONSE
+        - WARC_RESOURCE
+        - ARC_RESPONSE
+        - ARC_RESOURCE
+        - ZIP
+    exportFilenameTranslationEnum:
+      title: Export Filename Translation Type
+      description: Type of filename translation to be done
+      type: string
+      default: XLATE_NONE
+      enum:
+        - XLATE_NONE
+        - XLATE_WINDOWS
+        - XLATE_MAC
+    hasherWsParams:
+      required:
+      - algorithm
+      - auId
+      - challenge
+      - excludeSuspectVersions
+      - hashType
+      - includeWeight
+      - lower
+      - recordFilteredStream
+      - resultEncoding
+      - upper
+      - url
+      - verifier
+      type: object
+      properties:
+        auId:
+          type: string
+          description: The identifier of the Archival Unit content to be hashed
+        url:
+          type: string
+          description: The identifier of the URL content to be hashed
+        lower:
+          type: string
+          description: The lower boundary URL
+        upper:
+          type: string
+          description: The upper boundary URL
+        recordFilteredStream:
+          type: boolean
+          description: An indication of whether the filtered stream should be recorded
+        excludeSuspectVersions:
+          type: boolean
+          description: An indication of whether to exclude suspect versions
+        includeWeight:
+          type: boolean
+          description: An indication of whether to include hash weight
+        algorithm:
+          type: string
+          description: The name of the hashing algorithm to be used [SHA-1 (or SHA1),
+            MD5 or SHA-256]
+        hashType:
+          type: string
+          description: The type of hashing to be performed [V1Content, V1Name, V1File,
+            V3Tree or V3File]
+        resultEncoding:
+          type: string
+          description: The result encoding to be used [Base64 or Hex]
+        challenge:
+          type: string
+          description: The encoded challenge
+        verifier:
+          type: string
+          description: The encoded verifier
+      description: The parameters of a hash operation
+    LinkDesc:
+      required:
+      - link
+      type: object
+      properties:
+        link:
+          type: string
+          description: The actual link suitable for a standard GET request
+          example: http:www.example.com/v1/element
+        desc:
+          type: string
+          description: A description of this link
+          example: pollerOnly
+      description: A wrapper for a link and a string description.
+    PageDesc:
+      required:
+      - page
+      - size
+      - total
+      type: object
+      properties:
+        page:
+          type: integer
+          description: The page number
+          example: 10
+        size:
+          type: integer
+          description: The size or number of elements on a page
+          example: 5
+        total:
+          type: integer
+          description: The mTotal number of elements.
+          example: 150
+        prevPage:
+          type: string
+          description: The url of the prev page of results or null
+        nextPage:
+          type: string
+          description: The url to the next page of results or null.
+      description: The information needed to page in a long list of data
+    PeerData:
+      required:
+      - peerId
+      - status
+      type: object
+      properties:
+        peerId:
+          type: string
+          description: the peer id for this participant
+        status:
+          type: string
+          description: the status of this peer
+        agreement:
+          type: number
+          description: the percentage of vote agreement.
+          format: float
+        numAgree:
+          type: integer
+          description: The number of urls for which there was agreement.
+          format: int64
+        agreeLink:
+          $ref: '#/components/schemas/LinkDesc'
+        numDisagree:
+          type: integer
+          description: The number of urls for which there was disagreement.
+          format: int64
+        disagreeLink:
+          $ref: '#/components/schemas/LinkDesc'
+        numPollerOnly:
+          type: integer
+          description: The number of urls which were poller only.
+          format: int64
+        pollerOnlyLink:
+          $ref: '#/components/schemas/LinkDesc'
+        numVoterOnly:
+          type: integer
+          description: The number of urls for which were voter only.
+          format: int64
+        voterOnlyLink:
+          $ref: '#/components/schemas/LinkDesc'
+        bytesHashed:
+          type: integer
+          description: the number of bytes hashed.
+          format: int64
+        bytesRead:
+          type: integer
+          description: the number of bytes read.
+          format: int64
+        wtAgreement:
+          type: number
+          description: the weight of vote percentage agreement.
+          format: float
+        wtNumAgree:
+          type: number
+          description: the weight of number agree votes.
+          format: float
+        wtNumDisagree:
+          type: number
+          description: the weight of number of disagree votes.
+          format: float
+        wtNumPollerOnly:
+          type: number
+          description: the weight of number of poller only votes.
+          format: float
+        wtNumVoterOnly:
+          type: number
+          description: the weight of number of voter only votes.
+          format: float
+        state:
+          type: string
+          description: the state machine state.
+        lastStateChange:
+          type: integer
+          description: the time of last state change.
+          format: int64
+      description: Detail for a single voter in a poll.
+    peerWsResult:
+      required:
+      - peerId
+      type: object
+      properties:
+        peerId:
+          type: string
+          description: The identifier of the Archival Unit
+      description: The properties of a peer
+    PollDesc:
+      required:
+      - auId
+      type: object
+      properties:
+        auId:
+          type: string
+          description: The id which defines the poll
+        cuSetSpec:
+          $ref: '#/components/schemas/CachedUriSetSpec'
+        pollType:
+          minimum: 3
+          type: integer
+          description: The type of poll to run. Only V3 is supported.
+        protocol:
+          type: integer
+          description: The version of polling protocol.
+        pluginPollVersion:
+          type: string
+          description: The version of the polling features needed by the plugin.
+        variant:
+          $ref: '#/components/schemas/pollVariantEnum'
+        modulus:
+          type: integer
+          description: Poll on every 'n'th url.
+      description: The Poller Services poll spec used to define a poll.
+    pollVariantEnum:
+      title: V3 Poll Variant
+      description: The V3 poll variant.
+      type: string
+      enum:
+        - PoR
+        - PoP
+        - Local
+        - NoPoll
+    pollWsResult:
+      required:
+      - auId
+      - auName
+      type: object
+      properties:
+        auId:
+          type: string
+          description: The identifier of the Archival Unit
+        auName:
+          type: string
+          description: The name of the Archival Unit
+      description: The properties of a poll
     PollerDetail:
       required:
       - pollDesc
@@ -1018,6 +1315,261 @@ components:
         repairQueue:
           $ref: '#/components/schemas/RepairQueue'
       description: The details of a poll being performed or queued by the Poller
+    PollerPager:
+      required:
+      - pageDesc
+      type: object
+      properties:
+        pageDesc:
+          $ref: '#/components/schemas/PageDesc'
+        polls:
+          type: array
+          description: The list of polls for the current page or null
+          items:
+            $ref: '#/components/schemas/PollerSummary'
+      description: A page of poller poll summaries.
+    PollerSummary:
+      required:
+      - auId
+      - deadline
+      - pollKey
+      - start
+      - status
+      - variant
+      type: object
+      properties:
+        auId:
+          type: string
+          description: The id for the au being polled.
+        variant:
+          type: string
+          description: The V3 Poll variant.
+        status:
+          type: string
+          description: The current status of the poll.
+        participants:
+          type: integer
+          description: The number of participants voting.
+          format: int32
+        numTalliedUrls:
+          type: integer
+          description: The number of tallied urls.
+          format: int32
+        numHashErrors:
+          type: integer
+          description: The number of hash errors.
+          format: int32
+        numCompletedRepairs:
+          type: integer
+          description: The number of completed repairs.
+          format: int32
+        numAgreeUrls:
+          type: integer
+          description: The number of urls with agreement.
+          format: int32
+        start:
+          type: integer
+          description: The timestamp for when the poll started.
+          format: int64
+        deadline:
+          type: integer
+          description: The deadline for voting in this poll.
+          format: int64
+        pollEnd:
+          type: integer
+          description: The time at which the poll ended.
+          format: int64
+        pollKey:
+          type: string
+          description: Key generated by poll manager when poll was created.
+        detailLink:
+          $ref: '#/components/schemas/LinkDesc'
+      description: A summary of a poll in which we are the poller.
+    RepairData:
+      required:
+      - repairFrom
+      - repairUrl
+      type: object
+      properties:
+        repairUrl:
+          type: string
+          description: The url to repair
+        repairFrom:
+          type: string
+          description: The peer to repair from
+        result:
+          type: string
+          description: The status of this repair
+          enum:
+          - NoQuorum
+          - TooClose
+          - Lost
+          - LostPollerOnly
+          - LostVoterOnly
+          - Won
+      description: structure used to define a repair source for url. if the source
+        is null than repair from publisher
+    RepairPager:
+      required:
+      - pageDesc
+      type: object
+      properties:
+        pageDesc:
+          $ref: '#/components/schemas/PageDesc'
+        repairs:
+          type: array
+          description: The list of repair data on this page or null.
+          items:
+            $ref: '#/components/schemas/RepairData'
+      description: A Pager for a list of urls found in poll details.
+    RepairQueue:
+      required:
+      - numActive
+      - numCompleted
+      - numPending
+      type: object
+      properties:
+        numPending:
+          type: integer
+          description: The number of pending repairs
+          format: int32
+        pendingLink:
+          $ref: '#/components/schemas/LinkDesc'
+        numActive:
+          type: integer
+          description: The number of active repairs
+          format: int32
+        activeLink:
+          $ref: '#/components/schemas/LinkDesc'
+        numCompleted:
+          type: integer
+          description: The number of completed repairs
+          format: int32
+        completedLink:
+          $ref: '#/components/schemas/LinkDesc'
+      description: Description of the RepairQueue.
+    repairTypeEnum:
+      title: Repair Type
+      description: The repair queue elements to return
+      type: string
+      enum:
+        - pending
+        - active
+        - completed
+    repositorySpaceWsResult:
+      required:
+      - repositorySpaceId
+      type: object
+      properties:
+        repositorySpaceId:
+          type: string
+          description: The Repository Space identifier
+      description: Information about the requested repository spaces
+    repositoryWsResult:
+      required:
+      - repositorySpaceId
+      type: object
+      properties:
+        repositorySpaceId:
+          type: string
+          description: The Repository Space identifier
+      description: Information about the requested repositories
+    TallyData:
+      required:
+      - numAgree
+      - numDisagree
+      - numError
+      - numNoQuorum
+      - numTooClose
+      type: object
+      properties:
+        numAgree:
+          type: integer
+          description: The number of urls with agreement.
+          format: int32
+        agreeLink:
+          $ref: '#/components/schemas/LinkDesc'
+        numDisagree:
+          type: integer
+          description: The number of urls with disagreement.
+          format: int32
+        disagreeLink:
+          $ref: '#/components/schemas/LinkDesc'
+        numTooClose:
+          type: integer
+          description: The number of urls too close.
+          format: int32
+        tooCloseLink:
+          $ref: '#/components/schemas/LinkDesc'
+        numNoQuorum:
+          type: integer
+          description: The number of urls without enough voters.
+          format: int32
+        noQuorumLink:
+          $ref: '#/components/schemas/LinkDesc'
+        numError:
+          type: integer
+          description: The number of urls wit errors.
+          format: int32
+        errorLink:
+          $ref: '#/components/schemas/LinkDesc'
+        wtAgreed:
+          type: number
+          description: The weighted sum agreed uris.
+          format: float
+          default: 0.0
+        wtDisagreed:
+          type: number
+          description: The weighted sum of disagree uris.
+          format: float
+          default: 0.0
+        wtTooClose:
+          type: number
+          description: The sum of the tooClose uris.
+          format: float
+          default: 0.0
+        wtNoQuorum:
+          type: number
+          description: The weighted sum of NoQuorum uris.
+          format: float
+          default: 0.0
+      description: The tally for the current poll.
+    tallyTypeEnum:
+      title: Tally Type
+      description: The kind of tally element to return
+      type: string
+      enum:
+        - agree
+        - disagree
+        - error
+        - noQuorum
+        - tooClose
+    UrlPager:
+      required:
+      - pageDesc
+      type: object
+      properties:
+        pageDesc:
+          $ref: '#/components/schemas/PageDesc'
+        urls:
+          type: array
+          description: The urls on this page.
+          items:
+            type: string
+      description: A Pager for a list of urls found in poll details.
+    voteWsResult:
+      required:
+      - auId
+      - auName
+      type: object
+      properties:
+        auId:
+          type: string
+          description: The identifier of the Archival Unit
+        auName:
+          type: string
+          description: The name of the Archival Unit
+      description: The properties of a vote
     VoterDetail:
       required:
       - pollDesc
@@ -1103,219 +1655,7 @@ components:
           type: string
           description: The error which caused the poll to fail.
       description: The details of a poll being performed or queued as the Voter.
-    PeerData:
-      required:
-      - peerId
-      - status
-      type: object
-      properties:
-        peerId:
-          type: string
-          description: the peer id for this participant
-        status:
-          type: string
-          description: the status of this peer
-        agreement:
-          type: number
-          description: the percentage of vote agreement.
-          format: float
-        numAgree:
-          type: integer
-          description: The number of urls for which there was agreement.
-          format: int64
-        agreeLink:
-          $ref: '#/components/schemas/LinkDesc'
-        numDisagree:
-          type: integer
-          description: The number of urls for which there was disagreement.
-          format: int64
-        disagreeLink:
-          $ref: '#/components/schemas/LinkDesc'
-        numPollerOnly:
-          type: integer
-          description: The number of urls which were poller only.
-          format: int64
-        pollerOnlyLink:
-          $ref: '#/components/schemas/LinkDesc'
-        numVoterOnly:
-          type: integer
-          description: The number of urls for which were voter only.
-          format: int64
-        voterOnlyLink:
-          $ref: '#/components/schemas/LinkDesc'
-        bytesHashed:
-          type: integer
-          description: the number of bytes hashed.
-          format: int64
-        bytesRead:
-          type: integer
-          description: the number of bytes read.
-          format: int64
-        wtAgreement:
-          type: number
-          description: the weight of vote percentage agreement.
-          format: float
-        wtNumAgree:
-          type: number
-          description: the weight of number agree votes.
-          format: float
-        wtNumDisagree:
-          type: number
-          description: the weight of number of disagree votes.
-          format: float
-        wtNumPollerOnly:
-          type: number
-          description: the weight of number of poller only votes.
-          format: float
-        wtNumVoterOnly:
-          type: number
-          description: the weight of number of voter only votes.
-          format: float
-        state:
-          type: string
-          description: the state machine state.
-        lastStateChange:
-          type: integer
-          description: the time of last state change.
-          format: int64
-      description: Detail for a single voter in a poll.
-    TallyData:
-      required:
-      - numAgree
-      - numDisagree
-      - numError
-      - numNoQuorum
-      - numTooClose
-      type: object
-      properties:
-        numAgree:
-          type: integer
-          description: The number of urls with agreement.
-          format: int32
-        agreeLink:
-          $ref: '#/components/schemas/LinkDesc'
-        numDisagree:
-          type: integer
-          description: The number of urls with disagreement.
-          format: int32
-        disagreeLink:
-          $ref: '#/components/schemas/LinkDesc'
-        numTooClose:
-          type: integer
-          description: The number of urls too close.
-          format: int32
-        tooCloseLink:
-          $ref: '#/components/schemas/LinkDesc'
-        numNoQuorum:
-          type: integer
-          description: The number of urls without enough voters.
-          format: int32
-        noQuorumLink:
-          $ref: '#/components/schemas/LinkDesc'
-        numError:
-          type: integer
-          description: The number of urls wit errors.
-          format: int32
-        errorLink:
-          $ref: '#/components/schemas/LinkDesc'
-        wtAgreed:
-          type: number
-          description: The weighted sum agreed uris.
-          format: float
-          default: 0.0
-        wtDisagreed:
-          type: number
-          description: The weighted sum of disagree uris.
-          format: float
-          default: 0.0
-        wtTooClose:
-          type: number
-          description: The sum of the tooClose uris.
-          format: float
-          default: 0.0
-        wtNoQuorum:
-          type: number
-          description: The weighted sum of NoQuorum uris.
-          format: float
-          default: 0.0
-      description: The tally for the current poll.
-    RepairQueue:
-      required:
-      - numActive
-      - numCompleted
-      - numPending
-      type: object
-      properties:
-        numPending:
-          type: integer
-          description: The number of pending repairs
-          format: int32
-        pendingLink:
-          $ref: '#/components/schemas/LinkDesc'
-        numActive:
-          type: integer
-          description: The number of active repairs
-          format: int32
-        activeLink:
-          $ref: '#/components/schemas/LinkDesc'
-        numCompleted:
-          type: integer
-          description: The number of completed repairs
-          format: int32
-        completedLink:
-          $ref: '#/components/schemas/LinkDesc'
-      description: Description of the RepairQueue.
-    RepairData:
-      required:
-      - repairFrom
-      - repairUrl
-      type: object
-      properties:
-        repairUrl:
-          type: string
-          description: The url to repair
-        repairFrom:
-          type: string
-          description: The peer to repair from
-        result:
-          type: string
-          description: The status of this repair
-          enum:
-          - NoQuorum
-          - TooClose
-          - Lost
-          - LostPollerOnly
-          - LostVoterOnly
-          - Won
-      description: structure used to define a repair source for url. if the source
-        is null than repair from publisher
-    RepairPager:
-      required:
-      - pageDesc
-      type: object
-      properties:
-        pageDesc:
-          $ref: '#/components/schemas/PageDesc'
-        repairs:
-          type: array
-          description: The list of repair data on this page or null.
-          items:
-            $ref: '#/components/schemas/RepairData'
-      description: A Pager for a list of urls found in poll details.
-    UrlPager:
-      required:
-      - pageDesc
-      type: object
-      properties:
-        pageDesc:
-          $ref: '#/components/schemas/PageDesc'
-        urls:
-          type: array
-          description: The urls on this page.
-          items:
-            type: string
-      description: A Pager for a list of urls found in poll details.
-    PollerPager:
+    VoterPager:
       required:
       - pageDesc
       type: object
@@ -1326,65 +1666,8 @@ components:
           type: array
           description: The list of polls for the current page or null
           items:
-            $ref: '#/components/schemas/PollerSummary'
-      description: A page of poller poll summaries.
-    PollerSummary:
-      required:
-      - auId
-      - deadline
-      - pollKey
-      - start
-      - status
-      - variant
-      type: object
-      properties:
-        auId:
-          type: string
-          description: The id for the au being polled.
-        variant:
-          type: string
-          description: The V3 Poll variant.
-        status:
-          type: string
-          description: The current status of the poll.
-        participants:
-          type: integer
-          description: The number of participants voting.
-          format: int32
-        numTalliedUrls:
-          type: integer
-          description: The number of tallied urls.
-          format: int32
-        numHashErrors:
-          type: integer
-          description: The number of hash errors.
-          format: int32
-        numCompletedRepairs:
-          type: integer
-          description: The number of completed repairs.
-          format: int32
-        numAgreeUrls:
-          type: integer
-          description: The number of urls with agreement.
-          format: int32
-        start:
-          type: integer
-          description: The timestamp for when the poll started.
-          format: int64
-        deadline:
-          type: integer
-          description: The deadline for voting in this poll.
-          format: int64
-        pollEnd:
-          type: integer
-          description: The time at which the poll ended.
-          format: int64
-        pollKey:
-          type: string
-          description: Key generated by poll manager when poll was created.
-        detailLink:
-          $ref: '#/components/schemas/LinkDesc'
-      description: A summary of a poll in which we are the poller.
+            $ref: '#/components/schemas/VoterSummary'
+      description: A page of voter poll summary.
     VoterSummary:
       required:
       - auId
@@ -1418,262 +1701,17 @@ components:
         detailLink:
           $ref: '#/components/schemas/LinkDesc'
       description: A summary of a poll in which we are acting just as a voter.
-    VoterPager:
-      required:
-      - pageDesc
-      type: object
-      properties:
-        pageDesc:
-          $ref: '#/components/schemas/PageDesc'
-        polls:
-          type: array
-          description: The list of polls for the current page or null
-          items:
-            $ref: '#/components/schemas/VoterSummary'
-      description: A page of voter poll summary.
-    PollDesc:
-      required:
-      - auId
-      type: object
-      properties:
-        auId:
-          type: string
-          description: The id which defines the poll
-        cuSetSpec:
-          $ref: '#/components/schemas/CachedUriSetSpec'
-        pollType:
-          minimum: 3
-          type: integer
-          description: The type of poll to run. Only V3 is supported.
-        protocol:
-          type: integer
-          description: The version of polling protocol.
-        pluginPollVersion:
-          type: string
-          description: The version of the polling features needed by the plugin.
-        variant:
-          type: string
-          description: The V3 poll variation.
-          enum:
-          - PoR
-          - PoP
-          - Local
-          - NoPoll
-        modulus:
-          type: integer
-          description: Poll on every 'n'th url.
-      description: The Poller Services poll spec used to define a poll.
-    CachedUriSetSpec:
-      required:
-      - urlPrefix
-      type: object
-      properties:
-        urlPrefix:
-          type: string
-          description: The base which roots the lower and upper bound
-        lowerBound:
-          type: string
-          description: lower bound of the prefix range, inclusive.
-        upperBound:
-          type: string
-          description: upper bound of prefix range, inclusive.
-      description: A set of urls bounded by  upper and lower restraints.  If lower
-        = "." this is a singleContentNode. If lower is null then start at the root
-        url, if upper is null end with the last.
-    PageDesc:
-      required:
-      - page
-      - size
-      - total
-      type: object
-      properties:
-        page:
-          type: integer
-          description: The page number
-          example: 10
-        size:
-          type: integer
-          description: The size or number of elements on a page
-          example: 5
-        total:
-          type: integer
-          description: The mTotal number of elements.
-          example: 150
-        prevPage:
-          type: string
-          description: The url of the prev page of results or null
-        nextPage:
-          type: string
-          description: The url to the next page of results or null.
-      description: The information needed to page in a long list of data
-    LinkDesc:
-      required:
-      - link
-      type: object
-      properties:
-        link:
-          type: string
-          description: The actual link suitable for a standard GET request
-          example: http:www.example.com/v1/element
-        desc:
-          type: string
-          description: A description of this link
-          example: pollerOnly
-      description: A wrapper for a link and a string description.
-    pollWsResult:
-      required:
-      - auId
-      - auName
-      type: object
-      properties:
-        auId:
-          type: string
-          description: The identifier of the Archival Unit
-        auName:
-          type: string
-          description: The name of the Archival Unit
-      description: The properties of a poll
-    peerWsResult:
-      required:
-      - peerId
-      type: object
-      properties:
-        peerId:
-          type: string
-          description: The identifier of the Archival Unit
-      description: The properties of a peer
-    voteWsResult:
-      required:
-      - auId
-      - auName
-      type: object
-      properties:
-        auId:
-          type: string
-          description: The identifier of the Archival Unit
-        auName:
-          type: string
-          description: The name of the Archival Unit
-      description: The properties of a vote
-    hasherWsParams:
-      required:
-      - algorithm
-      - auId
-      - challenge
-      - excludeSuspectVersions
-      - hashType
-      - includeWeight
-      - lower
-      - recordFilteredStream
-      - resultEncoding
-      - upper
-      - url
-      - verifier
-      type: object
-      properties:
-        auId:
-          type: string
-          description: The identifier of the Archival Unit content to be hashed
-        url:
-          type: string
-          description: The identifier of the URL content to be hashed
-        lower:
-          type: string
-          description: The lower boundary URL
-        upper:
-          type: string
-          description: The upper boundary URL
-        recordFilteredStream:
-          type: boolean
-          description: An indication of whether the filtered stream should be recorded
-        excludeSuspectVersions:
-          type: boolean
-          description: An indication of whether to exclude suspect versions
-        includeWeight:
-          type: boolean
-          description: An indication of whether to include hash weight
-        algorithm:
-          type: string
-          description: The name of the hashing algorithm to be used [SHA-1 (or SHA1),
-            MD5 or SHA-256]
-        hashType:
-          type: string
-          description: The type of hashing to be performed [V1Content, V1Name, V1File,
-            V3Tree or V3File]
-        resultEncoding:
-          type: string
-          description: The result encoding to be used [Base64 or Hex]
-        challenge:
-          type: string
-          description: The encoded challenge
-        verifier:
-          type: string
-          description: The encoded verifier
-      description: The parameters of a hash operation
-    repositoryWsResult:
-      required:
-      - repositorySpaceId
-      type: object
-      properties:
-        repositorySpaceId:
-          type: string
-          description: The Repository Space identifier
-      description: Information about the requested repositories
-    repositorySpaceWsResult:
-      required:
-      - repositorySpaceId
-      type: object
-      properties:
-        repositorySpaceId:
-          type: string
-          description: The Repository Space identifier
-      description: Information about the requested repository spaces
-    apiStatus:
-      required:
-      - apiVersion
-      - ready
-      type: object
-      properties:
-        apiVersion:
-          type: string
-          description: The version of the API
-        componentName:
-          type: string
-          description: The name of the component
-        componentVersion:
-          type: string
-          description: The version of the component software
-        lockssVersion:
-          type: string
-          description: The version of the LOCKSS system
-        ready:
-          type: boolean
-          description: The indication of whether the service is available
-        serviceName:
-          type: string
-          description: The name of the service
-        readyTime:
-          type: integer
-          description: The time the service last became ready.
-          format: int64
-        reason:
-          type: string
-          description: The reason the service isn't ready.
-        startupStatus:
-          type: string
-          description: Enum indicating progress of plugin/AU processing at startup.
-          enum:
-          - NONE
-          - PLUGINS_CRAWLING
-          - PLUGINS_COLLECTED
-          - PLUGINS_LOADING
-          - PLUGINS_LOADED
-          - AUS_STARTING
-          - AUS_STARTED
-      description: The status information of the service
+    voterUrlsEnum:
+      title: Voter URLs Type
+      description: The voter URLs to return
+      type: string
+      enum:
+        - agreed
+        - disagreed
+        - pollerOnly
+        - voterOnly
   securitySchemes:
     basicAuth:
       type: http
       description: HTTP Basic Authentication. Works over HTTP and HTTPS.
       scheme: basic
-

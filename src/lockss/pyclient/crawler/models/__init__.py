@@ -18,6 +18,7 @@ from lockss.pyclient.crawler.models.api_status import ApiStatus
 from lockss.pyclient.crawler.models.counter import Counter
 from lockss.pyclient.crawler.models.crawl_desc import CrawlDesc
 from lockss.pyclient.crawler.models.crawl_job import CrawlJob
+from lockss.pyclient.crawler.models.crawl_kind_enum import CrawlKindEnum
 from lockss.pyclient.crawler.models.crawl_pager import CrawlPager
 from lockss.pyclient.crawler.models.crawl_status import CrawlStatus
 from lockss.pyclient.crawler.models.crawl_ws_result import CrawlWsResult
