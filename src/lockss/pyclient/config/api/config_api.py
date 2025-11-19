@@ -305,9 +305,9 @@ class ConfigApi(object):
         :param async_req bool
         :param str section_name: The name of the section for which the configuration file is requested (required)
         :param str if_match: The If-Match header
-        :param str if_modified_since: The If-Match header
-        :param str if_none_match: The If-Match header
-        :param str if_unmodified_since: The If-Match header
+        :param str if_modified_since: The If-Modified-Since header
+        :param str if_none_match: The If-None-Match header
+        :param str if_unmodified_since: The If-Unmodified-Since header
         :return: str
                  If the method is called asynchronously,
                  returns the request thread.
@@ -331,9 +331,9 @@ class ConfigApi(object):
         :param async_req bool
         :param str section_name: The name of the section for which the configuration file is requested (required)
         :param str if_match: The If-Match header
-        :param str if_modified_since: The If-Match header
-        :param str if_none_match: The If-Match header
-        :param str if_unmodified_since: The If-Match header
+        :param str if_modified_since: The If-Modified-Since header
+        :param str if_none_match: The If-None-Match header
+        :param str if_unmodified_since: The If-Unmodified-Since header
         :return: str
                  If the method is called asynchronously,
                  returns the request thread.
@@ -416,9 +416,9 @@ class ConfigApi(object):
         :param async_req bool
         :param str url: The URL for which the configuration is requested (required)
         :param str if_match: The If-Match header
-        :param str if_modified_since: The If-Match header
-        :param str if_none_match: The If-Match header
-        :param str if_unmodified_since: The If-Match header
+        :param str if_modified_since: The If-Modified-Since header
+        :param str if_none_match: The If-None-Match header
+        :param str if_unmodified_since: The If-Unmodified-Since header
         :return: str
                  If the method is called asynchronously,
                  returns the request thread.
@@ -442,9 +442,9 @@ class ConfigApi(object):
         :param async_req bool
         :param str url: The URL for which the configuration is requested (required)
         :param str if_match: The If-Match header
-        :param str if_modified_since: The If-Match header
-        :param str if_none_match: The If-Match header
-        :param str if_unmodified_since: The If-Match header
+        :param str if_modified_since: The If-Modified-Since header
+        :param str if_none_match: The If-None-Match header
+        :param str if_unmodified_since: The If-Unmodified-Since header
         :return: str
                  If the method is called asynchronously,
                  returns the request thread.

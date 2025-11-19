@@ -35,6 +35,7 @@ from lockss.pyclient.config.models.check_substance_result import CheckSubstanceR
 from lockss.pyclient.config.models.content_configuration_result import ContentConfigurationResult
 from lockss.pyclient.config.models.file_section_name_body import FileSectionNameBody
 from lockss.pyclient.config.models.platform_configuration_ws_result import PlatformConfigurationWsResult
+from lockss.pyclient.config.models.platform_configuration_ws_result_daemon_version import PlatformConfigurationWsResultDaemonVersion
 from lockss.pyclient.config.models.plugin_ws_result import PluginWsResult
 from lockss.pyclient.config.models.request_au_control_result import RequestAuControlResult
 from lockss.pyclient.config.models.tdb_au_ws_result import TdbAuWsResult

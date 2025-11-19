@@ -35,15 +35,14 @@ Base of the lockss.pyclient package.
 # Remove in Python 3.14; see https://stackoverflow.com/a/33533514
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from getpass import getpass
 from importlib import resources
 from jsonpath import query
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar, Optional, TypeVar, Union
 import yaml
 
-from . import config, crawler, md, poller, rs
-from .base_rs import *
+from lockss.pyclient import config, crawler, md, poller, rs
 
 
 YamlT = Any

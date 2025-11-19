@@ -95,22 +95,23 @@ paths:
             type: string
         - name: If-Modified-Since
           in: header
-          description: The If-Match header
+          description: The If-Modified-Since header
           schema:
             type: string
         - name: If-None-Match
           in: header
-          description: The If-Match header
+          description: The If-None-Match header
           schema:
             type: string
         - name: If-Unmodified-Since
           in: header
-          description: The If-Match header
+          description: The If-Unmodified-Since header
           schema:
             type: string
       responses:
         "200":
-          description: The named configuration file
+          description: A multipart object with one part named "configFile"
+            containing the configuration file corresponding to the section name.
           content:
             multipart/form-data:
               schema:
@@ -196,22 +197,23 @@ paths:
             type: string
         - name: If-Modified-Since
           in: header
-          description: The If-Match header
+          description: The If-Modified-Since header
           schema:
             type: string
         - name: If-None-Match
           in: header
-          description: The If-Match header
+          description: The If-None-Match header
           schema:
             type: string
         - name: If-Unmodified-Since
           in: header
-          description: The If-Match header
+          description: The If-Unmodified-Since header
           schema:
             type: string
       responses:
         "200":
-          description: The configuration file for the URL
+          description: A multipart object with one part named "configFile"
+            containing the configuration file for the URL.
           content:
             multipart/form-data:
               schema:
@@ -1372,14 +1374,83 @@ components:
           description: A descriptive message regarding the result of the operation
       description: The encapsulation of the result of adding an Archival Unit
     platformConfigurationWsResult:
+      description: The configuration of the platform
+      type: object
       required:
         - hostName
-      type: object
       properties:
         hostName:
           type: string
           description: name of the host server
-      description: The configuration of the platform
+        ipAddress:
+          type: string
+        groups:
+          type: array
+          items:
+            type: string
+        project:
+          type: string
+        v3Identity:
+          type: string
+        mailRelay:
+          type: string
+        adminEmail:
+          type: string
+        disks:
+          type: array
+          items:
+            type: string
+        currentTime:
+          type: integer
+          format: int64
+        uptime:
+          type: integer
+          format: int64
+        daemonVersion:
+          type: object
+          properties:
+            fullVersion:
+              type: string
+            majorVersion:
+              type: integer
+              format: int32
+            minorVersion:
+              type: integer
+              format: int32
+            buildVersion:
+              type: integer
+              format: int32
+        javaVersion:
+          type: object
+          propeerties:
+            version:
+              type: string
+            specificationVersion:
+              type: string
+            runtimeVersion:
+              type: string
+            runtimeName:
+              type: string
+        platform:
+          type: object
+          propeerties:
+            name:
+              type: string
+            version:
+              type: string
+            suffix:
+              type: string
+        currentWorkingDirectory:
+          type: string
+        properties:
+          type: array
+          items:
+            type: string
+        buildHost:
+          type: string
+        buildTimestamp:
+          type: integer
+          format: int64
     pluginWsResult:
       required:
         - auCount

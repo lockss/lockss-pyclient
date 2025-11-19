@@ -28,18 +28,98 @@ class PlatformConfigurationWsResult(object):
                             and the value is json key in definition.
     """
     swagger_types = {
-        'host_name': 'str'
+        'host_name': 'str',
+        'ip_address': 'str',
+        'groups': 'list[str]',
+        'project': 'str',
+        'v3_identity': 'str',
+        'mail_relay': 'str',
+        'admin_email': 'str',
+        'disks': 'list[str]',
+        'current_time': 'int',
+        'uptime': 'int',
+        'daemon_version': 'PlatformConfigurationWsResultDaemonVersion',
+        'java_version': 'object',
+        'platform': 'object',
+        'current_working_directory': 'str',
+        'properties': 'list[str]',
+        'build_host': 'str',
+        'build_timestamp': 'int'
     }
 
     attribute_map = {
-        'host_name': 'hostName'
+        'host_name': 'hostName',
+        'ip_address': 'ipAddress',
+        'groups': 'groups',
+        'project': 'project',
+        'v3_identity': 'v3Identity',
+        'mail_relay': 'mailRelay',
+        'admin_email': 'adminEmail',
+        'disks': 'disks',
+        'current_time': 'currentTime',
+        'uptime': 'uptime',
+        'daemon_version': 'daemonVersion',
+        'java_version': 'javaVersion',
+        'platform': 'platform',
+        'current_working_directory': 'currentWorkingDirectory',
+        'properties': 'properties',
+        'build_host': 'buildHost',
+        'build_timestamp': 'buildTimestamp'
     }
 
-    def __init__(self, host_name=None):  # noqa: E501
+    def __init__(self, host_name=None, ip_address=None, groups=None, project=None, v3_identity=None, mail_relay=None, admin_email=None, disks=None, current_time=None, uptime=None, daemon_version=None, java_version=None, platform=None, current_working_directory=None, properties=None, build_host=None, build_timestamp=None):  # noqa: E501
         """PlatformConfigurationWsResult - a model defined in Swagger"""  # noqa: E501
         self._host_name = None
+        self._ip_address = None
+        self._groups = None
+        self._project = None
+        self._v3_identity = None
+        self._mail_relay = None
+        self._admin_email = None
+        self._disks = None
+        self._current_time = None
+        self._uptime = None
+        self._daemon_version = None
+        self._java_version = None
+        self._platform = None
+        self._current_working_directory = None
+        self._properties = None
+        self._build_host = None
+        self._build_timestamp = None
         self.discriminator = None
         self.host_name = host_name
+        if ip_address is not None:
+            self.ip_address = ip_address
+        if groups is not None:
+            self.groups = groups
+        if project is not None:
+            self.project = project
+        if v3_identity is not None:
+            self.v3_identity = v3_identity
+        if mail_relay is not None:
+            self.mail_relay = mail_relay
+        if admin_email is not None:
+            self.admin_email = admin_email
+        if disks is not None:
+            self.disks = disks
+        if current_time is not None:
+            self.current_time = current_time
+        if uptime is not None:
+            self.uptime = uptime
+        if daemon_version is not None:
+            self.daemon_version = daemon_version
+        if java_version is not None:
+            self.java_version = java_version
+        if platform is not None:
+            self.platform = platform
+        if current_working_directory is not None:
+            self.current_working_directory = current_working_directory
+        if properties is not None:
+            self.properties = properties
+        if build_host is not None:
+            self.build_host = build_host
+        if build_timestamp is not None:
+            self.build_timestamp = build_timestamp
 
     @property
     def host_name(self):
@@ -65,6 +145,342 @@ class PlatformConfigurationWsResult(object):
             raise ValueError("Invalid value for `host_name`, must not be `None`")  # noqa: E501
 
         self._host_name = host_name
+
+    @property
+    def ip_address(self):
+        """Gets the ip_address of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The ip_address of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: str
+        """
+        return self._ip_address
+
+    @ip_address.setter
+    def ip_address(self, ip_address):
+        """Sets the ip_address of this PlatformConfigurationWsResult.
+
+
+        :param ip_address: The ip_address of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: str
+        """
+
+        self._ip_address = ip_address
+
+    @property
+    def groups(self):
+        """Gets the groups of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The groups of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: list[str]
+        """
+        return self._groups
+
+    @groups.setter
+    def groups(self, groups):
+        """Sets the groups of this PlatformConfigurationWsResult.
+
+
+        :param groups: The groups of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: list[str]
+        """
+
+        self._groups = groups
+
+    @property
+    def project(self):
+        """Gets the project of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The project of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: str
+        """
+        return self._project
+
+    @project.setter
+    def project(self, project):
+        """Sets the project of this PlatformConfigurationWsResult.
+
+
+        :param project: The project of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: str
+        """
+
+        self._project = project
+
+    @property
+    def v3_identity(self):
+        """Gets the v3_identity of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The v3_identity of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: str
+        """
+        return self._v3_identity
+
+    @v3_identity.setter
+    def v3_identity(self, v3_identity):
+        """Sets the v3_identity of this PlatformConfigurationWsResult.
+
+
+        :param v3_identity: The v3_identity of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: str
+        """
+
+        self._v3_identity = v3_identity
+
+    @property
+    def mail_relay(self):
+        """Gets the mail_relay of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The mail_relay of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: str
+        """
+        return self._mail_relay
+
+    @mail_relay.setter
+    def mail_relay(self, mail_relay):
+        """Sets the mail_relay of this PlatformConfigurationWsResult.
+
+
+        :param mail_relay: The mail_relay of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: str
+        """
+
+        self._mail_relay = mail_relay
+
+    @property
+    def admin_email(self):
+        """Gets the admin_email of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The admin_email of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: str
+        """
+        return self._admin_email
+
+    @admin_email.setter
+    def admin_email(self, admin_email):
+        """Sets the admin_email of this PlatformConfigurationWsResult.
+
+
+        :param admin_email: The admin_email of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: str
+        """
+
+        self._admin_email = admin_email
+
+    @property
+    def disks(self):
+        """Gets the disks of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The disks of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: list[str]
+        """
+        return self._disks
+
+    @disks.setter
+    def disks(self, disks):
+        """Sets the disks of this PlatformConfigurationWsResult.
+
+
+        :param disks: The disks of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: list[str]
+        """
+
+        self._disks = disks
+
+    @property
+    def current_time(self):
+        """Gets the current_time of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The current_time of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: int
+        """
+        return self._current_time
+
+    @current_time.setter
+    def current_time(self, current_time):
+        """Sets the current_time of this PlatformConfigurationWsResult.
+
+
+        :param current_time: The current_time of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: int
+        """
+
+        self._current_time = current_time
+
+    @property
+    def uptime(self):
+        """Gets the uptime of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The uptime of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: int
+        """
+        return self._uptime
+
+    @uptime.setter
+    def uptime(self, uptime):
+        """Sets the uptime of this PlatformConfigurationWsResult.
+
+
+        :param uptime: The uptime of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: int
+        """
+
+        self._uptime = uptime
+
+    @property
+    def daemon_version(self):
+        """Gets the daemon_version of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The daemon_version of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: PlatformConfigurationWsResultDaemonVersion
+        """
+        return self._daemon_version
+
+    @daemon_version.setter
+    def daemon_version(self, daemon_version):
+        """Sets the daemon_version of this PlatformConfigurationWsResult.
+
+
+        :param daemon_version: The daemon_version of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: PlatformConfigurationWsResultDaemonVersion
+        """
+
+        self._daemon_version = daemon_version
+
+    @property
+    def java_version(self):
+        """Gets the java_version of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The java_version of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: object
+        """
+        return self._java_version
+
+    @java_version.setter
+    def java_version(self, java_version):
+        """Sets the java_version of this PlatformConfigurationWsResult.
+
+
+        :param java_version: The java_version of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: object
+        """
+
+        self._java_version = java_version
+
+    @property
+    def platform(self):
+        """Gets the platform of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The platform of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: object
+        """
+        return self._platform
+
+    @platform.setter
+    def platform(self, platform):
+        """Sets the platform of this PlatformConfigurationWsResult.
+
+
+        :param platform: The platform of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: object
+        """
+
+        self._platform = platform
+
+    @property
+    def current_working_directory(self):
+        """Gets the current_working_directory of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The current_working_directory of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: str
+        """
+        return self._current_working_directory
+
+    @current_working_directory.setter
+    def current_working_directory(self, current_working_directory):
+        """Sets the current_working_directory of this PlatformConfigurationWsResult.
+
+
+        :param current_working_directory: The current_working_directory of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: str
+        """
+
+        self._current_working_directory = current_working_directory
+
+    @property
+    def properties(self):
+        """Gets the properties of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The properties of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: list[str]
+        """
+        return self._properties
+
+    @properties.setter
+    def properties(self, properties):
+        """Sets the properties of this PlatformConfigurationWsResult.
+
+
+        :param properties: The properties of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: list[str]
+        """
+
+        self._properties = properties
+
+    @property
+    def build_host(self):
+        """Gets the build_host of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The build_host of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: str
+        """
+        return self._build_host
+
+    @build_host.setter
+    def build_host(self, build_host):
+        """Sets the build_host of this PlatformConfigurationWsResult.
+
+
+        :param build_host: The build_host of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: str
+        """
+
+        self._build_host = build_host
+
+    @property
+    def build_timestamp(self):
+        """Gets the build_timestamp of this PlatformConfigurationWsResult.  # noqa: E501
+
+
+        :return: The build_timestamp of this PlatformConfigurationWsResult.  # noqa: E501
+        :rtype: int
+        """
+        return self._build_timestamp
+
+    @build_timestamp.setter
+    def build_timestamp(self, build_timestamp):
+        """Sets the build_timestamp of this PlatformConfigurationWsResult.
+
+
+        :param build_timestamp: The build_timestamp of this PlatformConfigurationWsResult.  # noqa: E501
+        :type: int
+        """
+
+        self._build_timestamp = build_timestamp
 
     def to_dict(self):
         """Returns the model properties as a dict"""
