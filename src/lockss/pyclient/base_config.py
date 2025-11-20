@@ -43,7 +43,7 @@ from lockss.pyclient.base import Node, _first, _single_request_template, _paged_
 @_single_request_template(Node.make_config_conf,
                           config.ApiClient,
                           config.AusApi,
-                          config.AusApi.get_au_state())
+                          config.AusApi.get_au_state)
 def config_get_au_state(node: Node,
                         auid: str) -> config.AuStatus:
     pass
