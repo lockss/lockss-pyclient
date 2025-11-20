@@ -1246,6 +1246,14 @@ paths:
           content: {}
 components:
   schemas:
+    AccessType:
+      # Modeled from org.lockss.state.AuState.AccessType in lockss-core
+      # Used in AuStateBean
+      type: string
+      nullable: true
+      enum:
+        - OpenAccess
+        - Subscription
     apiStatus:
       required:
         - apiVersion
@@ -1305,6 +1313,109 @@ components:
             description: The value of the configuration for the key
           description: The map of Archival Unit configuration items
       description: The encapsulation of an Archival Unit configuration
+    AuStateBean:
+      # Modeled from org.lockss.state.AuStateBean in lockss-core
+      # Returned by org.lockss.laaws.config.impl.AustatesApiServiceImpl.getAuState(String) but not currently declared in GET /austates/{auid} 
+      type: object
+      properties:
+        auCreationTime:
+          type: integer
+          format: int64
+        lastCrawlTime:
+          type: integer
+          format: int64
+        lastCrawlAttempt:
+          type: integer
+          format: int64
+        lastCrawlResultMsg:
+          type: string
+          nullable: true
+        lastCrawlResult:
+          type: integer
+          format: int32
+        lastDeepCrawlTime:
+          type: integer
+          format: int64
+        lastDeepCrawlAttempt:
+          type: integer
+          format: int64
+        lastDeepCrawlResultMsg:
+          type: string
+          nullable: true
+        lastDeepCrawlResult:
+          type: integer
+          format: int32
+        lastDeepCrawlDepth:
+          type: integer
+          format: int32
+        lastTopLevelPollTime:
+          type: integer
+          format: int64
+        lastPollStart:
+          type: integer
+          format: int64
+        lastPollResult:
+          type: integer
+          format: int32
+        pollDuration:
+          type: integer
+          format: int64
+        averageHashDuration:
+          type: integer
+          format: int64
+        clockssSubscriptionStatus:
+          type: integer
+          format: int32
+        v3Agreement:
+          type: number
+          format: double
+        highestV3Agreement:
+          type: number
+          format: double
+        accessType:
+          $ref: '#/components/schemas/AccessType'
+        hasSubstance:
+          $ref: '#/components/schemas/SubstanceCheckerState'
+        substanceVersion:
+          type: string
+          nullable: true
+        metadataVersion:
+          type: string
+          nullable: true
+        lastMetadataIndex:
+          type: integer
+          format: int64
+        lastContentChange:
+          type: integer
+          format: int64
+        lastPoPPoll:
+          type: integer
+          format: int64
+        lastPoPPollResult:
+          type: integer
+          format: int32
+        lastLocalHashScan:
+          type: integer
+          format: int64
+        numAgreePeersLastPoR:
+          type: integer
+          format: int32
+        numWillingRepairers:
+          type: integer
+          format: int32
+        numCurrentSuspectVersions:
+          type: integer
+          format: int32
+        cdnStems:
+          type: array
+          nullable: true
+          items:
+            type: string
+        isMetadataExtractionEnabled:
+          type: boolean
+        auId:
+          type: string
+          nullable: true
     auStatus:
       required:
         - volume
@@ -1335,19 +1446,9 @@ components:
           type: string
           description: The identifier of the archival unit
         oldState:
-          type: string
-          description: An indication of whether the result is successful
-          enum:
-            - Unknown
-            - "Yes"
-            - "No"
+          $ref: '#/components/schemas/SubstanceCheckerState'
         newState:
-          type: string
-          description: An indication of whether the result is successful
-          enum:
-            - Unknown
-            - "Yes"
-            - "No"
+          $ref: '#/components/schemas/SubstanceCheckerState'
         errorMessage:
           type: string
           description: The error message as a result of the operation
@@ -1376,81 +1477,105 @@ components:
     platformConfigurationWsResult:
       description: The configuration of the platform
       type: object
-      required:
-        - hostName
       properties:
         hostName:
           type: string
-          description: name of the host server
+          nullable: true
         ipAddress:
           type: string
+          nullable: true
         groups:
           type: array
+          nullable: true
           items:
             type: string
         project:
           type: string
+          nullable: true
         v3Identity:
           type: string
+          nullable: true
         mailRelay:
           type: string
+          nullable: true
         adminEmail:
           type: string
+          nullable: true
         disks:
           type: array
+          nullable: true
           items:
             type: string
         currentTime:
           type: integer
           format: int64
+          nullable: true
         uptime:
           type: integer
           format: int64
+          nullable: true
         daemonVersion:
           type: object
+          nullable: true
           properties:
             fullVersion:
               type: string
+              nullable: true
             majorVersion:
               type: integer
               format: int32
+              nullable: true
             minorVersion:
               type: integer
               format: int32
+              nullable: true
             buildVersion:
               type: integer
               format: int32
+              nullable: true
         javaVersion:
           type: object
-          propeerties:
+          nullable: true
+          properties:
             version:
               type: string
+              nullable: true
             specificationVersion:
               type: string
+              nullable: true
             runtimeVersion:
               type: string
+              nullable: true
             runtimeName:
               type: string
+              nullable: true
         platform:
           type: object
-          propeerties:
+          properties:
             name:
               type: string
+              nullable: true
             version:
               type: string
+              nullable: true
             suffix:
               type: string
+              nullable: true
         currentWorkingDirectory:
           type: string
+          nullable: true
         properties:
           type: array
+          nullable: true
           items:
             type: string
         buildHost:
           type: string
+          nullable: true
         buildTimestamp:
           type: integer
           format: int64
+          nullable: true
     pluginWsResult:
       required:
         - auCount
@@ -1512,6 +1637,15 @@ components:
           type: string
           description: The error message as a result of the operation
       description: The result of an archival unit generic control request
+    SubstanceCheckerState:
+      # Modeled from org.lockss.state.SubstanceChecker.State in lockss-core
+      # Used in AuStateBean and checkSubstanceResult
+      type: string
+      nullable: true
+      enum:
+        - Unknown
+        - Yes
+        - No
     tdbAuWsResult:
       type: object
       properties:

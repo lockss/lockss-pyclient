@@ -29,8 +29,8 @@ class CheckSubstanceResult(object):
     """
     swagger_types = {
         'id': 'str',
-        'old_state': 'str',
-        'new_state': 'str',
+        'old_state': 'SubstanceCheckerState',
+        'new_state': 'SubstanceCheckerState',
         'error_message': 'str'
     }
 
@@ -82,10 +82,9 @@ class CheckSubstanceResult(object):
     def old_state(self):
         """Gets the old_state of this CheckSubstanceResult.  # noqa: E501
 
-        An indication of whether the result is successful  # noqa: E501
 
         :return: The old_state of this CheckSubstanceResult.  # noqa: E501
-        :rtype: str
+        :rtype: SubstanceCheckerState
         """
         return self._old_state
 
@@ -93,19 +92,12 @@ class CheckSubstanceResult(object):
     def old_state(self, old_state):
         """Sets the old_state of this CheckSubstanceResult.
 
-        An indication of whether the result is successful  # noqa: E501
 
         :param old_state: The old_state of this CheckSubstanceResult.  # noqa: E501
-        :type: str
+        :type: SubstanceCheckerState
         """
         if old_state is None:
             raise ValueError("Invalid value for `old_state`, must not be `None`")  # noqa: E501
-        allowed_values = ["Unknown", "Yes", "No"]  # noqa: E501
-        if old_state not in allowed_values:
-            raise ValueError(
-                "Invalid value for `old_state` ({0}), must be one of {1}"  # noqa: E501
-                .format(old_state, allowed_values)
-            )
 
         self._old_state = old_state
 
@@ -113,10 +105,9 @@ class CheckSubstanceResult(object):
     def new_state(self):
         """Gets the new_state of this CheckSubstanceResult.  # noqa: E501
 
-        An indication of whether the result is successful  # noqa: E501
 
         :return: The new_state of this CheckSubstanceResult.  # noqa: E501
-        :rtype: str
+        :rtype: SubstanceCheckerState
         """
         return self._new_state
 
@@ -124,19 +115,12 @@ class CheckSubstanceResult(object):
     def new_state(self, new_state):
         """Sets the new_state of this CheckSubstanceResult.
 
-        An indication of whether the result is successful  # noqa: E501
 
         :param new_state: The new_state of this CheckSubstanceResult.  # noqa: E501
-        :type: str
+        :type: SubstanceCheckerState
         """
         if new_state is None:
             raise ValueError("Invalid value for `new_state`, must not be `None`")  # noqa: E501
-        allowed_values = ["Unknown", "Yes", "No"]  # noqa: E501
-        if new_state not in allowed_values:
-            raise ValueError(
-                "Invalid value for `new_state` ({0}), must be one of {1}"  # noqa: E501
-                .format(new_state, allowed_values)
-            )
 
         self._new_state = new_state
 

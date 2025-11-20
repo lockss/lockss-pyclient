@@ -39,8 +39,8 @@ class PlatformConfigurationWsResult(object):
         'current_time': 'int',
         'uptime': 'int',
         'daemon_version': 'PlatformConfigurationWsResultDaemonVersion',
-        'java_version': 'object',
-        'platform': 'object',
+        'java_version': 'PlatformConfigurationWsResultJavaVersion',
+        'platform': 'PlatformConfigurationWsResultPlatform',
         'current_working_directory': 'str',
         'properties': 'list[str]',
         'build_host': 'str',
@@ -87,7 +87,8 @@ class PlatformConfigurationWsResult(object):
         self._build_host = None
         self._build_timestamp = None
         self.discriminator = None
-        self.host_name = host_name
+        if host_name is not None:
+            self.host_name = host_name
         if ip_address is not None:
             self.ip_address = ip_address
         if groups is not None:
@@ -125,7 +126,6 @@ class PlatformConfigurationWsResult(object):
     def host_name(self):
         """Gets the host_name of this PlatformConfigurationWsResult.  # noqa: E501
 
-        name of the host server  # noqa: E501
 
         :return: The host_name of this PlatformConfigurationWsResult.  # noqa: E501
         :rtype: str
@@ -136,13 +136,10 @@ class PlatformConfigurationWsResult(object):
     def host_name(self, host_name):
         """Sets the host_name of this PlatformConfigurationWsResult.
 
-        name of the host server  # noqa: E501
 
         :param host_name: The host_name of this PlatformConfigurationWsResult.  # noqa: E501
         :type: str
         """
-        if host_name is None:
-            raise ValueError("Invalid value for `host_name`, must not be `None`")  # noqa: E501
 
         self._host_name = host_name
 
@@ -362,7 +359,7 @@ class PlatformConfigurationWsResult(object):
 
 
         :return: The java_version of this PlatformConfigurationWsResult.  # noqa: E501
-        :rtype: object
+        :rtype: PlatformConfigurationWsResultJavaVersion
         """
         return self._java_version
 
@@ -372,7 +369,7 @@ class PlatformConfigurationWsResult(object):
 
 
         :param java_version: The java_version of this PlatformConfigurationWsResult.  # noqa: E501
-        :type: object
+        :type: PlatformConfigurationWsResultJavaVersion
         """
 
         self._java_version = java_version
@@ -383,7 +380,7 @@ class PlatformConfigurationWsResult(object):
 
 
         :return: The platform of this PlatformConfigurationWsResult.  # noqa: E501
-        :rtype: object
+        :rtype: PlatformConfigurationWsResultPlatform
         """
         return self._platform
 
@@ -393,7 +390,7 @@ class PlatformConfigurationWsResult(object):
 
 
         :param platform: The platform of this PlatformConfigurationWsResult.  # noqa: E501
-        :type: object
+        :type: PlatformConfigurationWsResultPlatform
         """
 
         self._platform = platform
