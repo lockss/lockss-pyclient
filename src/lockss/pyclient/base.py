@@ -38,7 +38,9 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from getpass import getpass
 from importlib import resources
+from io import BytesIO
 from jsonpath import query
+from multipart import MultipartParser
 from typing import Any, ClassVar, Optional, TypeVar, Union
 import yaml
 
@@ -234,31 +236,39 @@ ApiInstanceT = Union[
 ApiInstanceFunction = Callable[[ApiClientT], ApiInstanceT]
 
 
+ApiResultT = TypeVar('ApiResultT')
+
+
+ApiResultFunction = Callable[..., ApiResultT]
+
+
 ResultT = TypeVar('ResultT')
 
 
-ResultFunction = Callable[..., ResultT]
+ResultFunction = Callable[[ApiResultT], ResultT]
 
 
 def _single_request_template(make_conf: ConfFunction,
                              make_api_client: ApiClientFunction,
                              make_api_instance: ApiInstanceFunction,
-                             api_operation: ResultFunction,
+                             api_operation: ApiResultFunction,
                              needs_auth: bool = True,
-                             remove_kwargs: Optional[list[str]] = None):
+                             remove_kwargs: Optional[list[str]] = None,
+                             transform_result: ResultFunction = lambda x: x):
     def decorate(f):
         def decorated_single_request(node: Node, *args, **kwargs) -> ResultT:
             if needs_auth:
-                conf = make_conf(node)
-                api_client = make_api_client(conf, "Authorization", conf.get_basic_auth_token())
+                conf: ConfT = make_conf(node)
+                api_client: ApiClientT = make_api_client(conf, "Authorization", conf.get_basic_auth_token())
             else:
-                conf = make_conf(node, needs_auth=False)
-                api_client = make_api_client(conf)
-            api_instance = make_api_instance(api_client)
+                conf: ConfT = make_conf(node, needs_auth=False)
+                api_client: ApiClientT = make_api_client(conf)
+            api_instance: ApiInstanceT = make_api_instance(api_client)
             for remove in [key for key, val in kwargs.items() if key in (remove_kwargs or []) and val is None]:
                 kwargs.pop(remove, None)
-            api_response: ResultT = api_operation(api_instance, *args, **kwargs)
-            return api_response
+            api_response: ApiResultT = api_operation(api_instance, *args, **kwargs)
+            result: ResultT = transform_result(api_response)
+            return result
         return decorated_single_request
     return decorate
 
@@ -293,3 +303,14 @@ def _paged_request_iterator_template(single_request: PageInfoResultFunction,
                     break
         return decorated_paged_request_iterator
     return decorate
+
+
+def bytes_repr_to_multipart(bytes_repr: str) -> MultipartParser:
+    byte_input: bytes = eval(bytes_repr)
+    boundary: bytes = byte_input.partition(b'\r\n')[0].partition(b'--')[2]
+    return MultipartParser(BytesIO(byte_input), boundary)
+
+
+def bytes_repr_to_string(bytes_repr: str) -> str:
+    byte_input: bytes = eval(bytes_repr)
+    return byte_input.decode()

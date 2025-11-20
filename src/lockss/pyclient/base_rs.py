@@ -33,74 +33,47 @@ Base of the lockss.pyclient package (repository service).
 """
 
 from collections.abc import Iterable
-from io import BytesIO
 from multipart import MultipartParser
 from typing import Optional, Union
 
-from .base import Node, _first, _single_request_template, _paged_request_iterator_template, _RS
+from .base import Node, bytes_repr_to_multipart, bytes_repr_to_string, _first, _single_request_template, _paged_request_iterator_template, _RS
 from . import rs
 
 
+@_single_request_template(Node.make_rs_conf,
+                          rs.ApiClient,
+                          rs.ArtifactsApi,
+                          rs.ArtifactsApi.get_artifact_data_by_multipart,
+                          transform_result=bytes_repr_to_multipart)
 def repo_get_artifact_by_uuid(node: Node,
                               uuid: str,
                               namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}"].get.parameters[?(@.name == "namespace")].schema.default'),
                               include_content: rs.IncludeContentEnum = _first(_RS, '$.components.schemas.includeContentEnum.default')) -> MultipartParser:
-    @_single_request_template(Node.make_rs_conf,
-                              rs.ApiClient,
-                              rs.ArtifactsApi,
-                              rs.ArtifactsApi.get_artifact_data_by_multipart)
-    def _repo_get_artifact_by_uuid(node: Node,
-                                   uuid: str,
-                                   namespace: str = None,
-                                   include_content: rs.IncludeContentEnum = None) -> str:
-        pass
-    result: str = _repo_get_artifact_by_uuid(node,
-                                             uuid,
-                                             namespace=namespace,
-                                             include_content=include_content)
-    # Result is of type str but seems to be a repr() string "b'...'"
-    boundary = (byte_input := eval(result)).partition(b'\r\n')[0].partition(b'--')[2]
-    return MultipartParser(BytesIO(byte_input), boundary)
+    pass
 
 
+@_single_request_template(Node.make_rs_conf,
+                          rs.ApiClient,
+                          rs.ArtifactsApi,
+                          rs.ArtifactsApi.get_artifact_data_by_response,
+                          transform_result=bytes_repr_to_string)
 def repo_get_artifact_response_by_uuid(node: Node,
                                        uuid: str,
                                        namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}/response"].get.parameters[?(@.name == "namespace")].schema.default'),
                                        include_content: rs.IncludeContentEnum = _first(_RS, '$.components.schemas.includeContentEnum.default')) -> str:
-    @_single_request_template(Node.make_rs_conf,
-                              rs.ApiClient,
-                              rs.ArtifactsApi,
-                              rs.ArtifactsApi.get_artifact_data_by_response)
-    def _repo_get_artifact_response_by_uuid(node: Node,
-                                            uuid: str,
-                                            namespace: str = None,
-                                            include_content: rs.IncludeContentEnum = None) -> str:
-        pass
-    result: str = _repo_get_artifact_response_by_uuid(node,
-                                                      uuid,
-                                                      namespace=namespace,
-                                                      include_content=include_content)
-    # Result is of type str but seems to be a repr() string "b'...'"
-    return eval(result).decode()
+    pass
 
 
+@_single_request_template(Node.make_rs_conf,
+                          rs.ApiClient,
+                          rs.ArtifactsApi,
+                          rs.ArtifactsApi.get_artifact_data_by_payload,
+                          transform_result=eval)
 def repo_get_artifact_payload_by_uuid(node: Node,
                                       uuid: str,
                                       namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}/payload"].get.parameters[?(@.name == "namespace")].schema.default'),
                                       include_content: rs.IncludeContentEnum = _first(_RS, '$.components.schemas.includeContentEnum.default')) -> bytes:
-    @_single_request_template(Node.make_rs_conf,
-                              rs.ApiClient,
-                              rs.ArtifactsApi,
-                              rs.ArtifactsApi.get_artifact_data_by_payload)
-    def _repo_get_artifact_payload_by_uuid(node: Node,
-                                           uuid: str,
-                                           namespace: str = None) -> str:
-        pass
-    result: str = _repo_get_artifact_payload_by_uuid(node,
-                                                     uuid, namespace=namespace,
-                                                     include_content=include_content)
-    # Result is of type str but seems to be a repr() string "b'...'"
-    return eval(result)
+    pass
 
 
 @_single_request_template(Node.make_rs_conf,

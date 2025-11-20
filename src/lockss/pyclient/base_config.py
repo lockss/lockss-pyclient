@@ -37,7 +37,7 @@ from io import BytesIO
 from multipart import MultipartParser
 
 from lockss.pyclient import config
-from lockss.pyclient.base import Node, _first, _single_request_template, _paged_request_iterator_template, _CONFIG
+from lockss.pyclient.base import Node, bytes_repr_to_multipart, _single_request_template
 
 
 @_single_request_template(Node.make_config_conf,
@@ -74,62 +74,34 @@ def config_get_status(node: Node) -> config.ApiStatus:
     pass
 
 
+@_single_request_template(Node.make_config_conf,
+                          config.ApiClient,
+                          config.ConfigApi,
+                          config.ConfigApi.get_section_config,
+                          remove_kwargs=['if_match', 'if_modified_since', 'if_none_match', 'if_unmodified_since'],
+                          transform_result=bytes_repr_to_multipart)
 def config_get_section(node: Node,
                        section_name: str,
                        if_match: str = None,
                        if_modified_since: str = None,
                        if_none_match: str = None,
                        if_unmodified_since: str = None) -> MultipartParser:
-    @_single_request_template(Node.make_config_conf,
-                              config.ApiClient,
-                              config.ConfigApi,
-                              config.ConfigApi.get_section_config,
-                              remove_kwargs=['if_match', 'if_modified_since', 'if_none_match', 'if_unmodified_since'])
-    def _config_get_section(node: Node,
-                            section_name: str,
-                            if_match: str = None,
-                            if_modified_since: str = None,
-                            if_none_match: str = None,
-                            if_unmodified_since: str = None) -> str:
-        pass
-    result: str = _config_get_section(node,
-                                      section_name,
-                                      if_match=if_match,
-                                      if_modified_since=if_modified_since,
-                                      if_none_match=if_none_match,
-                                      if_unmodified_since=if_unmodified_since)
-    # Result is of type str but seems to be a repr() string "b'...'"
-    boundary = (byte_input := eval(result)).partition(b'\r\n')[0].partition(b'--')[2]
-    return MultipartParser(BytesIO(byte_input), boundary)
+    pass
 
 
+@_single_request_template(Node.make_config_conf,
+                          config.ApiClient,
+                          config.ConfigApi,
+                          config.ConfigApi.get_url_config,
+                          remove_kwargs=['if_match', 'if_modified_since', 'if_none_match', 'if_unmodified_since'],
+                          transform_result=bytes_repr_to_multipart)
 def config_get_url(node: Node,
                    url: str,
                    if_match: str = None,
                    if_modified_since: str = None,
                    if_none_match: str = None,
                    if_unmodified_since: str = None) -> MultipartParser:
-    @_single_request_template(Node.make_config_conf,
-                              config.ApiClient,
-                              config.ConfigApi,
-                              config.ConfigApi.get_url_config,
-                              remove_kwargs=['if_match', 'if_modified_since', 'if_none_match', 'if_unmodified_since'])
-    def _config_get_url(node: Node,
-                        url: str,
-                        if_match: str = None,
-                        if_modified_since: str = None,
-                        if_none_match: str = None,
-                        if_unmodified_since: str = None) -> str:
-        pass
-    result: str = _config_get_url(node,
-                                  url,
-                                  if_match=if_match,
-                                  if_modified_since=if_modified_since,
-                                  if_none_match=if_none_match,
-                                  if_unmodified_since=if_unmodified_since)
-    # Result is of type str but seems to be a repr() string "b'...'"
-    boundary = (byte_input := eval(result)).partition(b'\r\n')[0].partition(b'--')[2]
-    return MultipartParser(BytesIO(byte_input), boundary)
+    pass
 
 
 @_single_request_template(Node.make_config_conf,
