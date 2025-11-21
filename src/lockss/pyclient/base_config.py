@@ -33,7 +33,6 @@ Base of the lockss.pyclient package (configuration service).
 """
 
 from datetime import datetime
-from io import BytesIO
 from multipart import MultipartParser
 
 from lockss.pyclient import config
@@ -43,7 +42,8 @@ from lockss.pyclient.base import Node, bytes_repr_to_multipart, _single_request_
 @_single_request_template(Node.make_config_conf,
                           config.ApiClient,
                           config.AusApi,
-                          config.AusApi.get_au_state)
+                          config.AusApi.get_au_state,
+                          transform_raw_result=config.AuStateBean)
 def config_get_au_state(node: Node,
                         auid: str) -> config.AuStatus:
     pass
@@ -154,3 +154,5 @@ if __name__ == '__main__':
     print(f'config_get_section {section}:\n{sectionmp.get('configFile').value}')
     print(f'config_get_platform_config: {config_get_platform_config(node).to_dict()}')
     print(f'config_last_update_time: {config_last_update_time(node)}')
+    auid1 = 'org|lockss|plugin|edinburgh|EdinburghUniversityPressPlugin&base_url~https%3A%2F%2Fwww%2Eeuppublishing%2Ecom%2F&journal_id~gothic&volume_name~19'
+    print(f'config_get_au_state {auid1}: {config_get_au_state(node, auid1)}')

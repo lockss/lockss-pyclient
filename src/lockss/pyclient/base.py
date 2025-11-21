@@ -254,7 +254,8 @@ def _single_request_template(make_conf: ConfFunction,
                              api_operation: ApiResultFunction,
                              needs_auth: bool = True,
                              remove_kwargs: Optional[list[str]] = None,
-                             transform_result: ResultFunction = lambda x: x):
+                             transform_result: ResultFunction = lambda x: x,
+                             transform_raw_result: Optional[Any] = None):
     def decorate(f):
         def decorated_single_request(node: Node, *args, **kwargs) -> ResultT:
             if needs_auth:
@@ -266,8 +267,13 @@ def _single_request_template(make_conf: ConfFunction,
             api_instance: ApiInstanceT = make_api_instance(api_client)
             for remove in [key for key, val in kwargs.items() if key in (remove_kwargs or []) and val is None]:
                 kwargs.pop(remove, None)
+            if transform_raw_result:
+                kwargs['_preload_content'] = False
             api_response: ApiResultT = api_operation(api_instance, *args, **kwargs)
-            result: ResultT = transform_result(api_response)
+            if transform_raw_result:
+                result = api_client.deserialize(api_response, transform_raw_result)
+            else:
+                result: ResultT = transform_result(api_response)
             return result
         return decorated_single_request
     return decorate
