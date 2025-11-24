@@ -349,7 +349,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/auConfiguration'
+                  $ref: '#/components/schemas/AuConfiguration'
         default:
           description: The resulting error payload.
           content: {}
@@ -364,7 +364,7 @@ paths:
       parameters:
         - name: auid
           in: path
-          description: The identifier of the AU for which the configuration is\ \ requested
+          description: The identifier of the AU for which the configuration is requested
           required: true
           schema:
             type: string
@@ -374,7 +374,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/auConfiguration'
+                $ref: '#/components/schemas/AuConfiguration'
         default:
           description: The resulting error payload.
           content: {}
@@ -397,7 +397,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/auConfiguration'
+              $ref: '#/components/schemas/AuConfiguration'
         required: true
       responses:
         "200":
@@ -428,7 +428,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/auConfiguration'
+                $ref: '#/components/schemas/AuConfiguration'
         default:
           description: The resulting error payload.
           content: {}
@@ -627,6 +627,7 @@ paths:
           content:
             application/json:
               schema:
+                # Actually AuStateBean serialized as a string (see below)
                 type: string
         default:
           description: The resulting error payload.
@@ -680,6 +681,7 @@ paths:
             requested
           required: true
           schema:
+            # Actually AuAgreements serialized as a string, see below
             type: string
       responses:
         "200":
@@ -716,6 +718,7 @@ paths:
         content:
           application/json:
             schema:
+              # Actually AuAgreements serialized as a string, see below
               type: string
         required: true
       responses:
@@ -741,6 +744,7 @@ paths:
             are requested
           required: true
           schema:
+            # Actually AuSuspectUrlVersions serialized as a string; see below
             type: string
       responses:
         "200":
@@ -778,6 +782,7 @@ paths:
         content:
           application/json:
             schema:
+              # Actually AuSuspectUrlVersions serialized as a string; see below
               type: string
         required: true
       responses:
@@ -810,6 +815,7 @@ paths:
           content:
             application/json:
               schema:
+                # Actually DatedPeerIdSetImpl serialized as a string; see below
                 type: string
         default:
           description: The resulting error payload.
@@ -839,6 +845,7 @@ paths:
         content:
           application/json:
             schema:
+                # Actually DatedPeerIdSetImpl serialized as a string; see below
               type: string
         required: true
       responses:
@@ -1005,7 +1012,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/auStatus'
+                $ref: '#/components/schemas/AuStatus'
         default:
           description: The resulting error payload.
           content: {}
@@ -1297,25 +1304,42 @@ components:
             - AUS_STARTING
             - AUS_STARTED
       description: The status information of the service
-    auConfiguration:
+    AuAgreements:
+      # Modeled from org.lockss.protocol.AuAgreements in lockss-core
+      # Returned by org.lockss.laaws.config.impl.AuagreementsApiServiceImpl.getAuAgreements(String) but *not* desclared by GET /auagreements/{auid}
+      # Received by org.lockss.laaws.config.impl.AuagreementsApiServiceImpl.patchAuAgreements(String, String, String) but *not* declared by PATCH /auagreements/{auid}
+      type: object
+      properties:
+        auid:
+          type: string
+          nullable: true
+        rawMap:
+          type: object
+          nullable: true
+          additionalProperties:
+            $ref: '#/components/schemas/PeerAgreements'
+    AuConfiguration:
+      # Modeled from org.lockss.config.AuConfiguration in lockss-core
+      # Returned by org.lockss.laaws.config.impl.AusApiServiceImpl.getAuConfig(String) and declared in GET /aus/{auid}
+      # Returned by org.lockss.laaws.config.impl.AusApiServiceImpl.getAllAuConfig() (Collection) and declared in GET /aus (array)
+      description: The encapsulation of an Archival Unit configuration
       required:
         - auConfig
         - auId
       type: object
       properties:
         auId:
-          type: string
           description: The identifier of the Archival Unit
+          type: string
         auConfig:
+          description: The map of Archival Unit configuration items
           type: object
           additionalProperties:
             type: string
             description: The value of the configuration for the key
-          description: The map of Archival Unit configuration items
-      description: The encapsulation of an Archival Unit configuration
     AuStateBean:
       # Modeled from org.lockss.state.AuStateBean in lockss-core
-      # Returned by org.lockss.laaws.config.impl.AustatesApiServiceImpl.getAuState(String) but not currently declared in GET /austates/{auid} 
+      # Returned by org.lockss.laaws.config.impl.AustatesApiServiceImpl.getAuState(String) but *not* declared in GET /austates/{auid}
       type: object
       properties:
         auCreationTime:
@@ -1416,15 +1440,138 @@ components:
         auId:
           type: string
           nullable: true
-    auStatus:
-      required:
-        - volume
+    AuStatus:
+      # Modeled from org.lockss.ws.entities.AuStatus in lockss-util-entities
+      # Returned by org.lockss.laaws.config.impl.AustatusesApiServiceImpl.getAuStatus(String) and declared in GET /austatuses/{auid} 
+      description: The status of an archival unit
       type: object
       properties:
         volume:
           type: string
-          description: The volume of the archival unit
-      description: The status of an archival unit
+          nullable: true
+        journalTitle:
+          type: string
+          nullable: true
+        pluginName:
+          type: string
+          nullable: true
+        year:
+          type: string
+          nullable: true
+        accessType:
+          type: string
+          nullable: true
+        contentSize:
+          type: integer
+          format: int64
+          nullable: true
+        diskUsage:
+          type: integer
+          format: int64
+          nullable: true
+        repository:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        recentPollAgreement:
+          type: number
+          format: double
+          nullable: true
+        publishingPlatform:
+          type: string
+          nullable: true
+        publisher:
+          type: string
+          nullable: true
+        availableFromPublisher:
+          type: boolean
+          nullable: true
+        substanceState:
+          type: string
+          nullable: true
+        creationTime:
+          type: integer
+          format: int64
+          nullable: true
+        crawlProxy:
+          type: string
+          nullable: true
+        crawlWindow:
+          type: string
+          nullable: true
+        crawlPool:
+          type: string
+          nullable: true
+        lastCompletedCrawl:
+          type: integer
+          format: int64
+          nullable: true
+        lastCrawl:
+          type: integer
+          format: int64
+          nullable: true
+        lastCrawlResult:
+          type: string
+          nullable: true
+        lastCompletedDeepCrawl:
+          type: integer
+          format: int64
+          nullable: true
+        lastDeepCrawl:
+          type: integer
+          format: int64
+          nullable: true
+        lastDeepCrawlResult:
+          type: string
+          nullable: true
+        lastCompletedDeepCrawlDepth:
+          type: integer
+          format: int32
+        lastMetadataIndex:
+          type: integer
+          format: int64
+          nullable: true
+        lastCompletedPoll:
+          type: integer
+          format: int64
+          nullable: true
+        lastPoll:
+          type: integer
+          format: int64
+          nullable: true
+        lastPollResult:
+          type: string
+          nullable: true
+        currentlyCrawling:
+          type: boolean
+          nullable: true
+        currentlyPolling:
+          type: boolean
+          nullable: true
+        subscriptionStatus:
+          type: string
+          nullable: true
+        provider:
+          type: string
+          nullable: true
+    AuSuspectUrlVersions:
+      # Modeled from org.lockss.state.AuSuspectUrlVersions in lockss-core
+      # Returned by org.lockss.laaws.config.impl.AususpecturlsApiServiceImpl.getAuSuspectUrlVersions(String) but *not* declared in GET /aususpecturls/{auid}
+      # Received by org.lockss.laaws.config.impl.AususpecturlsApiServiceImpl.putAuSuspectUrlVersions(String, String, String) but *not* declared in PUT /aususpecturls/{auid}
+      type: object
+      properties:
+        auid:
+          type: string
+          nullable: true
+        suspectVersions:
+          type: array
+          nullable: true
+          items:
+            type: object
+            items:
+              $ref: '#/components/schemas/SuspectUrlVersion'
     auWsResult:
       required:
         - auId
@@ -1474,6 +1621,66 @@ components:
           type: string
           description: A descriptive message regarding the result of the operation
       description: The encapsulation of the result of adding an Archival Unit
+    DatedPeerIdSetImpl:
+      # Modeled from org.lockss.protocol.DatedPeerIdSetImpl in lockss-core
+      # Returned by org.lockss.laaws.config.impl.NoaupeersApiServiceImpl.getNoAuPeers(String) but *not* declared in GET /noaupeers/{auid}
+      # Received by org.lockss.laaws.config.impl.NoaupeersApiServiceImpl.putNoAuPeers(String, String, String) but *not* declared in PUT /noaupeers/{auid}
+      type: object
+      properties:
+        auid:
+          type: string
+          nullable: true
+        rawSet:
+          type: array
+          nullable: true
+          items:
+            type: string
+        date:
+          type: integer
+          format: int64
+    HashResult:
+      # Modeled from org.lockss.hasher.HashResult in lockss-core
+      # Used by SuspectUrlVersion
+      type: object
+      properties:
+        bytes:
+          type: string
+          # 'format' should be 'byte' if base64-encoded
+          format: binary
+          nullable: true
+        algorithm:
+          type: string
+          nullable: true
+    PeerAgreement:
+      # Modeled from org.lockss.protocol.PeerAgreement in lockss-core
+      # Used in PeerAgreements
+      type: object
+      properties:
+        percentAgreement:
+          type: number
+          format: float
+        percentAgreementTime:
+          type: integer
+          format: int64
+        highestPercentAgreement:
+          type: number
+          format: float
+        highestPercentAgreementTime:
+          type: integer
+          format: int64
+    PeerAgreements:
+      # Modeled from org.lockss.protocol.PeerAgreements in lockss-core
+      # Used in AuAgreements
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+        map:
+          type: object
+          nullable: true
+          additionalProperties:
+            $ref: '#/components/schemas/PeerAgreement'
     platformConfigurationWsResult:
       description: The configuration of the platform
       type: object
@@ -1646,6 +1853,24 @@ components:
         - Unknown
         - Yes
         - No
+    SuspectUrlVersion:
+      # Modeled from org.lockss.state.AuSuspectUrlVersions.SuspectUrlVersion in lockss-core
+      # Used by AuSuspectUrlVersions
+      type: object
+      properties:
+        url:
+          type: string
+          nullable: true
+        version:
+          type: integer
+          format: int32
+        created:
+          type: integer
+          format: int64
+        computedHash:
+          $ref: '#/components/schemas/HashResult'
+        storedHash:
+          $ref: '#/components/schemas/HashResult'
     tdbAuWsResult:
       type: object
       properties:

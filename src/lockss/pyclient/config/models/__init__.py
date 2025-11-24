@@ -16,14 +16,20 @@ from __future__ import absolute_import
 # import models into model package
 from lockss.pyclient.config.models.access_type import AccessType
 from lockss.pyclient.config.models.api_status import ApiStatus
+from lockss.pyclient.config.models.au_agreements import AuAgreements
 from lockss.pyclient.config.models.au_configuration import AuConfiguration
 from lockss.pyclient.config.models.au_state_bean import AuStateBean
 from lockss.pyclient.config.models.au_status import AuStatus
+from lockss.pyclient.config.models.au_suspect_url_versions import AuSuspectUrlVersions
 from lockss.pyclient.config.models.au_ws_result import AuWsResult
 from lockss.pyclient.config.models.auids_body import AuidsBody
 from lockss.pyclient.config.models.check_substance_result import CheckSubstanceResult
 from lockss.pyclient.config.models.content_configuration_result import ContentConfigurationResult
+from lockss.pyclient.config.models.dated_peer_id_set_impl import DatedPeerIdSetImpl
 from lockss.pyclient.config.models.file_section_name_body import FileSectionNameBody
+from lockss.pyclient.config.models.hash_result import HashResult
+from lockss.pyclient.config.models.peer_agreement import PeerAgreement
+from lockss.pyclient.config.models.peer_agreements import PeerAgreements
 from lockss.pyclient.config.models.platform_configuration_ws_result import PlatformConfigurationWsResult
 from lockss.pyclient.config.models.platform_configuration_ws_result_daemon_version import PlatformConfigurationWsResultDaemonVersion
 from lockss.pyclient.config.models.platform_configuration_ws_result_java_version import PlatformConfigurationWsResultJavaVersion
@@ -31,6 +37,7 @@ from lockss.pyclient.config.models.platform_configuration_ws_result_platform imp
 from lockss.pyclient.config.models.plugin_ws_result import PluginWsResult
 from lockss.pyclient.config.models.request_au_control_result import RequestAuControlResult
 from lockss.pyclient.config.models.substance_checker_state import SubstanceCheckerState
+from lockss.pyclient.config.models.suspect_url_version import SuspectUrlVersion
 from lockss.pyclient.config.models.tdb_au_ws_result import TdbAuWsResult
 from lockss.pyclient.config.models.tdb_publisher_ws_result import TdbPublisherWsResult
 from lockss.pyclient.config.models.tdb_title_ws_result import TdbTitleWsResult

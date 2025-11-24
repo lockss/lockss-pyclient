@@ -521,7 +521,7 @@ class AusApi(object):
         >>> result = thread.get()
 
         :param async_req bool
-        :param str auid: The identifier of the AU for which the configuration is\\ \\ requested (required)
+        :param str auid: The identifier of the AU for which the configuration is requested (required)
         :return: AuConfiguration
                  If the method is called asynchronously,
                  returns the request thread.
@@ -543,7 +543,7 @@ class AusApi(object):
         >>> result = thread.get()
 
         :param async_req bool
-        :param str auid: The identifier of the AU for which the configuration is\\ \\ requested (required)
+        :param str auid: The identifier of the AU for which the configuration is requested (required)
         :return: AuConfiguration
                  If the method is called asynchronously,
                  returns the request thread.

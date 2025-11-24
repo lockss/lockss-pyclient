@@ -28,24 +28,184 @@ class AuStatus(object):
                             and the value is json key in definition.
     """
     swagger_types = {
-        'volume': 'str'
+        'volume': 'str',
+        'journal_title': 'str',
+        'plugin_name': 'str',
+        'year': 'str',
+        'access_type': 'str',
+        'content_size': 'int',
+        'disk_usage': 'int',
+        'repository': 'str',
+        'status': 'str',
+        'recent_poll_agreement': 'float',
+        'publishing_platform': 'str',
+        'publisher': 'str',
+        'available_from_publisher': 'bool',
+        'substance_state': 'str',
+        'creation_time': 'int',
+        'crawl_proxy': 'str',
+        'crawl_window': 'str',
+        'crawl_pool': 'str',
+        'last_completed_crawl': 'int',
+        'last_crawl': 'int',
+        'last_crawl_result': 'str',
+        'last_completed_deep_crawl': 'int',
+        'last_deep_crawl': 'int',
+        'last_deep_crawl_result': 'str',
+        'last_completed_deep_crawl_depth': 'int',
+        'last_metadata_index': 'int',
+        'last_completed_poll': 'int',
+        'last_poll': 'int',
+        'last_poll_result': 'str',
+        'currently_crawling': 'bool',
+        'currently_polling': 'bool',
+        'subscription_status': 'str',
+        'provider': 'str'
     }
 
     attribute_map = {
-        'volume': 'volume'
+        'volume': 'volume',
+        'journal_title': 'journalTitle',
+        'plugin_name': 'pluginName',
+        'year': 'year',
+        'access_type': 'accessType',
+        'content_size': 'contentSize',
+        'disk_usage': 'diskUsage',
+        'repository': 'repository',
+        'status': 'status',
+        'recent_poll_agreement': 'recentPollAgreement',
+        'publishing_platform': 'publishingPlatform',
+        'publisher': 'publisher',
+        'available_from_publisher': 'availableFromPublisher',
+        'substance_state': 'substanceState',
+        'creation_time': 'creationTime',
+        'crawl_proxy': 'crawlProxy',
+        'crawl_window': 'crawlWindow',
+        'crawl_pool': 'crawlPool',
+        'last_completed_crawl': 'lastCompletedCrawl',
+        'last_crawl': 'lastCrawl',
+        'last_crawl_result': 'lastCrawlResult',
+        'last_completed_deep_crawl': 'lastCompletedDeepCrawl',
+        'last_deep_crawl': 'lastDeepCrawl',
+        'last_deep_crawl_result': 'lastDeepCrawlResult',
+        'last_completed_deep_crawl_depth': 'lastCompletedDeepCrawlDepth',
+        'last_metadata_index': 'lastMetadataIndex',
+        'last_completed_poll': 'lastCompletedPoll',
+        'last_poll': 'lastPoll',
+        'last_poll_result': 'lastPollResult',
+        'currently_crawling': 'currentlyCrawling',
+        'currently_polling': 'currentlyPolling',
+        'subscription_status': 'subscriptionStatus',
+        'provider': 'provider'
     }
 
-    def __init__(self, volume=None):  # noqa: E501
+    def __init__(self, volume=None, journal_title=None, plugin_name=None, year=None, access_type=None, content_size=None, disk_usage=None, repository=None, status=None, recent_poll_agreement=None, publishing_platform=None, publisher=None, available_from_publisher=None, substance_state=None, creation_time=None, crawl_proxy=None, crawl_window=None, crawl_pool=None, last_completed_crawl=None, last_crawl=None, last_crawl_result=None, last_completed_deep_crawl=None, last_deep_crawl=None, last_deep_crawl_result=None, last_completed_deep_crawl_depth=None, last_metadata_index=None, last_completed_poll=None, last_poll=None, last_poll_result=None, currently_crawling=None, currently_polling=None, subscription_status=None, provider=None):  # noqa: E501
         """AuStatus - a model defined in Swagger"""  # noqa: E501
         self._volume = None
+        self._journal_title = None
+        self._plugin_name = None
+        self._year = None
+        self._access_type = None
+        self._content_size = None
+        self._disk_usage = None
+        self._repository = None
+        self._status = None
+        self._recent_poll_agreement = None
+        self._publishing_platform = None
+        self._publisher = None
+        self._available_from_publisher = None
+        self._substance_state = None
+        self._creation_time = None
+        self._crawl_proxy = None
+        self._crawl_window = None
+        self._crawl_pool = None
+        self._last_completed_crawl = None
+        self._last_crawl = None
+        self._last_crawl_result = None
+        self._last_completed_deep_crawl = None
+        self._last_deep_crawl = None
+        self._last_deep_crawl_result = None
+        self._last_completed_deep_crawl_depth = None
+        self._last_metadata_index = None
+        self._last_completed_poll = None
+        self._last_poll = None
+        self._last_poll_result = None
+        self._currently_crawling = None
+        self._currently_polling = None
+        self._subscription_status = None
+        self._provider = None
         self.discriminator = None
-        self.volume = volume
+        if volume is not None:
+            self.volume = volume
+        if journal_title is not None:
+            self.journal_title = journal_title
+        if plugin_name is not None:
+            self.plugin_name = plugin_name
+        if year is not None:
+            self.year = year
+        if access_type is not None:
+            self.access_type = access_type
+        if content_size is not None:
+            self.content_size = content_size
+        if disk_usage is not None:
+            self.disk_usage = disk_usage
+        if repository is not None:
+            self.repository = repository
+        if status is not None:
+            self.status = status
+        if recent_poll_agreement is not None:
+            self.recent_poll_agreement = recent_poll_agreement
+        if publishing_platform is not None:
+            self.publishing_platform = publishing_platform
+        if publisher is not None:
+            self.publisher = publisher
+        if available_from_publisher is not None:
+            self.available_from_publisher = available_from_publisher
+        if substance_state is not None:
+            self.substance_state = substance_state
+        if creation_time is not None:
+            self.creation_time = creation_time
+        if crawl_proxy is not None:
+            self.crawl_proxy = crawl_proxy
+        if crawl_window is not None:
+            self.crawl_window = crawl_window
+        if crawl_pool is not None:
+            self.crawl_pool = crawl_pool
+        if last_completed_crawl is not None:
+            self.last_completed_crawl = last_completed_crawl
+        if last_crawl is not None:
+            self.last_crawl = last_crawl
+        if last_crawl_result is not None:
+            self.last_crawl_result = last_crawl_result
+        if last_completed_deep_crawl is not None:
+            self.last_completed_deep_crawl = last_completed_deep_crawl
+        if last_deep_crawl is not None:
+            self.last_deep_crawl = last_deep_crawl
+        if last_deep_crawl_result is not None:
+            self.last_deep_crawl_result = last_deep_crawl_result
+        if last_completed_deep_crawl_depth is not None:
+            self.last_completed_deep_crawl_depth = last_completed_deep_crawl_depth
+        if last_metadata_index is not None:
+            self.last_metadata_index = last_metadata_index
+        if last_completed_poll is not None:
+            self.last_completed_poll = last_completed_poll
+        if last_poll is not None:
+            self.last_poll = last_poll
+        if last_poll_result is not None:
+            self.last_poll_result = last_poll_result
+        if currently_crawling is not None:
+            self.currently_crawling = currently_crawling
+        if currently_polling is not None:
+            self.currently_polling = currently_polling
+        if subscription_status is not None:
+            self.subscription_status = subscription_status
+        if provider is not None:
+            self.provider = provider
 
     @property
     def volume(self):
         """Gets the volume of this AuStatus.  # noqa: E501
 
-        The volume of the archival unit  # noqa: E501
 
         :return: The volume of this AuStatus.  # noqa: E501
         :rtype: str
@@ -56,15 +216,684 @@ class AuStatus(object):
     def volume(self, volume):
         """Sets the volume of this AuStatus.
 
-        The volume of the archival unit  # noqa: E501
 
         :param volume: The volume of this AuStatus.  # noqa: E501
         :type: str
         """
-        if volume is None:
-            raise ValueError("Invalid value for `volume`, must not be `None`")  # noqa: E501
 
         self._volume = volume
+
+    @property
+    def journal_title(self):
+        """Gets the journal_title of this AuStatus.  # noqa: E501
+
+
+        :return: The journal_title of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._journal_title
+
+    @journal_title.setter
+    def journal_title(self, journal_title):
+        """Sets the journal_title of this AuStatus.
+
+
+        :param journal_title: The journal_title of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._journal_title = journal_title
+
+    @property
+    def plugin_name(self):
+        """Gets the plugin_name of this AuStatus.  # noqa: E501
+
+
+        :return: The plugin_name of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._plugin_name
+
+    @plugin_name.setter
+    def plugin_name(self, plugin_name):
+        """Sets the plugin_name of this AuStatus.
+
+
+        :param plugin_name: The plugin_name of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._plugin_name = plugin_name
+
+    @property
+    def year(self):
+        """Gets the year of this AuStatus.  # noqa: E501
+
+
+        :return: The year of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._year
+
+    @year.setter
+    def year(self, year):
+        """Sets the year of this AuStatus.
+
+
+        :param year: The year of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._year = year
+
+    @property
+    def access_type(self):
+        """Gets the access_type of this AuStatus.  # noqa: E501
+
+
+        :return: The access_type of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._access_type
+
+    @access_type.setter
+    def access_type(self, access_type):
+        """Sets the access_type of this AuStatus.
+
+
+        :param access_type: The access_type of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._access_type = access_type
+
+    @property
+    def content_size(self):
+        """Gets the content_size of this AuStatus.  # noqa: E501
+
+
+        :return: The content_size of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._content_size
+
+    @content_size.setter
+    def content_size(self, content_size):
+        """Sets the content_size of this AuStatus.
+
+
+        :param content_size: The content_size of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._content_size = content_size
+
+    @property
+    def disk_usage(self):
+        """Gets the disk_usage of this AuStatus.  # noqa: E501
+
+
+        :return: The disk_usage of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._disk_usage
+
+    @disk_usage.setter
+    def disk_usage(self, disk_usage):
+        """Sets the disk_usage of this AuStatus.
+
+
+        :param disk_usage: The disk_usage of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._disk_usage = disk_usage
+
+    @property
+    def repository(self):
+        """Gets the repository of this AuStatus.  # noqa: E501
+
+
+        :return: The repository of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._repository
+
+    @repository.setter
+    def repository(self, repository):
+        """Sets the repository of this AuStatus.
+
+
+        :param repository: The repository of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._repository = repository
+
+    @property
+    def status(self):
+        """Gets the status of this AuStatus.  # noqa: E501
+
+
+        :return: The status of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._status
+
+    @status.setter
+    def status(self, status):
+        """Sets the status of this AuStatus.
+
+
+        :param status: The status of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._status = status
+
+    @property
+    def recent_poll_agreement(self):
+        """Gets the recent_poll_agreement of this AuStatus.  # noqa: E501
+
+
+        :return: The recent_poll_agreement of this AuStatus.  # noqa: E501
+        :rtype: float
+        """
+        return self._recent_poll_agreement
+
+    @recent_poll_agreement.setter
+    def recent_poll_agreement(self, recent_poll_agreement):
+        """Sets the recent_poll_agreement of this AuStatus.
+
+
+        :param recent_poll_agreement: The recent_poll_agreement of this AuStatus.  # noqa: E501
+        :type: float
+        """
+
+        self._recent_poll_agreement = recent_poll_agreement
+
+    @property
+    def publishing_platform(self):
+        """Gets the publishing_platform of this AuStatus.  # noqa: E501
+
+
+        :return: The publishing_platform of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._publishing_platform
+
+    @publishing_platform.setter
+    def publishing_platform(self, publishing_platform):
+        """Sets the publishing_platform of this AuStatus.
+
+
+        :param publishing_platform: The publishing_platform of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._publishing_platform = publishing_platform
+
+    @property
+    def publisher(self):
+        """Gets the publisher of this AuStatus.  # noqa: E501
+
+
+        :return: The publisher of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._publisher
+
+    @publisher.setter
+    def publisher(self, publisher):
+        """Sets the publisher of this AuStatus.
+
+
+        :param publisher: The publisher of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._publisher = publisher
+
+    @property
+    def available_from_publisher(self):
+        """Gets the available_from_publisher of this AuStatus.  # noqa: E501
+
+
+        :return: The available_from_publisher of this AuStatus.  # noqa: E501
+        :rtype: bool
+        """
+        return self._available_from_publisher
+
+    @available_from_publisher.setter
+    def available_from_publisher(self, available_from_publisher):
+        """Sets the available_from_publisher of this AuStatus.
+
+
+        :param available_from_publisher: The available_from_publisher of this AuStatus.  # noqa: E501
+        :type: bool
+        """
+
+        self._available_from_publisher = available_from_publisher
+
+    @property
+    def substance_state(self):
+        """Gets the substance_state of this AuStatus.  # noqa: E501
+
+
+        :return: The substance_state of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._substance_state
+
+    @substance_state.setter
+    def substance_state(self, substance_state):
+        """Sets the substance_state of this AuStatus.
+
+
+        :param substance_state: The substance_state of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._substance_state = substance_state
+
+    @property
+    def creation_time(self):
+        """Gets the creation_time of this AuStatus.  # noqa: E501
+
+
+        :return: The creation_time of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._creation_time
+
+    @creation_time.setter
+    def creation_time(self, creation_time):
+        """Sets the creation_time of this AuStatus.
+
+
+        :param creation_time: The creation_time of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._creation_time = creation_time
+
+    @property
+    def crawl_proxy(self):
+        """Gets the crawl_proxy of this AuStatus.  # noqa: E501
+
+
+        :return: The crawl_proxy of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._crawl_proxy
+
+    @crawl_proxy.setter
+    def crawl_proxy(self, crawl_proxy):
+        """Sets the crawl_proxy of this AuStatus.
+
+
+        :param crawl_proxy: The crawl_proxy of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._crawl_proxy = crawl_proxy
+
+    @property
+    def crawl_window(self):
+        """Gets the crawl_window of this AuStatus.  # noqa: E501
+
+
+        :return: The crawl_window of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._crawl_window
+
+    @crawl_window.setter
+    def crawl_window(self, crawl_window):
+        """Sets the crawl_window of this AuStatus.
+
+
+        :param crawl_window: The crawl_window of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._crawl_window = crawl_window
+
+    @property
+    def crawl_pool(self):
+        """Gets the crawl_pool of this AuStatus.  # noqa: E501
+
+
+        :return: The crawl_pool of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._crawl_pool
+
+    @crawl_pool.setter
+    def crawl_pool(self, crawl_pool):
+        """Sets the crawl_pool of this AuStatus.
+
+
+        :param crawl_pool: The crawl_pool of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._crawl_pool = crawl_pool
+
+    @property
+    def last_completed_crawl(self):
+        """Gets the last_completed_crawl of this AuStatus.  # noqa: E501
+
+
+        :return: The last_completed_crawl of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._last_completed_crawl
+
+    @last_completed_crawl.setter
+    def last_completed_crawl(self, last_completed_crawl):
+        """Sets the last_completed_crawl of this AuStatus.
+
+
+        :param last_completed_crawl: The last_completed_crawl of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._last_completed_crawl = last_completed_crawl
+
+    @property
+    def last_crawl(self):
+        """Gets the last_crawl of this AuStatus.  # noqa: E501
+
+
+        :return: The last_crawl of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._last_crawl
+
+    @last_crawl.setter
+    def last_crawl(self, last_crawl):
+        """Sets the last_crawl of this AuStatus.
+
+
+        :param last_crawl: The last_crawl of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._last_crawl = last_crawl
+
+    @property
+    def last_crawl_result(self):
+        """Gets the last_crawl_result of this AuStatus.  # noqa: E501
+
+
+        :return: The last_crawl_result of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._last_crawl_result
+
+    @last_crawl_result.setter
+    def last_crawl_result(self, last_crawl_result):
+        """Sets the last_crawl_result of this AuStatus.
+
+
+        :param last_crawl_result: The last_crawl_result of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._last_crawl_result = last_crawl_result
+
+    @property
+    def last_completed_deep_crawl(self):
+        """Gets the last_completed_deep_crawl of this AuStatus.  # noqa: E501
+
+
+        :return: The last_completed_deep_crawl of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._last_completed_deep_crawl
+
+    @last_completed_deep_crawl.setter
+    def last_completed_deep_crawl(self, last_completed_deep_crawl):
+        """Sets the last_completed_deep_crawl of this AuStatus.
+
+
+        :param last_completed_deep_crawl: The last_completed_deep_crawl of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._last_completed_deep_crawl = last_completed_deep_crawl
+
+    @property
+    def last_deep_crawl(self):
+        """Gets the last_deep_crawl of this AuStatus.  # noqa: E501
+
+
+        :return: The last_deep_crawl of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._last_deep_crawl
+
+    @last_deep_crawl.setter
+    def last_deep_crawl(self, last_deep_crawl):
+        """Sets the last_deep_crawl of this AuStatus.
+
+
+        :param last_deep_crawl: The last_deep_crawl of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._last_deep_crawl = last_deep_crawl
+
+    @property
+    def last_deep_crawl_result(self):
+        """Gets the last_deep_crawl_result of this AuStatus.  # noqa: E501
+
+
+        :return: The last_deep_crawl_result of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._last_deep_crawl_result
+
+    @last_deep_crawl_result.setter
+    def last_deep_crawl_result(self, last_deep_crawl_result):
+        """Sets the last_deep_crawl_result of this AuStatus.
+
+
+        :param last_deep_crawl_result: The last_deep_crawl_result of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._last_deep_crawl_result = last_deep_crawl_result
+
+    @property
+    def last_completed_deep_crawl_depth(self):
+        """Gets the last_completed_deep_crawl_depth of this AuStatus.  # noqa: E501
+
+
+        :return: The last_completed_deep_crawl_depth of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._last_completed_deep_crawl_depth
+
+    @last_completed_deep_crawl_depth.setter
+    def last_completed_deep_crawl_depth(self, last_completed_deep_crawl_depth):
+        """Sets the last_completed_deep_crawl_depth of this AuStatus.
+
+
+        :param last_completed_deep_crawl_depth: The last_completed_deep_crawl_depth of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._last_completed_deep_crawl_depth = last_completed_deep_crawl_depth
+
+    @property
+    def last_metadata_index(self):
+        """Gets the last_metadata_index of this AuStatus.  # noqa: E501
+
+
+        :return: The last_metadata_index of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._last_metadata_index
+
+    @last_metadata_index.setter
+    def last_metadata_index(self, last_metadata_index):
+        """Sets the last_metadata_index of this AuStatus.
+
+
+        :param last_metadata_index: The last_metadata_index of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._last_metadata_index = last_metadata_index
+
+    @property
+    def last_completed_poll(self):
+        """Gets the last_completed_poll of this AuStatus.  # noqa: E501
+
+
+        :return: The last_completed_poll of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._last_completed_poll
+
+    @last_completed_poll.setter
+    def last_completed_poll(self, last_completed_poll):
+        """Sets the last_completed_poll of this AuStatus.
+
+
+        :param last_completed_poll: The last_completed_poll of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._last_completed_poll = last_completed_poll
+
+    @property
+    def last_poll(self):
+        """Gets the last_poll of this AuStatus.  # noqa: E501
+
+
+        :return: The last_poll of this AuStatus.  # noqa: E501
+        :rtype: int
+        """
+        return self._last_poll
+
+    @last_poll.setter
+    def last_poll(self, last_poll):
+        """Sets the last_poll of this AuStatus.
+
+
+        :param last_poll: The last_poll of this AuStatus.  # noqa: E501
+        :type: int
+        """
+
+        self._last_poll = last_poll
+
+    @property
+    def last_poll_result(self):
+        """Gets the last_poll_result of this AuStatus.  # noqa: E501
+
+
+        :return: The last_poll_result of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._last_poll_result
+
+    @last_poll_result.setter
+    def last_poll_result(self, last_poll_result):
+        """Sets the last_poll_result of this AuStatus.
+
+
+        :param last_poll_result: The last_poll_result of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._last_poll_result = last_poll_result
+
+    @property
+    def currently_crawling(self):
+        """Gets the currently_crawling of this AuStatus.  # noqa: E501
+
+
+        :return: The currently_crawling of this AuStatus.  # noqa: E501
+        :rtype: bool
+        """
+        return self._currently_crawling
+
+    @currently_crawling.setter
+    def currently_crawling(self, currently_crawling):
+        """Sets the currently_crawling of this AuStatus.
+
+
+        :param currently_crawling: The currently_crawling of this AuStatus.  # noqa: E501
+        :type: bool
+        """
+
+        self._currently_crawling = currently_crawling
+
+    @property
+    def currently_polling(self):
+        """Gets the currently_polling of this AuStatus.  # noqa: E501
+
+
+        :return: The currently_polling of this AuStatus.  # noqa: E501
+        :rtype: bool
+        """
+        return self._currently_polling
+
+    @currently_polling.setter
+    def currently_polling(self, currently_polling):
+        """Sets the currently_polling of this AuStatus.
+
+
+        :param currently_polling: The currently_polling of this AuStatus.  # noqa: E501
+        :type: bool
+        """
+
+        self._currently_polling = currently_polling
+
+    @property
+    def subscription_status(self):
+        """Gets the subscription_status of this AuStatus.  # noqa: E501
+
+
+        :return: The subscription_status of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._subscription_status
+
+    @subscription_status.setter
+    def subscription_status(self, subscription_status):
+        """Sets the subscription_status of this AuStatus.
+
+
+        :param subscription_status: The subscription_status of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._subscription_status = subscription_status
+
+    @property
+    def provider(self):
+        """Gets the provider of this AuStatus.  # noqa: E501
+
+
+        :return: The provider of this AuStatus.  # noqa: E501
+        :rtype: str
+        """
+        return self._provider
+
+    @provider.setter
+    def provider(self, provider):
+        """Sets the provider of this AuStatus.
+
+
+        :param provider: The provider of this AuStatus.  # noqa: E501
+        :type: str
+        """
+
+        self._provider = provider
 
     def to_dict(self):
         """Returns the model properties as a dict"""

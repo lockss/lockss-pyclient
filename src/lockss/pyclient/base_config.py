@@ -42,10 +42,56 @@ from lockss.pyclient.base import Node, bytes_repr_to_multipart, _single_request_
 @_single_request_template(Node.make_config_conf,
                           config.ApiClient,
                           config.AusApi,
+                          config.AusApi.get_au_agreements,
+                          transform_raw_result=config.AuAgreements)
+def config_get_au_agreements(node: Node,
+                             auid: str) -> config.AuAgreements:
+    pass
+
+
+@_single_request_template(Node.make_config_conf,
+                          config.ApiClient,
+                          config.AusApi,
+                          config.AusApi.get_au_config)
+def config_get_au_config(node: Node,
+                         auid: str) -> config.AuConfiguration:
+    pass
+
+
+@_single_request_template(Node.make_config_conf,
+                          config.ApiClient,
+                          config.AusApi,
+                          config.AusApi.get_all_au_config)
+def config_get_au_configs(node: Node) -> list[config.AuConfiguration]:
+    pass
+
+
+@_single_request_template(Node.make_config_conf,
+                          config.ApiClient,
+                          config.AusApi,
                           config.AusApi.get_au_state,
                           transform_raw_result=config.AuStateBean)
 def config_get_au_state(node: Node,
-                        auid: str) -> config.AuStatus:
+                        auid: str) -> config.AuStateBean:
+    pass
+
+
+@_single_request_template(Node.make_config_conf,
+                          config.ApiClient,
+                          config.AusApi,
+                          config.AusApi.get_au_suspect_url_versions,
+                          transform_raw_result=config.AuSuspectUrlVersions)
+def config_get_au_suspect_url_versions(node: Node,
+                                       auid: str) -> config.AuSuspectUrlVersions:
+    pass
+
+
+@_single_request_template(Node.make_config_conf,
+                          config.ApiClient,
+                          config.AusApi,
+                          config.AusApi.get_au_status)
+def config_get_au_status(node: Node,
+                         auid: str) -> config.AuStatus:
     pass
 
 
@@ -54,6 +100,16 @@ def config_get_au_state(node: Node,
                           config.ConfigApi,
                           config.ConfigApi.get_loaded_url_list)
 def config_get_loaded_urls(node: Node) -> list[str]:
+    pass
+
+
+@_single_request_template(Node.make_config_conf,
+                          config.ApiClient,
+                          config.AusApi,
+                          config.AusApi.get_no_au_peers,
+                          transform_raw_result=config.DatedPeerIdSetImpl)
+def config_get_no_au_peer_set(node: Node,
+                              auid: str) -> config.DatedPeerIdSetImpl:
     pass
 
 
