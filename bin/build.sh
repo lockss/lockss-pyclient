@@ -3,11 +3,11 @@
 LAAWS_BUILD_DIR="$(realpath "$1")"
 
 LOCKSS_REST_SERVICES=(
-  laaws-metadataservice
-  laaws-poller
-  laaws-configservice
   laaws-repository-service
+  laaws-configservice
+  laaws-poller
   laaws-crawler-service
+  laaws-metadataservice
 )
 
 if [ -z "${LAAWS_BUILD_DIR}" ]; then
