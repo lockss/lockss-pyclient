@@ -113,7 +113,7 @@ def repo_get_artifacts_by_auid(node: Node,
                                version: Optional[Union[int, rs.VersionsEnum]] = None,
                                include_uncommitted: Optional[bool] = None,
                                limit: Optional[int] = None) -> list[rs.Artifact]:
-    ret = []
+    ret: list[rs.Artifact] = []
     for page in repo_get_artifacts_by_auid_page_iter(node,
                                                      auid,
                                                      url=url,
@@ -157,7 +157,7 @@ def repo_get_artifacts_by_url(node: Node,
                               namespace: str = _first(_RS, '$.paths["/artifacts"].get.parameters[?(@.name == "namespace")].schema.default'),
                               versions: rs.VersionsEnum = _first(_RS, '$.components.schemas.versionsEnum.default'),
                               limit: Optional[int] = None) -> list[rs.Artifact]:
-    ret = []
+    ret: list[rs.Artifact] = []
     for page in repo_get_artifacts_by_url_page_iter(node,
                                                     url=url,
                                                     url_prefix=url_prefix,
@@ -199,7 +199,7 @@ def repo_get_auids_page_iter(node: Node,
 def repo_get_auids(node: Node,
                    namespace: str = _first(_RS, '$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default'),
                    limit: Optional[int] = None) -> list[str]:
-    ret = []
+    ret: list[str] = []
     for page in repo_get_auids_page_iter(node,
                                          namespace=namespace,
                                          limit=limit):

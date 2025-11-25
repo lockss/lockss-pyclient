@@ -39,4 +39,5 @@ POSSIBILITY OF SUCH DAMAGE.
 '''.strip()
 
 from .base_config import *
+from .base_md import *
 from .base_rs import *
