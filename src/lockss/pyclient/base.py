@@ -77,7 +77,11 @@ def _first(data: YamlT, json_path: str) -> Any:
 
 __JSON_PATH_DEFAULT_PORT = '$.servers[0].variables.port.default'
 
+
 CONFIG_DEFAULT_PORT: int = _first(_CONFIG, __JSON_PATH_DEFAULT_PORT)
+
+
+CRAWLER_DEFAULT_PORT: int = _first(_CRAWLER, __JSON_PATH_DEFAULT_PORT)
 
 
 MD_DEFAULT_PORT: int = _first(_MD, __JSON_PATH_DEFAULT_PORT)
@@ -151,6 +155,7 @@ class Node(object):
                  password: Optional[StrSupplier] = None,
                  interactive: bool = True,
                  config_port: int = CONFIG_DEFAULT_PORT,
+                 crawler_port: int = CRAWLER_DEFAULT_PORT,
                  md_port: int = MD_DEFAULT_PORT,
                  rs_port: int = RS_DEFAULT_PORT):
         super().__init__()
@@ -159,11 +164,16 @@ class Node(object):
         self._password: Optional[StrSupplier] = password
         self._interactive: bool = interactive
         self._config_port = config_port
+        self._crawler_port = crawler_port
         self._md_port: int = md_port
         self._rs_port: int = rs_port
 
     @_get_port_template('_config_port', CONFIG_DEFAULT_PORT)
     def get_config_port(self: Node) -> int:
+        pass
+
+    @_get_port_template('_crawler_port', CRAWLER_DEFAULT_PORT)
+    def get_crawler_port(self: Node) -> int:
         pass
 
     def get_host(self) -> str:
@@ -190,6 +200,10 @@ class Node(object):
 
     @_make_conf_template(config.Configuration, get_config_port)
     def make_config_conf(self, needs_auth: bool = True) -> config.Configuration:
+        pass
+
+    @_make_conf_template(crawler.Configuration, get_crawler_port)
+    def make_crawler_conf(self, needs_auth: bool = True) -> crawler.Configuration:
         pass
 
     @_make_conf_template(md.Configuration, get_md_port)
@@ -296,6 +310,7 @@ def _single_request_template(make_conf: ConfFunction,
 
 PageInfoResultT = Union[
     # FIXME list more paged types here
+    crawler.CrawlPager, crawler.JobPager, crawler.UrlPager,
     md.AuMetadataPageInfo, md.JobPageInfo,
     rs.ArtifactPageInfo, rs.AuidPageInfo,
 ]
