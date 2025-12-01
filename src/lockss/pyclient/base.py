@@ -39,9 +39,10 @@ from collections.abc import Callable, Iterable
 from getpass import getpass
 from importlib import resources
 from io import BytesIO
+from typing import Any, ClassVar, Optional, TypeVar, Union
+
 from jsonpath import query
 from multipart import MultipartParser
-from typing import Any, ClassVar, Optional, TypeVar, Union
 import yaml
 
 from . import config, crawler, md, poller, rs
@@ -85,6 +86,9 @@ CRAWLER_DEFAULT_PORT: int = _first(_CRAWLER, __JSON_PATH_DEFAULT_PORT)
 
 
 MD_DEFAULT_PORT: int = _first(_MD, __JSON_PATH_DEFAULT_PORT)
+
+
+POLLER_DEFAULT_PORT: int = _first(_POLLER, __JSON_PATH_DEFAULT_PORT)
 
 
 RS_DEFAULT_PORT: int = _first(_RS, __JSON_PATH_DEFAULT_PORT)
@@ -157,6 +161,7 @@ class Node(object):
                  config_port: int = CONFIG_DEFAULT_PORT,
                  crawler_port: int = CRAWLER_DEFAULT_PORT,
                  md_port: int = MD_DEFAULT_PORT,
+                 poller_port: int = POLLER_DEFAULT_PORT,
                  rs_port: int = RS_DEFAULT_PORT):
         super().__init__()
         self._host: str = Node._compute_host(node_reference)
@@ -166,6 +171,7 @@ class Node(object):
         self._config_port = config_port
         self._crawler_port = crawler_port
         self._md_port: int = md_port
+        self._poller_port: int = poller_port
         self._rs_port: int = rs_port
 
     @_get_port_template('_config_port', CONFIG_DEFAULT_PORT)
@@ -181,6 +187,10 @@ class Node(object):
 
     @_get_port_template('_md_port', MD_DEFAULT_PORT)
     def get_md_port(self: Node) -> int:
+        pass
+
+    @_get_port_template('_poller_port', POLLER_DEFAULT_PORT)
+    def get_poller_port(self: Node) -> int:
         pass
 
     @_get_port_template('_rs_port', RS_DEFAULT_PORT)
@@ -210,12 +220,28 @@ class Node(object):
     def make_md_conf(self, needs_auth: bool = True) -> md.Configuration:
         pass
 
+    @_make_conf_template(poller.Configuration, get_poller_port)
+    def make_poller_conf(self, needs_auth: bool = True) -> poller.Configuration:
+        pass
+
     @_make_conf_template(rs.Configuration, get_rs_port)
     def make_rs_conf(self, needs_auth: bool = True) -> rs.Configuration:
         pass
 
     @_set_port_template('_config_port')
     def set_config_port(self, port: int) -> Node:
+        pass
+
+    @_set_port_template('_crawler_port')
+    def set_crawler_port(self, port: int) -> Node:
+        pass
+
+    @_set_port_template('_md_port')
+    def set_md_port(self, port: int) -> Node:
+        pass
+
+    @_set_port_template('_poller_port')
+    def set_poller_port(self, port: int) -> Node:
         pass
 
     @_set_port_template('_rs_port')
@@ -312,6 +338,7 @@ PageInfoResultT = Union[
     config.AuConfigPageInfo,
     crawler.CrawlPager, crawler.JobPager, crawler.UrlPager,
     md.AuMetadataPageInfo, md.JobPageInfo,
+    poller.PollerPageInfo, poller.RepairPageInfo, poller.UrlPageInfo,
     rs.ArtifactPageInfo, rs.AuidPageInfo,
 ]
 

@@ -45,9 +45,9 @@ class PollDetailApi(object):
         :param str poll_key: The pollKey from the PollDetail. (required)
         :param str peer_id: The peerId from the Poll Detail.PeerData. (required)
         :param VoterUrlsEnum urls: The voter urls to return. (required)
-        :param int page: The page number
-        :param int size: The page size
-        :return: UrlPager
+        :param int limit: The requested maximum number of URLs per response
+        :param str continuation_token: The continuation token of the next page of URLs to be returned
+        :return: UrlPageInfo
                  If the method is called asynchronously,
                  returns the request thread.
         """
@@ -71,14 +71,14 @@ class PollDetailApi(object):
         :param str poll_key: The pollKey from the PollDetail. (required)
         :param str peer_id: The peerId from the Poll Detail.PeerData. (required)
         :param VoterUrlsEnum urls: The voter urls to return. (required)
-        :param int page: The page number
-        :param int size: The page size
-        :return: UrlPager
+        :param int limit: The requested maximum number of URLs per response
+        :param str continuation_token: The continuation token of the next page of URLs to be returned
+        :return: UrlPageInfo
                  If the method is called asynchronously,
                  returns the request thread.
         """
 
-        all_params = ['poll_key', 'peer_id', 'urls', 'page', 'size']  # noqa: E501
+        all_params = ['poll_key', 'peer_id', 'urls', 'limit', 'continuation_token']  # noqa: E501
         all_params.append('async_req')
         all_params.append('_return_http_data_only')
         all_params.append('_preload_content')
@@ -117,10 +117,10 @@ class PollDetailApi(object):
         query_params = []
         if 'urls' in params:
             query_params.append(('urls', params['urls']))  # noqa: E501
-        if 'page' in params:
-            query_params.append(('page', params['page']))  # noqa: E501
-        if 'size' in params:
-            query_params.append(('size', params['size']))  # noqa: E501
+        if 'limit' in params:
+            query_params.append(('limit', params['limit']))  # noqa: E501
+        if 'continuation_token' in params:
+            query_params.append(('continuationToken', params['continuation_token']))  # noqa: E501
 
         header_params = {}
 
@@ -143,7 +143,7 @@ class PollDetailApi(object):
             body=body_params,
             post_params=form_params,
             files=local_var_files,
-            response_type='UrlPager',  # noqa: E501
+            response_type='UrlPageInfo',  # noqa: E501
             auth_settings=auth_settings,
             async_req=params.get('async_req'),
             _return_http_data_only=params.get('_return_http_data_only'),
@@ -163,9 +163,9 @@ class PollDetailApi(object):
         :param async_req bool
         :param str poll_key: The pollKey as listed in the PollDetail object. (required)
         :param RepairTypeEnum repair: The repair queue elements to return. (required)
-        :param int page: The page number.
-        :param int size: The size of the page.
-        :return: RepairPager
+        :param int limit: The requested maximum number of repair items per response
+        :param str continuation_token: The continuation token of the next page of repair items to be returned
+        :return: RepairPageInfo
                  If the method is called asynchronously,
                  returns the request thread.
         """
@@ -188,14 +188,14 @@ class PollDetailApi(object):
         :param async_req bool
         :param str poll_key: The pollKey as listed in the PollDetail object. (required)
         :param RepairTypeEnum repair: The repair queue elements to return. (required)
-        :param int page: The page number.
-        :param int size: The size of the page.
-        :return: RepairPager
+        :param int limit: The requested maximum number of repair items per response
+        :param str continuation_token: The continuation token of the next page of repair items to be returned
+        :return: RepairPageInfo
                  If the method is called asynchronously,
                  returns the request thread.
         """
 
-        all_params = ['poll_key', 'repair', 'page', 'size']  # noqa: E501
+        all_params = ['poll_key', 'repair', 'limit', 'continuation_token']  # noqa: E501
         all_params.append('async_req')
         all_params.append('_return_http_data_only')
         all_params.append('_preload_content')
@@ -228,10 +228,10 @@ class PollDetailApi(object):
         query_params = []
         if 'repair' in params:
             query_params.append(('repair', params['repair']))  # noqa: E501
-        if 'page' in params:
-            query_params.append(('page', params['page']))  # noqa: E501
-        if 'size' in params:
-            query_params.append(('size', params['size']))  # noqa: E501
+        if 'limit' in params:
+            query_params.append(('limit', params['limit']))  # noqa: E501
+        if 'continuation_token' in params:
+            query_params.append(('continuationToken', params['continuation_token']))  # noqa: E501
 
         header_params = {}
 
@@ -254,7 +254,7 @@ class PollDetailApi(object):
             body=body_params,
             post_params=form_params,
             files=local_var_files,
-            response_type='RepairPager',  # noqa: E501
+            response_type='RepairPageInfo',  # noqa: E501
             auth_settings=auth_settings,
             async_req=params.get('async_req'),
             _return_http_data_only=params.get('_return_http_data_only'),
@@ -274,9 +274,9 @@ class PollDetailApi(object):
         :param async_req bool
         :param str poll_key: The pollKey as listed in the PollDetail object. (required)
         :param TallyTypeEnum tally: The kind of tally element to return. (required)
-        :param int page: The page number.
-        :param int size: The size of the page.
-        :return: UrlPager
+        :param int limit: The requested maximum number of URLs per response
+        :param str continuation_token: The continuation token of the next page of URLs to be returned
+        :return: UrlPageInfo
                  If the method is called asynchronously,
                  returns the request thread.
         """
@@ -299,14 +299,14 @@ class PollDetailApi(object):
         :param async_req bool
         :param str poll_key: The pollKey as listed in the PollDetail object. (required)
         :param TallyTypeEnum tally: The kind of tally element to return. (required)
-        :param int page: The page number.
-        :param int size: The size of the page.
-        :return: UrlPager
+        :param int limit: The requested maximum number of URLs per response
+        :param str continuation_token: The continuation token of the next page of URLs to be returned
+        :return: UrlPageInfo
                  If the method is called asynchronously,
                  returns the request thread.
         """
 
-        all_params = ['poll_key', 'tally', 'page', 'size']  # noqa: E501
+        all_params = ['poll_key', 'tally', 'limit', 'continuation_token']  # noqa: E501
         all_params.append('async_req')
         all_params.append('_return_http_data_only')
         all_params.append('_preload_content')
@@ -339,10 +339,10 @@ class PollDetailApi(object):
         query_params = []
         if 'tally' in params:
             query_params.append(('tally', params['tally']))  # noqa: E501
-        if 'page' in params:
-            query_params.append(('page', params['page']))  # noqa: E501
-        if 'size' in params:
-            query_params.append(('size', params['size']))  # noqa: E501
+        if 'limit' in params:
+            query_params.append(('limit', params['limit']))  # noqa: E501
+        if 'continuation_token' in params:
+            query_params.append(('continuationToken', params['continuation_token']))  # noqa: E501
 
         header_params = {}
 
@@ -365,7 +365,7 @@ class PollDetailApi(object):
             body=body_params,
             post_params=form_params,
             files=local_var_files,
-            response_type='UrlPager',  # noqa: E501
+            response_type='UrlPageInfo',  # noqa: E501
             auth_settings=auth_settings,
             async_req=params.get('async_req'),
             _return_http_data_only=params.get('_return_http_data_only'),

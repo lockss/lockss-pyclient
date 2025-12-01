@@ -35,7 +35,7 @@ class ServiceApi(object):
     def call_poll(self, body, **kwargs):  # noqa: E501
         """Send a request to call a poll to the poller  # noqa: E501
 
-        Use the information found in the descriptor object to initiate a  poll.  # noqa: E501
+        Use the information found in the descriptor object to initiate a poll.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.call_poll(body, async_req=True)
@@ -57,7 +57,7 @@ class ServiceApi(object):
     def call_poll_with_http_info(self, body, **kwargs):  # noqa: E501
         """Send a request to call a poll to the poller  # noqa: E501
 
-        Use the information found in the descriptor object to initiate a  poll.  # noqa: E501
+        Use the information found in the descriptor object to initiate a poll.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.call_poll_with_http_info(body, async_req=True)

@@ -80,7 +80,7 @@ paths:
       - service
       summary: Send a request to call a poll to the poller
       description: Use the information found in the descriptor object to initiate
-        a  poll.
+        a poll.
       operationId: callPoll
       # new roles: ROLE_AU_ADMIN
       requestBody:
@@ -179,40 +179,23 @@ paths:
         required: true
         schema:
           $ref: '#/components/schemas/tallyTypeEnum'
-      - name: page
+      - name: limit
         in: query
-        description: The page number.
+        description: The requested maximum number of URLs per response
         schema:
           type: integer
-      - name: size
+      - name: continuationToken
         in: query
-        description: The size of the page.
+        description: The continuation token of the next page of URLs to be returned
         schema:
-          type: integer
+          type: string
       responses:
         200:
           description: A pageable list of urls for given tally type.
-          headers:
-            X-Page-Count:
-              description: The total number of pages.
-              schema:
-                type: integer
-            X-Page-Number:
-              description: The current page number
-              schema:
-                type: integer
-            X-Total-Count:
-              description: The total number of items.
-              schema:
-                type: integer
-            X-Page-Size:
-              description: The number of items per page.
-              schema:
-                type: integer
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UrlPager'
+                $ref: '#/components/schemas/UrlPageInfo'
         default:
           description: The resulting error payload.
           content:
@@ -240,40 +223,23 @@ paths:
         required: true
         schema:
           $ref: '#/components/schemas/repairTypeEnum'
-      - name: page
+      - name: limit
         in: query
-        description: The page number.
+        description: The requested maximum number of repair items per response
         schema:
           type: integer
-      - name: size
+      - name: continuationToken
         in: query
-        description: The size of the page.
+        description: The continuation token of the next page of repair items to be returned
         schema:
-          type: integer
+          type: string
       responses:
         200:
           description: A pageable list of repair queue elements.
-          headers:
-            X-Page-Count:
-              description: The total number of pages.
-              schema:
-                type: integer
-            X-Page-Number:
-              description: The current page number.
-              schema:
-                type: integer
-            X-Total-Count:
-              description: The total number of items.
-              schema:
-                type: integer
-            X-Page-Size:
-              description: The number of items per page.
-              schema:
-                type: integer
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RepairPager'
+                $ref: '#/components/schemas/RepairPageInfo'
         default:
           description: The resulting error payload.
           content:
@@ -308,40 +274,23 @@ paths:
         required: true
         schema:
           $ref: '#/components/schemas/voterUrlsEnum'
-      - name: page
+      - name: limit
         in: query
-        description: The page number
+        description: The requested maximum number of URLs per response
         schema:
           type: integer
-      - name: size
+      - name: continuationToken
         in: query
-        description: The page size
+        description: The continuation token of the next page of URLs to be returned
         schema:
-          type: integer
+          type: string
       responses:
         200:
           description: A pageable list of voter urls with a given status.
-          headers:
-            X-Page-Count:
-              description: The total number of pages.
-              schema:
-                type: integer
-            X-Page-Number:
-              description: The current page number.
-              schema:
-                type: integer
-            X-Total-Count:
-              description: The total number of items.
-              schema:
-                type: integer
-            X-Page-Size:
-              description: The number of items per page.
-              schema:
-                type: integer
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UrlPager'
+                $ref: '#/components/schemas/UrlPageInfo'
         default:
           description: The resulting error payload.
           content:
@@ -354,49 +303,27 @@ paths:
       - poller-polls
       summary: Get the list of recent polls in which this peer is the poller.
       description: Get the list of recent polls in which this peer is the poller
-        from the poll queue. If size and page are passed in, use those arguments
-        to limit return data.
+        from the poll queue.
       operationId: getPollsAsPoller
       # new roles: ROLE_AU_ADMIN
       parameters:
-      - name: size
+      - name: limit
         in: query
-        description: Size of the page to retrieve.
+        description: The requested maximum number of poll summaries per response
         schema:
           type: integer
-          format: int32
-        example: 10
-      - name: page
+      - name: continuationToken
         in: query
-        description: Number of the page to retrieve.
+        description: The continuation token of the next page of poll summaries to be returned
         schema:
-          type: integer
-          format: int32
-        example: 1
+          type: string
       responses:
         200:
-          description: A pageable list has been returned.
-          headers:
-            X-Page-Count:
-              description: The total number of pages.
-              schema:
-                type: integer
-            X-Page-Number:
-              description: The current page number.
-              schema:
-                type: integer
-            X-Total-Count:
-              description: The total number of items.
-              schema:
-                type: integer
-            X-Page-Size:
-              description: The number of items per page.
-              schema:
-                type: integer
+          description: The requested poll summaries
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PollerPager'
+                $ref: '#/components/schemas/PollerPageInfo'
         default:
           description: The resulting error payload.
           content:
@@ -438,49 +365,27 @@ paths:
       - voter-polls
       summary: Get the list of recent polls in which this peer is a voter.
       description: Get the list of recent polls in which this peer is a voter
-        from the poll queue. If size and page are passed in, use those arguments
-        to limit return data.
+        from the poll queue.
       operationId: getPollsAsVoter
       # new roles: ROLE_AU_ADMIN
       parameters:
-      - name: size
+      - name: limit
         in: query
-        description: Size of the page to retrieve.
+        description: The requested maximum number of poll summaries per response
         schema:
           type: integer
-          format: int32
-        example: 10
-      - name: page
+      - name: continuationToken
         in: query
-        description: Number of the page to retrieve.
+        description: The continuation token of the next page of poll summaries to be returned
         schema:
-          type: integer
-          format: int32
-        example: 1
+          type: string
       responses:
         200:
-          description: A pageable list has been returned.
-          headers:
-            X-Page-Count:
-              description: The total number of pages.
-              schema:
-                type: integer
-            X-Page-Number:
-              description: The current page number.
-              schema:
-                type: integer
-            X-Total-Count:
-              description: The total number of items.
-              schema:
-                type: integer
-            X-Page-Size:
-              description: The number of items per page.
-              schema:
-                type: integer
+          description: The requested poll summaries
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VoterPager'
+                $ref: '#/components/schemas/VoterPageInfo'
         default:
           description: The resulting error payload.
           content:
@@ -1080,32 +985,6 @@ components:
           description: A description of this link
           example: pollerOnly
       description: A wrapper for a link and a string description.
-    PageDesc:
-      required:
-      - page
-      - size
-      - total
-      type: object
-      properties:
-        page:
-          type: integer
-          description: The page number
-          example: 10
-        size:
-          type: integer
-          description: The size or number of elements on a page
-          example: 5
-        total:
-          type: integer
-          description: The mTotal number of elements.
-          example: 150
-        prevPage:
-          type: string
-          description: The url of the prev page of results or null
-        nextPage:
-          type: string
-          description: The url to the next page of results or null.
-      description: The information needed to page in a long list of data
     PeerData:
       required:
       - peerId
@@ -1315,19 +1194,6 @@ components:
         repairQueue:
           $ref: '#/components/schemas/RepairQueue'
       description: The details of a poll being performed or queued by the Poller
-    PollerPager:
-      required:
-      - pageDesc
-      type: object
-      properties:
-        pageDesc:
-          $ref: '#/components/schemas/PageDesc'
-        polls:
-          type: array
-          description: The list of polls for the current page or null
-          items:
-            $ref: '#/components/schemas/PollerSummary'
-      description: A page of poller poll summaries.
     PollerSummary:
       required:
       - auId
@@ -1409,19 +1275,6 @@ components:
           - Won
       description: structure used to define a repair source for url. if the source
         is null than repair from publisher
-    RepairPager:
-      required:
-      - pageDesc
-      type: object
-      properties:
-        pageDesc:
-          $ref: '#/components/schemas/PageDesc'
-        repairs:
-          type: array
-          description: The list of repair data on this page or null.
-          items:
-            $ref: '#/components/schemas/RepairData'
-      description: A Pager for a list of urls found in poll details.
     RepairQueue:
       required:
       - numActive
@@ -1544,19 +1397,6 @@ components:
         - error
         - noQuorum
         - tooClose
-    UrlPager:
-      required:
-      - pageDesc
-      type: object
-      properties:
-        pageDesc:
-          $ref: '#/components/schemas/PageDesc'
-        urls:
-          type: array
-          description: The urls on this page.
-          items:
-            type: string
-      description: A Pager for a list of urls found in poll details.
     voteWsResult:
       required:
       - auId
@@ -1655,19 +1495,25 @@ components:
           type: string
           description: The error which caused the poll to fail.
       description: The details of a poll being performed or queued as the Voter.
-    VoterPager:
+    PollerPageInfo:
       required:
-      - pageDesc
+      - polls
+      - pageInfo
       type: object
       properties:
-        pageDesc:
-          $ref: '#/components/schemas/PageDesc'
         polls:
+          title: Polls
+          description: The poll summaries included in the page
           type: array
-          description: The list of polls for the current page or null
           items:
-            $ref: '#/components/schemas/VoterSummary'
-      description: A page of voter poll summary.
+            $ref: '#/components/schemas/PollerSummary'
+          nullable: false
+        pageInfo:
+          title: Page Information
+          description: Information about the page
+          $ref: '#/components/schemas/PageInfo'
+          nullable: false
+      description: A page of poller poll summaries.
     VoterSummary:
       required:
       - auId
@@ -1710,6 +1556,101 @@ components:
         - disagreed
         - pollerOnly
         - voterOnly
+    VoterPageInfo:
+      required:
+      - polls
+      - pageInfo
+      type: object
+      properties:
+        polls:
+          title: Polls
+          description: The poll summaries included in the page
+          type: array
+          items:
+            $ref: '#/components/schemas/VoterSummary'
+          nullable: false
+        pageInfo:
+          title: Page Information
+          description: Information about the page
+          $ref: '#/components/schemas/PageInfo'
+          nullable: false
+      description: A page of voter poll summaries.
+    UrlPageInfo:
+      required:
+      - urls
+      - pageInfo
+      type: object
+      properties:
+        urls:
+          title: URLs
+          description: The URLs included in the page
+          type: array
+          items:
+            type: string
+          nullable: false
+        pageInfo:
+          title: Page Information
+          description: Information about the page
+          $ref: '#/components/schemas/PageInfo'
+          nullable: false
+      description: A page of URLs from poll tally data.
+    RepairPageInfo:
+      required:
+      - repairs
+      - pageInfo
+      type: object
+      properties:
+        repairs:
+          title: Repairs
+          description: The repair items included in the page
+          type: array
+          items:
+            $ref: '#/components/schemas/RepairData'
+          nullable: false
+        pageInfo:
+          title: Page Information
+          description: Information about the page
+          $ref: '#/components/schemas/PageInfo'
+          nullable: false
+      description: A page of repair queue elements.
+    PageInfo:
+      title: Page Information
+      description: The information related to pagination of content
+      type: object
+      required:
+      - totalCount
+      - itemsInPage
+      - continuationToken
+      - curLink
+      - nextLink
+      properties:
+        totalCount:
+          title: Total Count
+          description: The total number of items
+          type: integer
+          format: int32
+          nullable: true
+        itemsInPage:
+          title: Items in Page
+          description: The number of items in the page
+          type: integer
+          format: int32
+          nullable: false
+        continuationToken:
+          title: Continuation Token
+          description: The continuation token
+          type: string
+          nullable: true
+        curLink:
+          title: Current Request
+          description: The link of the current request
+          type: string
+          nullable: false
+        nextLink:
+          title: Next Request
+          description: The link of the next request
+          type: string
+          nullable: true
   securitySchemes:
     basicAuth:
       type: http

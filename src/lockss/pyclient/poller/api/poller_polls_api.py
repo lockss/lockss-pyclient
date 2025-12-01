@@ -130,16 +130,16 @@ class PollerPollsApi(object):
     def get_polls_as_poller(self, **kwargs):  # noqa: E501
         """Get the list of recent polls in which this peer is the poller.  # noqa: E501
 
-        Get the list of recent polls in which this peer is the poller from the poll queue. If size and page are passed in, use those arguments to limit return data.  # noqa: E501
+        Get the list of recent polls in which this peer is the poller from the poll queue.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.get_polls_as_poller(async_req=True)
         >>> result = thread.get()
 
         :param async_req bool
-        :param int size: Size of the page to retrieve.
-        :param int page: Number of the page to retrieve.
-        :return: PollerPager
+        :param int limit: The requested maximum number of poll summaries per response
+        :param str continuation_token: The continuation token of the next page of poll summaries to be returned
+        :return: PollerPageInfo
                  If the method is called asynchronously,
                  returns the request thread.
         """
@@ -153,21 +153,21 @@ class PollerPollsApi(object):
     def get_polls_as_poller_with_http_info(self, **kwargs):  # noqa: E501
         """Get the list of recent polls in which this peer is the poller.  # noqa: E501
 
-        Get the list of recent polls in which this peer is the poller from the poll queue. If size and page are passed in, use those arguments to limit return data.  # noqa: E501
+        Get the list of recent polls in which this peer is the poller from the poll queue.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.get_polls_as_poller_with_http_info(async_req=True)
         >>> result = thread.get()
 
         :param async_req bool
-        :param int size: Size of the page to retrieve.
-        :param int page: Number of the page to retrieve.
-        :return: PollerPager
+        :param int limit: The requested maximum number of poll summaries per response
+        :param str continuation_token: The continuation token of the next page of poll summaries to be returned
+        :return: PollerPageInfo
                  If the method is called asynchronously,
                  returns the request thread.
         """
 
-        all_params = ['size', 'page']  # noqa: E501
+        all_params = ['limit', 'continuation_token']  # noqa: E501
         all_params.append('async_req')
         all_params.append('_return_http_data_only')
         all_params.append('_preload_content')
@@ -188,10 +188,10 @@ class PollerPollsApi(object):
         path_params = {}
 
         query_params = []
-        if 'size' in params:
-            query_params.append(('size', params['size']))  # noqa: E501
-        if 'page' in params:
-            query_params.append(('page', params['page']))  # noqa: E501
+        if 'limit' in params:
+            query_params.append(('limit', params['limit']))  # noqa: E501
+        if 'continuation_token' in params:
+            query_params.append(('continuationToken', params['continuation_token']))  # noqa: E501
 
         header_params = {}
 
@@ -214,7 +214,7 @@ class PollerPollsApi(object):
             body=body_params,
             post_params=form_params,
             files=local_var_files,
-            response_type='PollerPager',  # noqa: E501
+            response_type='PollerPageInfo',  # noqa: E501
             auth_settings=auth_settings,
             async_req=params.get('async_req'),
             _return_http_data_only=params.get('_return_http_data_only'),
