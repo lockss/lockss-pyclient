@@ -33,10 +33,11 @@ Base of the lockss.pyclient package (repository service).
 """
 
 from collections.abc import Iterable
-from multipart import MultipartParser
 from typing import Optional, Union
 
-from .base import Node, bytes_repr_to_multipart, bytes_repr_to_string, _first, _single_request_template, _paged_request_iterator_template, _RS
+from multipart import MultipartParser
+
+from ._internal_common import Node, bytes_repr_to_multipart, bytes_repr_to_string, _first, _single_request_template, _paged_request_iterator_template, _RS
 from . import rs
 
 

@@ -38,8 +38,8 @@ from typing import Optional
 
 from multipart import MultipartParser
 
-from lockss.pyclient import config
-from lockss.pyclient.base import Node, bytes_repr_to_multipart, _paged_request_iterator_template, _single_request_template
+from ._internal_common import Node, bytes_repr_to_multipart, _paged_request_iterator_template, _single_request_template
+from . import config
 
 
 @_single_request_template(Node.make_config_conf,

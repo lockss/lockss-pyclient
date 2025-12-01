@@ -35,7 +35,7 @@ Base of the lockss.pyclient package (crawler service).
 from collections.abc import Iterable
 from typing import Optional
 
-from .base import Node, _paged_request_iterator_template, _single_request_template
+from ._internal_common import Node, _paged_request_iterator_template, _single_request_template
 from . import crawler
 
 
