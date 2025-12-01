@@ -309,7 +309,7 @@ def _single_request_template(make_conf: ConfFunction,
 
 
 PageInfoResultT = Union[
-    # FIXME list more paged types here
+    config.AuConfigPageInfo,
     crawler.CrawlPager, crawler.JobPager, crawler.UrlPager,
     md.AuMetadataPageInfo, md.JobPageInfo,
     rs.ArtifactPageInfo, rs.AuidPageInfo,

@@ -341,15 +341,24 @@ paths:
       description: Get the configuration of all AUs
       operationId: getAllAuConfig
       # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: limit
+          in: query
+          description: The requested maximum number of AU configurations per response
+          schema:
+            type: integer
+        - name: continuationToken
+          in: query
+          description: The continuation token of the next page of AU configurations to be returned
+          schema:
+            type: string
       responses:
         "200":
-          description: The configuration of all AUs
+          description: The requested AU configurations
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/AuConfiguration'
+                $ref: '#/components/schemas/AuConfigPageInfo'
         default:
           description: The resulting error payload.
           content: {}
@@ -1337,6 +1346,24 @@ components:
           additionalProperties:
             type: string
             description: The value of the configuration for the key
+    AuConfigPageInfo:
+      type: object
+      required:
+        - auConfigs
+        - pageInfo
+      properties:
+        auConfigs:
+          title: AU Configurations
+          description: The AU configurations included in the page
+          type: array
+          items:
+            $ref: '#/components/schemas/AuConfiguration'
+          nullable: false
+        pageInfo:
+          title: Page Information
+          description: Information about the page
+          $ref: '#/components/schemas/PageInfo'
+          nullable: false
     AuStateBean:
       # Modeled from org.lockss.state.AuStateBean in lockss-core
       # Returned by org.lockss.laaws.config.impl.AustatesApiServiceImpl.getAuState(String) but *not* declared in GET /austates/{auid}
@@ -1681,6 +1708,44 @@ components:
           nullable: true
           additionalProperties:
             $ref: '#/components/schemas/PeerAgreement'
+    PageInfo:
+      title: Page Information
+      description: The information related to pagination of content
+      type: object
+      required:
+        - totalCount
+        - itemsInPage
+        - continuationToken
+        - curLink
+        - nextLink
+      properties:
+        totalCount:
+          title: Total Count
+          description: The total number of items
+          type: integer
+          format: int32
+          nullable: true
+        itemsInPage:
+          title: Items in Page
+          description: The number of items in the page
+          type: integer
+          format: int32
+          nullable: false
+        continuationToken:
+          title: Continuation Token
+          description: The continuation token
+          type: string
+          nullable: true
+        curLink:
+          title: Current Request
+          description: The link of the current request
+          type: string
+          nullable: false
+        nextLink:
+          title: Next Request
+          description: The link of the next request
+          type: string
+          nullable: true
     platformConfigurationWsResult:
       description: The configuration of the platform
       type: object

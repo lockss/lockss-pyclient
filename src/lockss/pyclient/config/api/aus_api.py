@@ -339,7 +339,9 @@ class AusApi(object):
         >>> result = thread.get()
 
         :param async_req bool
-        :return: list[AuConfiguration]
+        :param int limit: The requested maximum number of AU configurations per response
+        :param str continuation_token: The continuation token of the next page of AU configurations to be returned
+        :return: AuConfigPageInfo
                  If the method is called asynchronously,
                  returns the request thread.
         """
@@ -360,12 +362,14 @@ class AusApi(object):
         >>> result = thread.get()
 
         :param async_req bool
-        :return: list[AuConfiguration]
+        :param int limit: The requested maximum number of AU configurations per response
+        :param str continuation_token: The continuation token of the next page of AU configurations to be returned
+        :return: AuConfigPageInfo
                  If the method is called asynchronously,
                  returns the request thread.
         """
 
-        all_params = []  # noqa: E501
+        all_params = ['limit', 'continuation_token']  # noqa: E501
         all_params.append('async_req')
         all_params.append('_return_http_data_only')
         all_params.append('_preload_content')
@@ -386,6 +390,10 @@ class AusApi(object):
         path_params = {}
 
         query_params = []
+        if 'limit' in params:
+            query_params.append(('limit', params['limit']))  # noqa: E501
+        if 'continuation_token' in params:
+            query_params.append(('continuationToken', params['continuation_token']))  # noqa: E501
 
         header_params = {}
 
@@ -408,7 +416,7 @@ class AusApi(object):
             body=body_params,
             post_params=form_params,
             files=local_var_files,
-            response_type='list[AuConfiguration]',  # noqa: E501
+            response_type='AuConfigPageInfo',  # noqa: E501
             auth_settings=auth_settings,
             async_req=params.get('async_req'),
             _return_http_data_only=params.get('_return_http_data_only'),

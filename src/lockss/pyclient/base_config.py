@@ -32,11 +32,14 @@
 Base of the lockss.pyclient package (configuration service).
 """
 
+from collections.abc import Iterable
 from datetime import datetime
+from typing import Optional
+
 from multipart import MultipartParser
 
 from lockss.pyclient import config
-from lockss.pyclient.base import Node, bytes_repr_to_multipart, _single_request_template
+from lockss.pyclient.base import Node, bytes_repr_to_multipart, _paged_request_iterator_template, _single_request_template
 
 
 @_single_request_template(Node.make_config_conf,
@@ -62,8 +65,25 @@ def config_get_au_config(node: Node,
                           config.ApiClient,
                           config.AusApi,
                           config.AusApi.get_all_au_config)
-def config_get_au_configs(node: Node) -> list[config.AuConfiguration]:
+def config_get_au_configs_page(node: Node,
+                               limit: Optional[int] = None,
+                               continuation_token: Optional[str] = None) -> config.AuConfigPageInfo:
     pass
+
+
+@_paged_request_iterator_template(config_get_au_configs_page)
+def config_get_au_configs_iter(node: Node,
+                               limit: Optional[int] = None) -> Iterable[config.AuConfigPageInfo]:
+    pass
+
+
+def config_get_au_configs(node: Node,
+                          limit: Optional[int] = None) -> list[config.AuConfiguration]:
+    ret: list[config.AuConfiguration] = []
+    for page in config_get_au_configs_iter(node,
+                                           limit=limit):
+        ret.extend(page.au_configs)
+    return ret
 
 
 @_single_request_template(Node.make_config_conf,

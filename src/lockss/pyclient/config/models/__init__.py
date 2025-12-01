@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from lockss.pyclient.config.models.access_type import AccessType
 from lockss.pyclient.config.models.api_status import ApiStatus
 from lockss.pyclient.config.models.au_agreements import AuAgreements
+from lockss.pyclient.config.models.au_config_page_info import AuConfigPageInfo
 from lockss.pyclient.config.models.au_configuration import AuConfiguration
 from lockss.pyclient.config.models.au_state_bean import AuStateBean
 from lockss.pyclient.config.models.au_status import AuStatus
@@ -28,6 +29,7 @@ from lockss.pyclient.config.models.content_configuration_result import ContentCo
 from lockss.pyclient.config.models.dated_peer_id_set_impl import DatedPeerIdSetImpl
 from lockss.pyclient.config.models.file_section_name_body import FileSectionNameBody
 from lockss.pyclient.config.models.hash_result import HashResult
+from lockss.pyclient.config.models.page_info import PageInfo
 from lockss.pyclient.config.models.peer_agreement import PeerAgreement
 from lockss.pyclient.config.models.peer_agreements import PeerAgreements
 from lockss.pyclient.config.models.platform_configuration_ws_result import PlatformConfigurationWsResult
