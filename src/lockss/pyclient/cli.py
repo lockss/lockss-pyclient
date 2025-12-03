@@ -28,54 +28,55 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from typing import Optional
-import inspect
+from pathlib import Path
+from typing import Literal, Optional, Union
 
 from io import BytesIO
-from multipart import MultipartParser
-from pydantic.v1 import BaseModel as BaseModel1, Field as Field1, NonNegativeInt as NonNegativeInt1
-
 from lockss.pybasic.cliutil import BaseCli, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, VERSION_DESCRIPTION
-from lockss.pybasic.errorutil import InternalError
+from multipart import MultipartParser
+from pydantic.v1 import BaseModel as BaseModel1, Field as Field1, NonNegativeInt as NonNegativeInt1, root_validator as root_validator1
 
-from . import __copyright__, __license__, __version__
 from .output import create_output_options
-from lockss.pyclient import rs
-
-
-RS_PORT: NonNegativeInt1 = NonNegativeInt1(24610)
-RS_DESCRIPTION="LOCKSS Repository Service commands"
+from . import Node, __copyright__, __license__, __version__, CONFIG_DEFAULT_PORT, CRAWLER_DEFAULT_PORT, MD_DEFAULT_PORT, POLLER_DEFAULT_PORT, RS_DEFAULT_PORT
+from . import rs
 
 
 class NodeOptions(BaseModel1):
-    host: str = Field1(aliases=["-H"], description="The IP address or FQDN of the LOCKSS node, optionally followed by a colon and a port number")
+    host: str = Field1(aliases=["-H"], description="The IP address or FQDN of the LOCKSS node, optionally followed by a colon and port number")
+    repo: NonNegativeInt1 = Field1(RS_DEFAULT_PORT, aliases=['--repository-port', '-R'], description='Repository Service port')
+    config: NonNegativeInt1 = Field1(CONFIG_DEFAULT_PORT, aliases=['--configuration-port', '-C'], description='Configuration Service port')
+    poller: NonNegativeInt1 = Field1(POLLER_DEFAULT_PORT, aliases=['--poller-port', '-L'], description='Poller Service port')
+    crawler: NonNegativeInt1 = Field1(CRAWLER_DEFAULT_PORT, aliases=['--crawler-port', '-W'], description='Crawler Service port')
+    md: NonNegativeInt1 = Field1(MD_DEFAULT_PORT, aliases=['--metadata-port', '-M'], description='Metadata Service port')
 
-    def make_conf(self, default_port: NonNegativeInt1) -> rs.Configuration:
-        conf = rs.Configuration()
-        h, _, p = self.host.partition(':')
-        conf.host = f'http://{self.host}{"" if p else f":{default_port}"}'
-        return conf
+    def make_node(self, **kwargs) -> Node:
+        return Node(self.host,
+                    rs_port=self.repo,
+                    config_port=self.config,
+                    poller_port=self.poller,
+                    crawler_port=self.crawler,
+                    md_port=self.md,
+                    **kwargs)
 
 
 class AuthOptions(NodeOptions):
-    username: str = Field1(aliases=["-U"], description="LOCKSS API username")
-    password: str = Field1(aliases=["-P"], description="LOCKSS API password")
+    username: str = Field1(aliases=["-U"], description="Username")
+    password: Optional[str] = Field1(aliases=["-P"], description="Password")
 
-    def make_conf(self, default_port: NonNegativeInt1) -> rs.Configuration:
-        conf = super().make_conf(default_port)
-        conf.username = self.username
-        conf.password = self.password
-        return conf
+    def make_node(self) -> Node:
+        return super().make_node(username=self.username,
+                                 password=self.password)
 
 
 class NamespaceOptions(BaseModel1):
-    namespace: Optional[str] = Field1(inspect.getfullargspec(rs.Artifact.__init__).defaults[1],
-                                      aliases=["-n"],
-                                      description="LOCKSS namespace")
+    namespace: Optional[str] = Field1(aliases=["-n"], description="Namespace")
+
+    def get_namespace(self, default: str):
+        return self.namespace if self.namespace else default
 
 
 class AuidOptions(NamespaceOptions):
-    auid: str = Field1(aliases=["-a"], description="Archival Unit ID")
+    auid: str = Field1(aliases=["-a"], description="Archival Unit ID (AUID)")
 
 
 class UrlOptions(BaseModel1):
@@ -87,13 +88,43 @@ class UrlPrefixOptions(UrlOptions):
 
 
 class UuidOptions(NamespaceOptions):
-    uuid: str = Field1(aliases=["-w"], description="Identifier of the artifact")
+    uuid: str = Field1(aliases=["-w"], description="Artifact identifier")
 
 
 class IncludeContentOptions(BaseModel1):
     always: Optional[bool] = Field1(description='Always include the content in the multipart response')
-    if_small: Optional[bool] = Field1(description='Include the content in the multipart response if it is relatively small')
+    if_small: Optional[bool] = Field1(alias='if-small', description='Include the content in the multipart response if it is relatively small')
     never: Optional[bool] = Field1(description='Never include the content in the multipart response')
+
+    @root_validator1
+    def _validate_at_most_one(cls, values):
+        attrs = ('always', 'if_small', 'never')
+        if len([attr for attr in attrs if values.get(attr)]) > 1:
+            raise ValueError('Expected at most one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
+        return values
+
+    def get_include_content_enum(self, default: rs.IncludeContentEnum) -> rs.IncludeContentEnum:
+        if self.always: return rs.IncludeContentEnum.ALWAYS
+        elif self.if_small: return rs.IncludeContentEnum.IF_SMALL
+        elif self.never: return rs.IncludeContentEnum.NEVER
+        else: return default
+
+
+class VersionsOptions(BaseModel1):
+    all: Optional[bool] = Field1(description='Include all versions of artifacts in results')
+    latest: Optional[bool] = Field1(description='Include only the latest version of artifacts in results')
+
+    @root_validator1
+    def _validate_at_most_one(cls, values):
+        attrs = ('all', 'latest')
+        if len([attr for attr in attrs if values.get(attr)]) > 1:
+            raise ValueError('Expected at most one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
+        return values
+
+    def get_versions_enum(self, default: rs.VersionsEnum) -> rs.VersionsEnum:
+        if self.all: return rs.VersionsEnum.ALL
+        elif self.latest: return rs.VersionsEnum.LATEST
+        else: return default
 
 
 RepoAusSizeOutputOptions = create_output_options('RsAusSizeOutputOptions', rs.AuSize)
@@ -111,15 +142,18 @@ class LockssApi(BaseModel1):
 
         class Artifacts(BaseModel1):
 
-            class ByAuid(AuidOptions, AuthOptions): pass
+            class ByAuid(VersionsOptions, UrlPrefixOptions, AuidOptions, NamespaceOptions, AuthOptions):
+                uncommitted: Optional[bool] = Field1(description='Include uncommitted artifacts in results')
 
-            class ByUrl(UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
+            class ByUrl(VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
 
-            class ByUuid(IncludeContentOptions, UuidOptions, AuthOptions): pass
+            class ByUuid(IncludeContentOptions, UuidOptions, AuthOptions):
+                response: Optional[Union[Path, Literal['-']]] = Field1(description='Store the response headers in the given file, or "-" for standard output')
+                payload: Optional[Union[Path, Literal['-']]] = Field1(description='Store the payload in the given file, or "-" for standard output')
 
             by_auid: Optional[ByAuid] = Field1(alias='by-auid', description='Get artifacts in an Archival Unit')
             by_url: Optional[ByUrl] = Field1(alias="by-url", description="Returns all artifacts that match a given URL or URL prefix and/or version")
-            by_uuid: Optional[ByUuid] = Field1(alias="by-uuid", description="Get artifact and metadata")
+            by_uuid: Optional[ByUuid] = Field1(alias="by-uuid", description="Gets artifacts and artifact metadata")
 
         class Aus(BaseModel1):
 
@@ -150,7 +184,7 @@ class LockssApi(BaseModel1):
 
     copyright: Optional[BaseModel1] = Field1(description=COPYRIGHT_DESCRIPTION)
     license: Optional[BaseModel1] = Field1(description=LICENSE_DESCRIPTION)
-    repo: Optional[Repo] = Field1(description=RS_DESCRIPTION)
+    repo: Optional[Repo] = Field1(description='Repository Service operations')
     version: Optional[BaseModel1] = Field1(description=VERSION_DESCRIPTION)
 
 
