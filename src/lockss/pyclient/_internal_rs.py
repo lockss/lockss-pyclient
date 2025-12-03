@@ -97,7 +97,7 @@ def repo_get_artifacts_by_auid_page(node: Node,
                                     url: Optional[str] = None,
                                     url_prefix: Optional[str] = None,
                                     namespace: str = _first(_RS, '$.paths["/aus/{auid}/artifacts"].get.parameters[?(@.name == "namespace")].schema.default'),
-                                    version: Optional[Union[int, rs.VersionsEnum]] = None,
+                                    versions: Optional[Union[int, rs.VersionsEnum]] = None,
                                     include_uncommitted: Optional[bool] = None,
                                     limit: Optional[int] = None,
                                     continuation_token: Optional[str] = None) -> rs.ArtifactPageInfo:
@@ -110,7 +110,7 @@ def repo_get_artifacts_by_auid_page_iter(node: Node,
                                          url: Optional[str] = None,
                                          url_prefix: Optional[str] = None,
                                          namespace: str = _first(_RS, '$.paths["/aus/{auid}/artifacts"].get.parameters[?(@.name == "namespace")].schema.default'),
-                                         version: Optional[Union[int, rs.VersionsEnum]] = None,
+                                         versions: Optional[Union[int, rs.VersionsEnum]] = None,
                                          include_uncommitted: Optional[bool] = None,
                                          limit: Optional[int] = None) -> Iterable[rs.ArtifactPageInfo]:
     pass
@@ -121,7 +121,7 @@ def repo_get_artifacts_by_auid(node: Node,
                                url: Optional[str] = None,
                                url_prefix: Optional[str] = None,
                                namespace: str = _first(_RS, '$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default'),
-                               version: Optional[Union[int, rs.VersionsEnum]] = None,
+                               versions: Optional[Union[int, rs.VersionsEnum]] = None,
                                include_uncommitted: Optional[bool] = None,
                                limit: Optional[int] = None) -> list[rs.Artifact]:
     ret: list[rs.Artifact] = []
@@ -130,7 +130,7 @@ def repo_get_artifacts_by_auid(node: Node,
                                                      url=url,
                                                      url_prefix=url_prefix,
                                                      namespace=namespace,
-                                                     version=version,
+                                                     versions=versions,
                                                      include_uncommitted=include_uncommitted,
                                                      limit=limit):
         ret.extend(page.artifacts)
