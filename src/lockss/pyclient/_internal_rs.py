@@ -44,6 +44,16 @@ from . import rs
 @_single_request_template(Node.make_rs_conf,
                           rs.ApiClient,
                           rs.ArtifactsApi,
+                          rs.ArtifactsApi.delete_artifact)
+def repo_delete_artifact(node: Node,
+                         uuid: str,
+                         namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}"].put.parameters[?(@.name == "namespace")].schema.default')) -> None:
+    pass
+
+
+@_single_request_template(Node.make_rs_conf,
+                          rs.ApiClient,
+                          rs.ArtifactsApi,
                           rs.ArtifactsApi.get_artifact_data_by_multipart,
                           transform_result=bytes_repr_to_multipart)
 def repo_get_artifact_by_uuid(node: Node,
@@ -249,20 +259,25 @@ def repo_get_storage_info(node: Node) -> rs.StorageInfo:
     pass
 
 
+def repo_update_artifact(node: Node,
+                         uuid: str,
+                         committed: bool,
+                         namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}"].put.parameters[?(@.name == "namespace")].schema.default')) -> rs.Artifact:
+    @_single_request_template(Node.make_rs_conf,
+                              rs.ApiClient,
+                              rs.ArtifactsApi,
+                              rs.ArtifactsApi.update_artifact)
+    def _repo_update_artifact(node: Node,
+                              committed: bool,
+                              uuid: str,
+                              namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}"].put.parameters[?(@.name == "namespace")].schema.default')) -> rs.Artifact:
+        pass
+    return _repo_update_artifact(node,
+                                 committed,
+                                 uuid,
+                                 namespace=namespace)
+
+
 if __name__ == '__main__':
     node = Node('localhost', 'lockss-u')
-    print(repo_get_status(node).to_dict())
-    print(repo_get_namespaces(node))
-    print(repo_get_checksum_algorithms(node))
-    print(repo_get_info(node))
-    print(repo_get_auids(node))
-    auid1 = 'org|lockss|plugin|RegistryPlugin&base_url~http%3A%2F%2Fprops%2Elockss%2Eorg%3A8001%2Fplugins%2Faserl-etd%2F'
-    print(repo_get_au_size(node, auid1))
-    print(repo_get_artifacts_by_auid(node, auid1))
-    url1 = 'http://props.lockss.org:8001/plugins/aserl-etd/FSUETDPlugin.jar'
-    print(repo_get_artifacts_by_url(node, url=url1))
-    uuid1 = '4fa8b54e-9cfb-46ab-a0d6-ed3d0a2910f4'
-    for part in repo_get_artifact_by_uuid(node, uuid1):
-        print(part.name)
-    print(repo_get_artifact_response_by_uuid(node, uuid1))
-    print(repo_get_artifact_payload_by_uuid(node, uuid1))
+    print(type(repo_update_artifact(node, 'e4d7b700-95f1-4ec9-ab8f-7daf9ca7287c', True)))
