@@ -32,17 +32,18 @@
 # See https://stackoverflow.com/questions/33533148/how-do-i-type-hint-a-method-with-the-type-of-the-enclosing-class/33533514#33533514
 from __future__ import annotations
 
+from collections.abc import Iterable
 import json
 import jsonpath
 import sys
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar, Optional, Union
 import warnings
 import yaml
 
 from lockss.pybasic.cliutil import at_most_one
 from lockss.pybasic.outpututil import OutputFormat
-from pydantic.v1 import BaseModel, PositiveInt, create_model, root_validator, validator
-from pydantic.v1.fields import Field, FieldInfo, PrivateAttr
+from pydantic.v1 import BaseModel as BaseModel1, PositiveInt as PositiveInt1, create_model as create_model1, root_validator as root_validator1, validator as validator1
+from pydantic.v1.fields import Field as Field1, FieldInfo as FieldInfo1, PrivateAttr as PrivateAttr1
 import tabulate
 
 
@@ -50,52 +51,76 @@ import tabulate
 SwaggerObject = object
 
 
-class BaseOutputOptions(BaseModel):
-    DEFAULT_INDENT: ClassVar[PositiveInt] = 4
+class BaseOutputOptions(BaseModel1):
+    DEFAULT_INDENT: ClassVar[PositiveInt1] = 4
     DEFAULT_TABULAR: ClassVar[str] = 'tsv'
 
-    x_json: Optional[bool] = Field(False, alias='json', aliases=['-j'], description='(output style) output the result as JSON; default if no output style is specified') # 'json' is a BaseModel name
-    jsonpath: Optional[str] = Field(aliases=['-J'], description='(output style) output the result after applying the given JSONPath')
-    tabular: Optional[bool] = Field(False, aliases=['-t'], description='(output style) output the result in tabular form')
-    yaml: Optional[bool] = Field(False, aliases=['-y'], description='(output style) output the result as YAML')
-    indent: Optional[PositiveInt] = Field(DEFAULT_INDENT, description='(JSON/YAML output) indentation spaces')
-    tabular_format: Optional[str] = Field(DEFAULT_TABULAR, aliases=['-T'], description=f'(output style) output the result in the given tabular format; choices: {', '.join(OutputFormat.__members__)}')
+    x_json: Optional[bool] = Field1(False, alias='json', aliases=['-j'], description='(output style) output the result as JSON') # 'json' is a BaseModel name
+    jsonpath: Optional[str] = Field1(aliases=['-J'], description='(output style) output the result after applying the given JSONPath')
+    tabular: Optional[bool] = Field1(False, aliases=['-t'], description='(output style) output the result in tabular form')
+    yaml: Optional[bool] = Field1(False, aliases=['-y'], description='(output style) output the result as YAML')
+    indent: Optional[PositiveInt1] = Field1(DEFAULT_INDENT, description='(JSON/YAML output) indentation spaces')
+    tabular_format: Optional[str] = Field1(DEFAULT_TABULAR, aliases=['-T'], description=f'(tabular output) output the result in the given tabular format; choices: {', '.join(OutputFormat.__members__)}')
 
-    @root_validator
+    @root_validator1
     def _validate_output_type(cls: type[BaseOutputOptions], values: dict[str, Any]) -> dict[str, Any]:
         return at_most_one(cls, values, 'x_json', 'jsonpath', 'tabular', 'yaml')
 
-    @validator('tabular_format')
+    @validator1('tabular_format')
     def _validate_tabular(cls: type[BaseOutputOptions], v: Optional[str]) -> Optional[str]:
         if v and v not in OutputFormat.__members__:
             raise ValueError(f'exactly one of {', '.join(OutputFormat.__members__)} required; got {v}')
         return v
 
-    def display(self, obj: SwaggerObject, file: Any=sys.stdout) -> None:
-        if self.jsonpath:
-            self.display_jsonpath(obj, file=file)
+    def display(self,
+                iterable_or_obj: Union[Iterable[SwaggerObject], SwaggerObject],
+                file: Any=sys.stdout) -> None:
+        iterable = iterable_or_obj if isinstance(iterable_or_obj, Iterable) else [iterable_or_obj]
+        if self.x_json:
+            self.display_json(iterable, file=file)
+        elif self.jsonpath:
+            self.display_jsonpath(iterable, file=file)
         elif self.tabular:
-            self.display_tabular(obj, file=file)
+            self.display_tabular(iterable, file=file)
         elif self.yaml:
-            self.display_yaml(obj, file=file)
-        else: # x_json is the default
-            self.display_json(obj, file=file)
+            self.display_yaml(iterable, file=file)
+        else:
+            for obj in iterable:
+                print(obj.to_dict())
 
-    def display_json(self, obj: SwaggerObject, file: Any) -> None:
-        print(json.dumps(obj.to_dict(), indent=self.indent), file=file)
+    def display_json(self, iterable: Iterable[SwaggerObject], file: Any) -> None:
+        for obj in iterable:
+            print(json.dumps(obj.to_dict(), indent=self.indent), file=file)
 
-    def display_jsonpath(self, obj: SwaggerObject, file: Any) -> None:
-        print(jsonpath.findall(self.jsonpath, obj.to_dict()), file=file)
+    def display_jsonpath(self, iterable: Iterable[SwaggerObject], file: Any) -> None:
+        for obj in iterable:
+            print(jsonpath.findall(self.jsonpath, obj.to_dict()), file=file)
 
-    def display_tabular(self, obj: SwaggerObject, file: Any) -> None:
-        vals = [str(getattr(obj, attr)) for attr in self._target_cls.swagger_types if getattr(self, attr)]
-        print(tabulate.tabulate([vals], tablefmt=self.tabular_format), file=file)
+    def display_tabular(self, iterable: Iterable[SwaggerObject], file: Any) -> None:
+        attrs = [attr for attr, model in self.__fields__.items() if model.field_info.extra.get('column') and getattr(self, attr)] \
+                or [attr for attr, model in self.__fields__.items() if model.field_info.extra.get('column')]
+        headers = [] if self.no_headers else [self._target_cls.attribute_map[attr] for attr in attrs]
+        data = [[str(getattr(obj, attr)) for attr in attrs] for obj in iterable]
+        print(tabulate.tabulate(data, headers=headers, tablefmt=self.tabular_format), file=file)
 
-    def display_yaml(self, obj: SwaggerObject, file: Any) -> None:
-        print(yaml.dump(obj.to_dict(), indent=self.indent), file=file)
+    def display_yaml(self, iterable: Iterable[SwaggerObject], file: Any) -> None:
+        for obj in iterable:
+            print(yaml.dump(obj.to_dict(), indent=self.indent), file=file)
 
 
 def create_output_options(type_name: str, target_cls: type[SwaggerObject]):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore") # Pydantic v1 demands that PrivateAttr begins with a hyphen but warns that _target_cls begins with a hyphen
-        return create_model(type_name, __base__=BaseOutputOptions, _target_cls=PrivateAttr(target_cls), **{attr: (Optional[bool], FieldInfo(False, description=f'(tabular output) include the field {attr} in the output')) for attr in target_cls.swagger_types})
+        return create_model1(type_name,
+                             __base__=BaseOutputOptions,
+                             _target_cls=PrivateAttr1(target_cls),
+                             no_headers=(Optional[bool],
+                                         FieldInfo1(False,
+                                                    alias='no-headers',
+                                                    description='(tabular output) do not display column headers')),
+                             **{python_attr: (Optional[bool],
+                                              FieldInfo1(False,
+                                                         alias=python_attr.replace('_', '-') if '_' in python_attr else None,
+                                                         description=f'(tabular output) include the field {original_attr} in the output',
+                                                         column=True))
+                                for python_attr, original_attr in target_cls.attribute_map.items()})

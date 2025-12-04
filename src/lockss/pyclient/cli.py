@@ -28,16 +28,20 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+from io import BytesIO, StringIO
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
+import sys
 
-from io import BytesIO
 from lockss.pybasic.cliutil import BaseCli, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, VERSION_DESCRIPTION
 from multipart import MultipartParser
 from pydantic.v1 import BaseModel as BaseModel1, Field as Field1, NonNegativeInt as NonNegativeInt1, root_validator as root_validator1
 
 from .output import create_output_options
-from . import Node, __copyright__, __license__, __version__, CONFIG_DEFAULT_PORT, CRAWLER_DEFAULT_PORT, MD_DEFAULT_PORT, POLLER_DEFAULT_PORT, RS_DEFAULT_PORT
+from . import *
+from . import __copyright__, __license__, __version__
+from ._internal_common import _param_default, _RS
+from ._internal_rs import repo_delete_artifact
 from . import rs
 
 
@@ -86,28 +90,39 @@ class UrlOptions(BaseModel1):
 class UrlPrefixOptions(UrlOptions):
     url_prefix: Optional[str] = Field1(aliases=["-p"], description="URL prefix")
 
+    @root_validator1
+    def _validate_exactly_one(cls, values):
+        attrs = ('url', 'url_prefix')
+        if len([attr for attr in attrs if values.get(attr)]) != 1:
+            raise ValueError('Expected exactly one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
+        return values
+
 
 class UuidOptions(NamespaceOptions):
     uuid: str = Field1(aliases=["-w"], description="Artifact identifier")
 
 
-class IncludeContentOptions(BaseModel1):
-    always: Optional[bool] = Field1(description='Always include the content in the multipart response')
-    if_small: Optional[bool] = Field1(alias='if-small', description='Include the content in the multipart response if it is relatively small')
-    never: Optional[bool] = Field1(description='Never include the content in the multipart response')
+# class IncludeContentOptions(BaseModel1):
+#     always: Optional[bool] = Field1(description='Always include the content in the multipart response')
+#     if_small: Optional[bool] = Field1(alias='if-small', description='Include the content in the multipart response if it is relatively small')
+#     never: Optional[bool] = Field1(description='Never include the content in the multipart response')
+#
+#     @root_validator1
+#     def _validate_at_most_one(cls, values):
+#         attrs = ('always', 'if_small', 'never')
+#         if len([attr for attr in attrs if values.get(attr)]) > 1:
+#             raise ValueError('Expected at most one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
+#         return values
+#
+#     def get_include_content_enum(self, default: rs.IncludeContentEnum) -> rs.IncludeContentEnum:
+#         if self.always: return rs.IncludeContentEnum.ALWAYS
+#         elif self.if_small: return rs.IncludeContentEnum.IF_SMALL
+#         elif self.never: return rs.IncludeContentEnum.NEVER
+#         else: return default
 
-    @root_validator1
-    def _validate_at_most_one(cls, values):
-        attrs = ('always', 'if_small', 'never')
-        if len([attr for attr in attrs if values.get(attr)]) > 1:
-            raise ValueError('Expected at most one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
-        return values
 
-    def get_include_content_enum(self, default: rs.IncludeContentEnum) -> rs.IncludeContentEnum:
-        if self.always: return rs.IncludeContentEnum.ALWAYS
-        elif self.if_small: return rs.IncludeContentEnum.IF_SMALL
-        elif self.never: return rs.IncludeContentEnum.NEVER
-        else: return default
+class UncommittedOptions(BaseModel1):
+    uncommitted: Optional[bool] = Field1(False, description='Include uncommitted artifacts in results')
 
 
 class VersionsOptions(BaseModel1):
@@ -127,13 +142,16 @@ class VersionsOptions(BaseModel1):
         else: return default
 
 
-RepoAusSizeOutputOptions = create_output_options('RsAusSizeOutputOptions', rs.AuSize)
+ArtifactOptions = create_output_options('ArtifactOptions', rs.Artifact)
 
 
-RepoInfoOptions = create_output_options('RsRepoRepoInfoOptions', rs.RepositoryInfo)
+AuSizeOptions = create_output_options('AuSizeOptions', rs.AuSize)
 
 
-RepoStatusOutputOptions = create_output_options('RsStatusOutputOptions', rs.ApiStatus)
+RepositoryInfoOptions = create_output_options('RepositoryInfoOptions', rs.RepositoryInfo)
+
+
+RsApiStatusOptions = create_output_options('RsApiStatusOptions', rs.ApiStatus)
 
 
 class LockssApi(BaseModel1):
@@ -142,35 +160,41 @@ class LockssApi(BaseModel1):
 
         class Artifacts(BaseModel1):
 
-            class ByAuid(VersionsOptions, UrlPrefixOptions, AuidOptions, NamespaceOptions, AuthOptions):
-                uncommitted: Optional[bool] = Field1(description='Include uncommitted artifacts in results')
+            class Get(BaseModel1):
 
-            class ByUrl(VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
+                class ByAuid(ArtifactOptions, UncommittedOptions, VersionsOptions, UrlPrefixOptions, AuidOptions, NamespaceOptions, AuthOptions): pass
 
-            class ByUuid(IncludeContentOptions, UuidOptions, AuthOptions):
-                response: Optional[Union[Path, Literal['-']]] = Field1(description='Store the response headers in the given file, or "-" for standard output')
-                payload: Optional[Union[Path, Literal['-']]] = Field1(description='Store the payload in the given file, or "-" for standard output')
+                class ByUrl(VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
 
-            by_auid: Optional[ByAuid] = Field1(alias='by-auid', description='Get artifacts in an Archival Unit')
-            by_url: Optional[ByUrl] = Field1(alias="by-url", description="Returns all artifacts that match a given URL or URL prefix and/or version")
-            by_uuid: Optional[ByUuid] = Field1(alias="by-uuid", description="Gets artifacts and artifact metadata")
+                class ByUuid(UuidOptions, AuthOptions):
+                    response: Optional[Union[Path, Literal['-']]] = Field1(description='Store the response headers in the given file, or "-" for standard output')
+                    payload: Optional[Union[Path, Literal['-']]] = Field1(description='Store the payload in the given file, or "-" for standard output')
+
+                by_auid: Optional[ByAuid] = Field1(alias='by-auid', description='Get artifacts in an Archival Unit')
+                by_url: Optional[ByUrl] = Field1(alias="by-url", description="Returns all artifacts that match a given URL or URL prefix and/or version")
+                by_uuid: Optional[ByUuid] = Field1(alias="by-uuid", description="Gets artifacts and artifact metadata")
+
+            class Delete(UuidOptions, NamespaceOptions, AuthOptions): pass
+
+            delete: Optional[Delete] = Field1(description='Deletes an artifact')
+            get: Optional[Get] = Field1(description='Gets one or more artifacts')
 
         class Aus(BaseModel1):
 
             class Auids(NamespaceOptions, AuthOptions): pass
 
-            class Size(RepoAusSizeOutputOptions, AuidOptions, AuthOptions): pass
+            class Size(AuSizeOptions, AuidOptions, AuthOptions): pass
 
             auids: Optional[Auids] = Field1(description='Get Archival Unit IDs (AUIDs) in a namespace')
             size: Optional[Size] = Field1(description='Get the size of Archival Unit artifacts in a namespace')
 
         class ChecksumAlgorithms(AuthOptions): pass
 
-        class Info(RepoInfoOptions, AuthOptions): pass
+        class Info(RepositoryInfoOptions, AuthOptions): pass
 
         class Namespaces(AuthOptions): pass
 
-        class Status(RepoStatusOutputOptions, NodeOptions): pass
+        class Status(RsApiStatusOptions, NodeOptions): pass
 
         class Storage(BaseModel1): pass # FIXME
 
@@ -204,28 +228,23 @@ class LockssApiCli(BaseCli[LockssApi]):
     def _license(self, cmd: BaseModel1) -> None:
         self._parser.exit(0, __license__)
 
-    def _repo_artifacts_by_auid(self, cmd: LockssApi.Repo.Artifacts.ByAuid) -> None:
-        conf = cmd.make_conf(RS_PORT)
-        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
-        api_instance = rs.ArtifactsApi(api_client)
-        results = []
-        token = None
-        while True:
-            kw = {}
-            if token:
-                kw['continuation_token'] = token
-            api_response: rs.ArtifactPageInfo = api_instance.get_artifacts(cmd.auid,
-                                                                           namespace=cmd.namespace,
-                                                                           limit=100,
-                                                                           **kw)
-            results.extend(api_response.artifacts)
-            token = api_response.page_info.continuation_token
-            if token is None:
-                break
-        for result in results:
-            print(result)
+    def _repo_artifacts_delete(self, cmd: LockssApi.Repo.Artifacts.Delete) -> None:
+        repo_delete_artifact(cmd.make_node(),
+                             cmd.uuid,
+                             namespace=cmd.get_namespace(_param_default(_RS, '/artifacts/{uuid}', 'delete', 'namespace')))
+        print(cmd.uuid)
 
-    def _repo_artifacts_by_url(self, cmd: LockssApi.Repo.Artifacts.ByUrl) -> None:
+    def _repo_artifacts_get_by_auid(self, cmd: LockssApi.Repo.Artifacts.Get.ByAuid) -> None:
+        res = repo_get_artifacts_by_auid(cmd.make_node(),
+                                         cmd.auid,
+                                         url=cmd.url,
+                                         url_prefix=cmd.url_prefix,
+                                         namespace=cmd.get_namespace(_param_default(_RS, '/artifacts/{uuid}', 'delete', 'namespace')),
+                                         versions=cmd.get_versions_enum(rs.VersionsEnum.LATEST),
+                                         include_uncommitted=cmd.uncommitted)
+        cmd.display(res)
+
+    def _repo_artifacts_by_url(self, cmd: LockssApi.Repo.Artifacts.Get.ByUrl) -> None:
         if cmd.url and cmd.url_prefix:
             self._parser.error('--url/-u and --url-prefix/-p are mutually exclusive')
         conf = cmd.make_conf(RS_PORT)
@@ -253,77 +272,50 @@ class LockssApiCli(BaseCli[LockssApi]):
         for result in results:
             print(result)
 
-    def _repo_artifacts_by_uuid(self, cmd: LockssApi.Repo.Artifacts.ByUuid) -> None:
-        conf = cmd.make_conf(RS_PORT)
-        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
-        api_instance = rs.ArtifactsApi(api_client)
-        api_response = api_instance.get_artifact_data_by_multipart(cmd.uuid,
-                                                                   namespace=cmd.namespace,
-                                                                   include_content='NEVER' if cmd.never else 'IF_SMALL' if cmd.if_small else 'ALWAYS')
-        # api_response is of type str but seems to be a repr() string!
-        byte_input = eval(api_response)
-        boundary = byte_input.partition(b'\r\n')[0].partition(b'--')[2]
-        parser = MultipartParser(BytesIO(byte_input), boundary)
-        for part in parser:
-            print(f'{part.name} {part.size}')
+    def _repo_artifacts_get_by_uuid(self, cmd: LockssApi.Repo.Artifacts.Get.ByUuid) -> None:
+        mp = repo_get_artifact_by_uuid(cmd.make_node(),
+                                       cmd.uuid,
+                                       namespace=_param_default(_RS, '/artifacts/{uuid}', 'get', 'namespace'),
+                                       include_content=rs.IncludeContentEnum.ALWAYS if cmd.payload else rs.IncludeContentEnum.NEVER)
+        print(mp.get('artifactProps').value)
+        for path, part_name in ((cmd.response, 'httpResponseHeader'), (cmd.payload, 'payload')):
+            if path is None:
+                continue
+            part = None
+            try:
+                part = mp.get(part_name)
+                if path == '-':
+                    print()
+                    while len((byt := part.file.read(1024))) > 0:
+                        sys.stdout.write(byt)
+                else:
+                    part.save_as(path)
+            finally:
+                if part:
+                    part.close()
 
     def _repo_aus_auids(self, cmd: LockssApi.Repo.Aus.Auids) -> None:
-        conf = cmd.make_conf(RS_PORT)
-        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
-        api_instance = rs.AusApi(api_client)
-        results = []
-        token = None
-        while True:
-            kw = {}
-            if token:
-                kw['continuation_token'] = token
-            api_response: rs.AuidPageInfo = api_instance.get_aus(namespace=cmd.namespace,
-                                                                 limit=100,
-                                                                 **kw)
-            results.extend(api_response.auids)
-            token = api_response.page_info.continuation_token
-            if token is None:
-                break
-        for auid in results:
+        for auid in sorted(repo_get_auids(cmd.make_node())):
             print(auid)
 
     def _repo_aus_size(self, cmd: LockssApi.Repo.Aus.Size) -> None:
-        conf = cmd.make_conf(RS_PORT)
-        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
-        api_instance = rs.AusApi(api_client)
-        api_response: list[str] = api_instance.get_artifacts_size(namespace=cmd.namespace,
-                                                                  auid=cmd.auid)
-        print(api_response)
+        cmd.display(repo_get_au_size(cmd.make_node(),
+                                     cmd.auid,
+                                     namespace=cmd.get_namespace(_param_default(_RS, '/aus/{auid}/size', 'get', 'namespace'))))
 
     def _repo_checksum_algorithms(self, cmd: LockssApi.Repo.ChecksumAlgorithms) -> None:
-        conf = cmd.make_conf(RS_PORT)
-        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
-        api_instance = rs.RepoApi(api_client)
-        api_response: list[str] = api_instance.get_supported_checksum_algorithms()
-        for algorithm in sorted(api_response, key=lambda s: s.lower()):
-            print(algorithm)
+        for checksum_algorithm in sorted(repo_get_checksum_algorithms(cmd.make_node())):
+            print(checksum_algorithm)
 
     def _repo_info(self, cmd: LockssApi.Repo.Info) -> None:
-        conf = cmd.make_conf(RS_PORT)
-        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
-        api_instance = rs.RepoApi(api_client)
-        api_response: rs.RepositoryInfo = api_instance.get_repository_information()
-        cmd.display(api_response)
+        cmd.display(repo_get_info(cmd.make_node()))
 
     def _repo_namespaces(self, cmd: LockssApi.Repo.Namespaces) -> None:
-        conf = cmd.make_conf(RS_PORT)
-        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
-        api_instance = rs.RepoApi(api_client)
-        api_response: list[str] = api_instance.get_namespaces()
-        for namespace in sorted(api_response):
+        for namespace in sorted(repo_get_namespaces(cmd.make_node())):
             print(namespace)
 
     def _repo_status(self, cmd: LockssApi.Repo.Status) -> None:
-        conf = cmd.make_conf(RS_PORT)
-        api_client = rs.ApiClient(conf)
-        api_instance = rs.StatusApi(api_client)
-        api_response: rs.ApiStatus = api_instance.get_status()
-        cmd.display(api_response)
+        cmd.display(repo_get_status(cmd.make_node()))
 
     def _version(self, cmd: BaseModel1) -> None:
         self._parser.exit(0, __version__)
