@@ -28,13 +28,11 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from io import BytesIO, StringIO
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Literal
 import sys
 
 from lockss.pybasic.cliutil import BaseCli, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, VERSION_DESCRIPTION
-from multipart import MultipartParser
 from pydantic.v1 import BaseModel as BaseModel1, Field as Field1, NonNegativeInt as NonNegativeInt1, root_validator as root_validator1
 
 from .output import create_output_options
@@ -102,32 +100,13 @@ class UuidOptions(NamespaceOptions):
     uuid: str = Field1(aliases=["-w"], description="Artifact identifier")
 
 
-# class IncludeContentOptions(BaseModel1):
-#     always: Optional[bool] = Field1(description='Always include the content in the multipart response')
-#     if_small: Optional[bool] = Field1(alias='if-small', description='Include the content in the multipart response if it is relatively small')
-#     never: Optional[bool] = Field1(description='Never include the content in the multipart response')
-#
-#     @root_validator1
-#     def _validate_at_most_one(cls, values):
-#         attrs = ('always', 'if_small', 'never')
-#         if len([attr for attr in attrs if values.get(attr)]) > 1:
-#             raise ValueError('Expected at most one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
-#         return values
-#
-#     def get_include_content_enum(self, default: rs.IncludeContentEnum) -> rs.IncludeContentEnum:
-#         if self.always: return rs.IncludeContentEnum.ALWAYS
-#         elif self.if_small: return rs.IncludeContentEnum.IF_SMALL
-#         elif self.never: return rs.IncludeContentEnum.NEVER
-#         else: return default
-
-
 class UncommittedOptions(BaseModel1):
-    uncommitted: Optional[bool] = Field1(False, description='Include uncommitted artifacts in results')
+    uncommitted: bool = Field1(False, description='include uncommitted artifacts in results')
 
 
 class VersionsOptions(BaseModel1):
-    all: Optional[bool] = Field1(description='Include all versions of artifacts in results')
-    latest: Optional[bool] = Field1(description='Include only the latest version of artifacts in results')
+    all: bool = Field1(False, description='include all versions of artifacts in results')
+    latest: bool = Field1(False, description='include only the latest version of artifacts in results')
 
     @root_validator1
     def _validate_at_most_one(cls, values):
@@ -164,7 +143,7 @@ class LockssApi(BaseModel1):
 
                 class ByAuid(ArtifactOptions, UncommittedOptions, VersionsOptions, UrlPrefixOptions, AuidOptions, NamespaceOptions, AuthOptions): pass
 
-                class ByUrl(VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
+                class ByUrl(ArtifactOptions, VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
 
                 class ByUuid(UuidOptions, AuthOptions):
                     response: Optional[Union[Path, Literal['-']]] = Field1(description='Store the response headers in the given file, or "-" for standard output')
@@ -176,8 +155,12 @@ class LockssApi(BaseModel1):
 
             class Delete(UuidOptions, NamespaceOptions, AuthOptions): pass
 
+            class Update(UuidOptions, NamespaceOptions, AuthOptions):
+                commit: bool = Field1(description='Whether the artifact should be marked as committed or not committed')
+
             delete: Optional[Delete] = Field1(description='Deletes an artifact')
             get: Optional[Get] = Field1(description='Gets one or more artifacts')
+            update: Optional[Update] = Field1(description='Updates an artifact')
 
         class Aus(BaseModel1):
 
@@ -196,7 +179,7 @@ class LockssApi(BaseModel1):
 
         class Status(RsApiStatusOptions, NodeOptions): pass
 
-        class Storage(BaseModel1): pass # FIXME
+        class StorageInfo(AuthOptions): pass
 
         artifacts: Optional[Artifacts] = Field1(description="LOCKSS Repository Service API artifacts commands")
         aus: Optional[Aus] = Field1(description='LOCKSS Repository Service API archival unit (AU) commands')
@@ -204,7 +187,7 @@ class LockssApi(BaseModel1):
         info: Optional[Info] = Field1(description='Get repository information')
         namespaces: Optional[Namespaces] = Field1(description='Get namespaces of the committed artifacts in the repository')
         status: Optional[Status] = Field1(description="Get the status of the service")
-        storage: Optional[Storage] = Field1(description="Get repository storage information")
+        storage_info: Optional[StorageInfo] = Field1(alias='storage-info', description="Get repository storage information")
 
     copyright: Optional[BaseModel1] = Field1(description=COPYRIGHT_DESCRIPTION)
     license: Optional[BaseModel1] = Field1(description=LICENSE_DESCRIPTION)
@@ -235,42 +218,20 @@ class LockssApiCli(BaseCli[LockssApi]):
         print(cmd.uuid)
 
     def _repo_artifacts_get_by_auid(self, cmd: LockssApi.Repo.Artifacts.Get.ByAuid) -> None:
-        res = repo_get_artifacts_by_auid(cmd.make_node(),
-                                         cmd.auid,
-                                         url=cmd.url,
-                                         url_prefix=cmd.url_prefix,
-                                         namespace=cmd.get_namespace(_param_default(_RS, '/artifacts/{uuid}', 'delete', 'namespace')),
-                                         versions=cmd.get_versions_enum(rs.VersionsEnum.LATEST),
-                                         include_uncommitted=cmd.uncommitted)
-        cmd.display(res)
+        cmd.display(repo_get_artifacts_by_auid(cmd.make_node(),
+                                               cmd.auid,
+                                               url=cmd.url,
+                                               url_prefix=cmd.url_prefix,
+                                               namespace=cmd.get_namespace(_param_default(_RS, '/aus/{auid}/artifacts', 'get', 'namespace')),
+                                               versions=cmd.get_versions_enum(rs.VersionsEnum.LATEST),
+                                               include_uncommitted=cmd.uncommitted))
 
     def _repo_artifacts_by_url(self, cmd: LockssApi.Repo.Artifacts.Get.ByUrl) -> None:
-        if cmd.url and cmd.url_prefix:
-            self._parser.error('--url/-u and --url-prefix/-p are mutually exclusive')
-        conf = cmd.make_conf(RS_PORT)
-        api_client = rs.ApiClient(conf, "Authorization", conf.get_basic_auth_token())
-        api_instance = rs.ArtifactsApi(api_client)
-        kw = {}
-        if cmd.url:
-            kw['url'] = cmd.url
-        if cmd.url_prefix:
-            kw['url_prefix'] = cmd.url_prefix
-        token = None
-        results = []
-        while True:
-            if token:
-                kw['continuation_token'] = token
-            else:
-                kw.pop('continuation_token', None)
-            api_response: rs.ArtifactPageInfo = api_instance.get_artifacts_from_all_aus(namespace=cmd.namespace,
-                                                                                        limit=100,
-                                                                                        **kw)
-            results.extend(api_response.artifacts)
-            token = api_response.page_info.continuation_token
-            if token is None:
-                break
-        for result in results:
-            print(result)
+        cmd.display(repo_get_artifacts_by_url(cmd.make_node(),
+                                              url=cmd.url,
+                                              url_prefix=cmd.url_prefix,
+                                              namespace=cmd.get_namespace(_param_default(_RS, '/artifacts', 'get', 'namespace')),
+                                              versions=cmd.get_versions_enum(rs.VersionsEnum.LATEST)))
 
     def _repo_artifacts_get_by_uuid(self, cmd: LockssApi.Repo.Artifacts.Get.ByUuid) -> None:
         mp = repo_get_artifact_by_uuid(cmd.make_node(),
@@ -316,6 +277,9 @@ class LockssApiCli(BaseCli[LockssApi]):
 
     def _repo_status(self, cmd: LockssApi.Repo.Status) -> None:
         cmd.display(repo_get_status(cmd.make_node()))
+
+    def _repo_storage_info(self, cmd: LockssApi.Repo.StorageInfo) -> None:
+        print(repo_get_storage_info(cmd.make_node()).to_dict())
 
     def _version(self, cmd: BaseModel1) -> None:
         self._parser.exit(0, __version__)
