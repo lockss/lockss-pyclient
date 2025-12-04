@@ -76,6 +76,14 @@ def _first(data: YamlT, json_path: str) -> Any:
     return query(json_path, data).first_one().value
 
 
+def _param_default(data: YamlT, path: str, method: str, param_name: str) -> Any:
+    return _first(data, f'$.paths["{path}"].{method}.parameters[?(@.name == "{param_name}")].schema.default')
+
+
+def _schema_default(data: YamlT, schema_name: str) -> Any:
+    return _first(_RS, f'$.components.schemas.{schema_name}.default')
+
+
 __JSON_PATH_DEFAULT_PORT = '$.servers[0].variables.port.default'
 
 

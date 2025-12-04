@@ -37,7 +37,7 @@ from typing import Optional, Union
 
 from multipart import MultipartParser
 
-from ._internal_common import Node, bytes_repr_to_multipart, bytes_repr_to_string, _first, _single_request_template, _paged_request_iterator_template, _RS
+from ._internal_common import Node, bytes_repr_to_multipart, bytes_repr_to_string, _param_default, _schema_default, _single_request_template, _paged_request_iterator_template, _RS
 from . import rs
 
 
@@ -47,7 +47,7 @@ from . import rs
                           rs.ArtifactsApi.delete_artifact)
 def repo_delete_artifact(node: Node,
                          uuid: str,
-                         namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}"].put.parameters[?(@.name == "namespace")].schema.default')) -> None:
+                         namespace: str = _param_default(_RS, '/artifacts/{uuid}', 'delete', 'namespace')) -> None:
     pass
 
 
@@ -58,8 +58,8 @@ def repo_delete_artifact(node: Node,
                           transform_result=bytes_repr_to_multipart)
 def repo_get_artifact_by_uuid(node: Node,
                               uuid: str,
-                              namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}"].get.parameters[?(@.name == "namespace")].schema.default'),
-                              include_content: rs.IncludeContentEnum = _first(_RS, '$.components.schemas.includeContentEnum.default')) -> MultipartParser:
+                              namespace: str = _param_default(_RS, '/artifacts/{uuid}', 'get', 'namespace'),
+                              include_content: rs.IncludeContentEnum = _schema_default(_RS, 'includeContentEnum')) -> MultipartParser:
     pass
 
 
@@ -70,8 +70,8 @@ def repo_get_artifact_by_uuid(node: Node,
                           transform_result=bytes_repr_to_string)
 def repo_get_artifact_response_by_uuid(node: Node,
                                        uuid: str,
-                                       namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}/response"].get.parameters[?(@.name == "namespace")].schema.default'),
-                                       include_content: rs.IncludeContentEnum = _first(_RS, '$.components.schemas.includeContentEnum.default')) -> str:
+                                       namespace: str = _param_default(_RS, '/artifacts/{uuid}/response', 'get', 'namespace'),
+                                       include_content: rs.IncludeContentEnum = _schema_default(_RS, 'includeContentEnum')) -> str:
     pass
 
 
@@ -82,8 +82,8 @@ def repo_get_artifact_response_by_uuid(node: Node,
                           transform_result=eval)
 def repo_get_artifact_payload_by_uuid(node: Node,
                                       uuid: str,
-                                      namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}/payload"].get.parameters[?(@.name == "namespace")].schema.default'),
-                                      include_content: rs.IncludeContentEnum = _first(_RS, '$.components.schemas.includeContentEnum.default')) -> bytes:
+                                      namespace: str = _param_default(_RS, '/artifacts/{uuid}/payload', 'get', 'namespace'),
+                                      include_content: rs.IncludeContentEnum = _schema_default(_RS, 'includeContentEnum')) -> bytes:
     pass
 
 
@@ -96,7 +96,7 @@ def repo_get_artifacts_by_auid_page(node: Node,
                                     auid: str,
                                     url: Optional[str] = None,
                                     url_prefix: Optional[str] = None,
-                                    namespace: str = _first(_RS, '$.paths["/aus/{auid}/artifacts"].get.parameters[?(@.name == "namespace")].schema.default'),
+                                    namespace: str = _param_default(_RS, '/aus/{auid}/artifacts', 'get', 'namespace'),
                                     versions: Optional[Union[int, rs.VersionsEnum]] = None,
                                     include_uncommitted: Optional[bool] = None,
                                     limit: Optional[int] = None,
@@ -109,7 +109,7 @@ def repo_get_artifacts_by_auid_page_iter(node: Node,
                                          auid: str,
                                          url: Optional[str] = None,
                                          url_prefix: Optional[str] = None,
-                                         namespace: str = _first(_RS, '$.paths["/aus/{auid}/artifacts"].get.parameters[?(@.name == "namespace")].schema.default'),
+                                         namespace: str = _param_default(_RS, '/aus/{auid}/artifacts', 'get', 'namespace'),
                                          versions: Optional[Union[int, rs.VersionsEnum]] = None,
                                          include_uncommitted: Optional[bool] = None,
                                          limit: Optional[int] = None) -> Iterable[rs.ArtifactPageInfo]:
@@ -120,7 +120,7 @@ def repo_get_artifacts_by_auid(node: Node,
                                auid: str,
                                url: Optional[str] = None,
                                url_prefix: Optional[str] = None,
-                               namespace: str = _first(_RS, '$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default'),
+                               namespace: str = _param_default(_RS, '/aus', 'get', 'namespace'),
                                versions: Optional[Union[int, rs.VersionsEnum]] = None,
                                include_uncommitted: Optional[bool] = None,
                                limit: Optional[int] = None) -> list[rs.Artifact]:
@@ -145,36 +145,36 @@ def repo_get_artifacts_by_auid(node: Node,
 def repo_get_artifacts_by_url_page(node: Node,
                                    url: Optional[str] = None,
                                    url_prefix: Optional[str] = None,
-                                   namespace: str = _first(_RS, '$.paths["/artifacts"].get.parameters[?(@.name == "namespace")].schema.default'),
-                                   versions: rs.VersionsEnum = _first(_RS, '$.components.schemas.versionsEnum.default'),
+                                   namespace: str = _param_default(_RS, '/artifacts', 'get', 'namespace'),
+                                   versions: rs.VersionsEnum = _schema_default(_RS, 'versionsEnum'),
                                    limit: Optional[int] = None,
                                    continuation_token: Optional[str] = None) -> rs.ArtifactPageInfo:
     pass
 
 
 @_paged_request_iterator_template(repo_get_artifacts_by_url_page)
-def repo_get_artifacts_by_url_page_iter(node: Node,
-                                        url: Optional[str] = None,
-                                        url_prefix: Optional[str] = None,
-                                        namespace: str = _first(_RS, '$.paths["/artifacts"].get.parameters[?(@.name == "namespace")].schema.default'),
-                                        versions: rs.VersionsEnum = _first(_RS, '$.components.schemas.versionsEnum.default'),
-                                        limit: Optional[int] = None) -> Iterable[rs.ArtifactPageInfo]:
+def repo_get_artifacts_by_url_iter(node: Node,
+                                   url: Optional[str] = None,
+                                   url_prefix: Optional[str] = None,
+                                   namespace: str = _param_default(_RS, '/artifacts', 'get', 'namespace'),
+                                   versions: rs.VersionsEnum = _schema_default(_RS, 'versionsEnum'),
+                                   limit: Optional[int] = None) -> Iterable[rs.ArtifactPageInfo]:
     pass
 
 
 def repo_get_artifacts_by_url(node: Node,
                               url: Optional[str] = None,
                               url_prefix: Optional[str] = None,
-                              namespace: str = _first(_RS, '$.paths["/artifacts"].get.parameters[?(@.name == "namespace")].schema.default'),
-                              versions: rs.VersionsEnum = _first(_RS, '$.components.schemas.versionsEnum.default'),
+                              namespace: str = _param_default(_RS, '/artifacts', 'get', 'namespace'),
+                              versions: rs.VersionsEnum = _schema_default(_RS, 'versionsEnum'),
                               limit: Optional[int] = None) -> list[rs.Artifact]:
     ret: list[rs.Artifact] = []
-    for page in repo_get_artifacts_by_url_page_iter(node,
-                                                    url=url,
-                                                    url_prefix=url_prefix,
-                                                    namespace=namespace,
-                                                    versions=versions,
-                                                    limit=limit):
+    for page in repo_get_artifacts_by_url_iter(node,
+                                               url=url,
+                                               url_prefix=url_prefix,
+                                               namespace=namespace,
+                                               versions=versions,
+                                               limit=limit):
         ret.extend(page.artifacts)
     return ret
 
@@ -185,7 +185,7 @@ def repo_get_artifacts_by_url(node: Node,
                           rs.AusApi.get_artifacts_size)
 def repo_get_au_size(node: Node,
                      auid: str,
-                     namespace: str = _first(_RS, '$.paths["/aus/{auid}/size"].get.parameters[?(@.name == "namespace")].schema.default')) -> rs.AuSize:
+                     namespace: str = _param_default(_RS, '/aus/{auid}/size', 'get', 'namespace')) -> rs.AuSize:
     pass
 
 
@@ -194,7 +194,7 @@ def repo_get_au_size(node: Node,
                           rs.AusApi,
                           rs.AusApi.get_aus)
 def repo_get_auids_page(node: Node,
-                        namespace: str = _first(_RS, '$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default'),
+                        namespace: str = _param_default(_RS, '/aus', 'get', 'namespace'),
                         limit: Optional[int] = None,
                         continuation_token: Optional[str] = None) -> rs.AuidPageInfo:
     pass
@@ -202,13 +202,13 @@ def repo_get_auids_page(node: Node,
 
 @_paged_request_iterator_template(repo_get_auids_page)
 def repo_get_auids_page_iter(node: Node,
-                             namespace: str = _first(_RS, '$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default'),
+                             namespace: str = _param_default(_RS, '/aus', 'get', 'namespace'),
                              limit: Optional[int] = None) -> Iterable[rs.AuidPageInfo]:
     pass
 
 
 def repo_get_auids(node: Node,
-                   namespace: str = _first(_RS, '$.paths["/aus"].get.parameters[?(@.name == "namespace")].schema.default'),
+                   namespace: str = _param_default(_RS, '/aus', 'get', 'namespace'),
                    limit: Optional[int] = None) -> list[str]:
     ret: list[str] = []
     for page in repo_get_auids_page_iter(node,
@@ -262,7 +262,7 @@ def repo_get_storage_info(node: Node) -> rs.StorageInfo:
 def repo_update_artifact(node: Node,
                          uuid: str,
                          committed: bool,
-                         namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}"].put.parameters[?(@.name == "namespace")].schema.default')) -> rs.Artifact:
+                         namespace: str = _param_default(_RS, '/artifacts/{uuid}', 'put', 'namespace')) -> rs.Artifact:
     @_single_request_template(Node.make_rs_conf,
                               rs.ApiClient,
                               rs.ArtifactsApi,
@@ -270,7 +270,7 @@ def repo_update_artifact(node: Node,
     def _repo_update_artifact(node: Node,
                               committed: bool,
                               uuid: str,
-                              namespace: str = _first(_RS, '$.paths["/artifacts/{uuid}"].put.parameters[?(@.name == "namespace")].schema.default')) -> rs.Artifact:
+                              namespace: str = _param_default(_RS, '/artifacts/{uuid}', 'put', 'namespace')) -> rs.Artifact:
         pass
     return _repo_update_artifact(node,
                                  committed,
