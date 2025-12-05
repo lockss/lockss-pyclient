@@ -39,8 +39,7 @@ from .output import create_output_options
 from . import *
 from . import __copyright__, __license__, __version__
 from ._internal_common import _param_default, _RS
-from ._internal_rs import repo_delete_artifact
-from . import rs
+from . import config, rs
 
 
 class NodeOptions(BaseModel1):
@@ -104,6 +103,10 @@ class UncommittedOptions(BaseModel1):
     uncommitted: bool = Field1(False, description='include uncommitted artifacts in results')
 
 
+class UserAccountOptions(BaseModel1):
+    user_account: str = Field1(description='user account name')
+
+
 class VersionsOptions(BaseModel1):
     all: bool = Field1(False, description='include all versions of artifacts in results')
     latest: bool = Field1(False, description='include only the latest version of artifacts in results')
@@ -121,15 +124,19 @@ class VersionsOptions(BaseModel1):
         else: return default
 
 
-ArtifactOptions = create_output_options('ArtifactOptions',
-                                        rs.Artifact,
-                                        disambiguate=['auid', 'namespace'])
+ConfigApiStatusOptions = create_output_options('ConfigApiStatusOptions', config.ApiStatus)
 
 
-AuSizeOptions = create_output_options('AuSizeOptions', rs.AuSize)
+ConfigPlatformConfigurationWsResultOptions = create_output_options('ConfigPlatformConfigurationWsResultOptions', config.PlatformConfigurationWsResult)
 
 
-RepositoryInfoOptions = create_output_options('RepositoryInfoOptions', rs.RepositoryInfo)
+RsArtifactOptions = create_output_options('ArtifactOptions', rs.Artifact, disambiguate=['auid', 'namespace'])
+
+
+RsAuSizeOptions = create_output_options('AuSizeOptions', rs.AuSize)
+
+
+RsRepositoryInfoOptions = create_output_options('RepositoryInfoOptions', rs.RepositoryInfo)
 
 
 RsApiStatusOptions = create_output_options('RsApiStatusOptions', rs.ApiStatus)
@@ -137,15 +144,42 @@ RsApiStatusOptions = create_output_options('RsApiStatusOptions', rs.ApiStatus)
 
 class LockssApi(BaseModel1):
 
+    class Config(BaseModel1):
+
+        class LastUpdateTime(AuthOptions): pass
+
+        class LoadedUrls(AuthOptions): pass
+
+        class Platform(ConfigPlatformConfigurationWsResultOptions, AuthOptions): pass
+
+        class Status(ConfigApiStatusOptions, NodeOptions): pass
+
+        class Users(BaseModel1):
+
+            class Get(UserAccountOptions, AuthOptions): pass
+
+            class Usernames(AuthOptions): pass
+
+            get: Optional[Get] = Field1(description='Get user account details')
+            usernames: Optional[Usernames] = Field1(description='Get the usernames configured in the system')
+
+        last_update_time: Optional[LastUpdateTime] = Field1(alias='last-update-time', description='Get the timestamp when the configuration was last updated')
+        loaded_urls: Optional[LoadedUrls] = Field1(alias='loaded-urls', description='Get the URLs from which the cofniguration was loaded')
+        platform: Optional[Platform] = Field1(description='Get the platform configuration')
+        status: Optional[Status] = Field1(description='Get the status of the service')
+        users: Optional[Users] = Field1(description='User operations')
+
     class Repo(BaseModel1):
 
         class Artifacts(BaseModel1):
 
+            class Delete(UuidOptions, NamespaceOptions, AuthOptions): pass
+
             class Get(BaseModel1):
 
-                class ByAuid(ArtifactOptions, UncommittedOptions, VersionsOptions, UrlPrefixOptions, AuidOptions, NamespaceOptions, AuthOptions): pass
+                class ByAuid(RsArtifactOptions, UncommittedOptions, VersionsOptions, UrlPrefixOptions, AuidOptions, AuthOptions): pass
 
-                class ByUrl(ArtifactOptions, VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
+                class ByUrl(RsArtifactOptions, VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
 
                 class ByUuid(UuidOptions, AuthOptions):
                     response: Optional[Union[Path, Literal['-']]] = Field1(description='Store the response headers in the given file, or "-" for standard output')
@@ -154,8 +188,6 @@ class LockssApi(BaseModel1):
                 by_auid: Optional[ByAuid] = Field1(alias='by-auid', description='Get artifacts in an Archival Unit')
                 by_url: Optional[ByUrl] = Field1(alias="by-url", description="Returns all artifacts that match a given URL or URL prefix and/or version")
                 by_uuid: Optional[ByUuid] = Field1(alias="by-uuid", description="Gets artifacts and artifact metadata")
-
-            class Delete(UuidOptions, NamespaceOptions, AuthOptions): pass
 
             class Update(UuidOptions, NamespaceOptions, AuthOptions):
                 commit: bool = Field1(description='Whether the artifact should be marked as committed or not committed')
@@ -168,14 +200,14 @@ class LockssApi(BaseModel1):
 
             class Auids(NamespaceOptions, AuthOptions): pass
 
-            class Size(AuSizeOptions, AuidOptions, AuthOptions): pass
+            class Size(RsAuSizeOptions, AuidOptions, AuthOptions): pass
 
             auids: Optional[Auids] = Field1(description='Get Archival Unit IDs (AUIDs) in a namespace')
             size: Optional[Size] = Field1(description='Get the size of Archival Unit artifacts in a namespace')
 
         class ChecksumAlgorithms(AuthOptions): pass
 
-        class Info(RepositoryInfoOptions, AuthOptions): pass
+        class Info(RsRepositoryInfoOptions, AuthOptions): pass
 
         class Namespaces(AuthOptions): pass
 
@@ -191,6 +223,7 @@ class LockssApi(BaseModel1):
         status: Optional[Status] = Field1(description="Get the status of the service")
         storage_info: Optional[StorageInfo] = Field1(alias='storage-info', description="Get repository storage information")
 
+    config: Optional[Config] = Field1(description='Configuration Service operations')
     copyright: Optional[BaseModel1] = Field1(description=COPYRIGHT_DESCRIPTION)
     license: Optional[BaseModel1] = Field1(description=LICENSE_DESCRIPTION)
     repo: Optional[Repo] = Field1(description='Repository Service operations')
@@ -206,6 +239,27 @@ class LockssApiCli(BaseCli[LockssApi]):
         super().__init__(model=LockssApi,
                          prog='lockssapi',
                          description='LOCKSS Python client')
+
+    def _config_last_update_time(self, cmd: LockssApi.Config.LastUpdateTime) -> None:
+        print(config_last_update_time(cmd.make_node()))
+
+    def _config_loaded_urls(self, cmd: LockssApi.Config.LoadedUrls) -> None:
+        for url in config_get_loaded_urls(cmd.make_node()):
+            print(url)
+
+    def _config_platform(self, cmd: LockssApi.Config.Platform) -> None:
+        cmd.display(config_get_platform_config(cmd.make_node()))
+
+    def _config_status(self, cmd: LockssApi.Config.Status) -> None:
+        cmd.display(config_get_status(cmd.make_node()))
+
+    def _config_users_get(self, cmd: LockssApi.Config.Users.Get) -> None:
+        print(config_get_user_account(cmd.make_node(),
+                                      cmd.user_account))
+
+    def _config_users_usernames(self, cmd: LockssApi.Config.Users.Usernames) -> None:
+        for username in sorted(config_get_usernames(cmd.make_node())):
+            print(username)
 
     def _copyright(self, cmd: BaseModel1) -> None:
         self._parser.exit(0, __copyright__)
