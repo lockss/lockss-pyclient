@@ -28,6 +28,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+from io import TextIOWrapper
 from pathlib import Path
 from typing import Literal
 import sys
@@ -80,6 +81,17 @@ class AuidOptions(NamespaceOptions):
     auid: str = Field1(aliases=["-a"], description="Archival Unit ID (AUID)")
 
 
+class IfMatchOptions(BaseModel1):
+    if_match: Optional[str] = Field1(description='set the If-Match HTTP header to the given value')
+    if_modified_since: Optional[str] = Field1(description='set the If-Modified-Since HTTP header to the given value')
+    if_none_match: Optional[str] = Field1(description='set the If-None-Match HTTP header to the given value')
+    if_unmodified_since: Optional[str] = Field1(description='set the If-Unmodified-Since HTTP header to the given value')
+
+
+class OutputOptions(BaseModel1):
+    output: Optional[Path] = Field1(aliases=['-o'], description='write output to the given file')
+
+
 class UrlOptions(BaseModel1):
     url: Optional[str] = Field1(aliases=["-u"], description="URL")
 
@@ -127,6 +139,21 @@ class VersionsOptions(BaseModel1):
 ConfigApiStatusOptions = create_output_options('ConfigApiStatusOptions', config.ApiStatus)
 
 
+ConfigAuConfigurationOptions = create_output_options('ConfigAuConfigurationOptions', config.AuConfiguration)
+
+
+ConfigAuStateBeanOptions = create_output_options('ConfigAuStateBeanOptions', config.AuStateBean, disambiguate=['auid'])
+
+
+ConfigAuStatusOptions = create_output_options('ConfigAuStatusOptions', config.AuStatus)
+
+
+ConfigSuspectUrlVersionOptions = create_output_options('ConfigSuspectUrlVersionOptions', config.SuspectUrlVersion)
+
+
+ConfigDatedPeerIdSetImplOptions = create_output_options('ConfigDatedPeerIdSetImplOptions', config.DatedPeerIdSetImpl)
+
+
 ConfigPlatformConfigurationWsResultOptions = create_output_options('ConfigPlatformConfigurationWsResultOptions', config.PlatformConfigurationWsResult)
 
 
@@ -146,13 +173,51 @@ class LockssApi(BaseModel1):
 
     class Config(BaseModel1):
 
+        class Aus(BaseModel1):
+
+            class Agreements(AuidOptions, AuthOptions): pass
+
+            class Configuration(BaseModel1):
+
+                class Get(ConfigAuConfigurationOptions, AuidOptions, AuthOptions): pass
+
+                class GetAll(ConfigAuConfigurationOptions, AuthOptions): pass
+
+                get: Optional[Get] = Field1(description='Get the configuration of an AU')
+                get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the configurations of all AUs')
+
+            class NoAuPeerSet(ConfigDatedPeerIdSetImplOptions, AuidOptions, AuthOptions): pass
+
+            class State(ConfigAuStateBeanOptions, AuidOptions, AuthOptions): pass
+
+            class Status(ConfigAuStatusOptions, AuidOptions, AuthOptions): pass
+
+            class SuspectUrls(ConfigSuspectUrlVersionOptions, AuidOptions, AuthOptions): pass
+
+            agreements: Optional[Agreements] = Field1(descriptions='Get the poll agreements of an AU')
+            configuration: Optional[Configuration] = Field1(description='AU configuration operations')
+            no_au_peer_set: Optional[NoAuPeerSet] = Field1(alias='no-au-peer-set', description='Get the NoAuPeerSet object of an AU')
+            state: Optional[State] = Field1(description='Get the state of an AU')
+            status: Optional[Status] = Field1(description='Get the status of an AU')
+            suspect_urls: Optional[SuspectUrls] = Field1(description='Get the suspect URL versions of an AU')
+
         class LastUpdateTime(AuthOptions): pass
 
         class LoadedUrls(AuthOptions): pass
 
         class Platform(ConfigPlatformConfigurationWsResultOptions, AuthOptions): pass
 
+        class Section(BaseModel1):
+
+            class Get(IfMatchOptions, OutputOptions, AuthOptions):
+                section: str = Field1(description='the name of the section for which the configuration file is requested')
+
+            get: Optional[Get] = Field1(description='Get the named configuration file')
+
         class Status(ConfigApiStatusOptions, NodeOptions): pass
+
+        class Url(IfMatchOptions, OutputOptions, AuthOptions):
+            url: str = Field1(aliases=['-u'], description='the URL for which the configuration is requested')
 
         class Users(BaseModel1):
 
@@ -163,10 +228,13 @@ class LockssApi(BaseModel1):
             get: Optional[Get] = Field1(description='Get user account details')
             usernames: Optional[Usernames] = Field1(description='Get the usernames configured in the system')
 
+        aus: Optional[Aus] = Field1(description='AU operations')
         last_update_time: Optional[LastUpdateTime] = Field1(alias='last-update-time', description='Get the timestamp when the configuration was last updated')
         loaded_urls: Optional[LoadedUrls] = Field1(alias='loaded-urls', description='Get the URLs from which the cofniguration was loaded')
         platform: Optional[Platform] = Field1(description='Get the platform configuration')
+        section: Optional[Section] = Field1(description='Section operations')
         status: Optional[Status] = Field1(description='Get the status of the service')
+        url: Optional[Url] = Field1(description='Get the configuration file for a URL')
         users: Optional[Users] = Field1(description='User operations')
 
     class Repo(BaseModel1):
@@ -182,8 +250,8 @@ class LockssApi(BaseModel1):
                 class ByUrl(RsArtifactOptions, VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
 
                 class ByUuid(UuidOptions, AuthOptions):
-                    response: Optional[Union[Path, Literal['-']]] = Field1(description='Store the response headers in the given file, or "-" for standard output')
-                    payload: Optional[Union[Path, Literal['-']]] = Field1(description='Store the payload in the given file, or "-" for standard output')
+                    response: Optional[Union[Path, Literal['-']]] = Field1(description='write the response headers to the given file, or "-" for standard output')
+                    payload: Optional[Union[Path, Literal['-']]] = Field1(description='write the payload to the given file, or "-" for standard output')
 
                 by_auid: Optional[ByAuid] = Field1(alias='by-auid', description='Get artifacts in an Archival Unit')
                 by_url: Optional[ByUrl] = Field1(alias="by-url", description="Returns all artifacts that match a given URL or URL prefix and/or version")
@@ -240,6 +308,33 @@ class LockssApiCli(BaseCli[LockssApi]):
                          prog='lockssapi',
                          description='LOCKSS Python client')
 
+    def _config_aus_agreements(self, cmd: LockssApi.Config.Aus.Agreements) -> None:
+        print(config_get_au_agreements(cmd.make_node(),
+                                       cmd.auid).to_dict())
+
+    def _config_aus_configuration_get(self, cmd: LockssApi.Config.Aus.Configuration.Get) -> None:
+        cmd.display(config_get_au_config(cmd.make_node(),
+                                         cmd.auid))
+
+    def _config_aus_configuration_get_all(self, cmd: LockssApi.Config.Aus.Configuration.GetAll) -> None:
+        cmd.display(config_get_au_configs(cmd.make_node()))
+
+    def _config_aus_no_au_peer_set(self, cmd: LockssApi.Config.Aus.NoAuPeerSet) -> None:
+        cmd.display(config_get_no_au_peer_set(cmd.make_node(),
+                                              cmd.auid))
+
+    def _config_aus_state(self, cmd: LockssApi.Config.Aus.State) -> None:
+        cmd.display(config_get_au_state(cmd.make_node(),
+                                        cmd.auid))
+
+    def _config_aus_status(self, cmd: LockssApi.Config.Aus.Status) -> None:
+        cmd.display(config_get_au_status(cmd.make_node(),
+                                         cmd.auid))
+
+    def _config_aus_suspect_urls(self, cmd: LockssApi.Config.Aus.SuspectUrls) -> None:
+        cmd.display(config_get_au_suspect_url_versions(cmd.make_node(),
+                                                       cmd.auid).suspect_versions)
+
     def _config_last_update_time(self, cmd: LockssApi.Config.LastUpdateTime) -> None:
         print(config_last_update_time(cmd.make_node()))
 
@@ -250,8 +345,46 @@ class LockssApiCli(BaseCli[LockssApi]):
     def _config_platform(self, cmd: LockssApi.Config.Platform) -> None:
         cmd.display(config_get_platform_config(cmd.make_node()))
 
+    def _config_section_get(self, cmd: LockssApi.Config.Section.Get) -> None:
+        mp = config_get_section(cmd.make_node(),
+                                cmd.section,
+                                if_match=cmd.if_match,
+                                if_modified_since=cmd.if_modified_since,
+                                if_none_match=cmd.if_none_match,
+                                if_unmodified_since=cmd.if_unmodified_since)
+        part = None
+        try:
+            part = mp.get('configFile')
+            if cmd.output:
+                part.save_as(cmd.output)
+            else:
+                for line in TextIOWrapper(part.file):
+                    print(line, end='')
+        finally:
+            if part:
+                part.close()
+
     def _config_status(self, cmd: LockssApi.Config.Status) -> None:
         cmd.display(config_get_status(cmd.make_node()))
+
+    def _config_url(self, cmd: LockssApi.Config.Url) -> None:
+        mp = config_get_url(cmd.make_node(),
+                            cmd.url,
+                            if_match=cmd.if_match,
+                            if_modified_since=cmd.if_modified_since,
+                            if_none_match=cmd.if_none_match,
+                            if_unmodified_since=cmd.if_unmodified_since)
+        part = None
+        try:
+            part = mp.get('configFile')
+            if cmd.output:
+                part.save_as(cmd.output)
+            else:
+                for line in TextIOWrapper(part.file):
+                    print(line, end='')
+        finally:
+            if part:
+                part.close()
 
     def _config_users_get(self, cmd: LockssApi.Config.Users.Get) -> None:
         print(config_get_user_account(cmd.make_node(),
@@ -303,8 +436,8 @@ class LockssApiCli(BaseCli[LockssApi]):
                 part = mp.get(part_name)
                 if path == '-':
                     print()
-                    while len((byt := part.file.read(1024))) > 0:
-                        sys.stdout.write(byt)
+                    while len((bytez := part.file.read(1024))) > 0:
+                        sys.stdout.write(bytez)
                 else:
                     part.save_as(path)
             finally:
