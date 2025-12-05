@@ -97,8 +97,8 @@ class BaseOutputOptions(BaseModel1):
             print(jsonpath.findall(self.jsonpath, obj.to_dict()), file=file)
 
     def display_tabular(self, iterable: Iterable[SwaggerObject], file: Any) -> None:
-        attrs = [attr for attr, model in self.__fields__.items() if model.field_info.extra.get('column') and getattr(self, attr)] \
-                or [attr for attr, model in self.__fields__.items() if model.field_info.extra.get('column')]
+        attrs = [attr.removeprefix('include_') if model.field_info.extra.get('disambiguated') else attr for attr, model in self.__fields__.items() if model.field_info.extra.get('column') and getattr(self, attr)] \
+                or [attr.removeprefix('include_') if model.field_info.extra.get('disambiguated') else attr for attr, model in self.__fields__.items() if model.field_info.extra.get('column')]
         headers = [] if self.no_headers else [self._target_cls.attribute_map[attr] for attr in attrs]
         data = [[str(getattr(obj, attr)) for attr in attrs] for obj in iterable]
         print(tabulate.tabulate(data, headers=headers, tablefmt=self.tabular_format), file=file)
@@ -108,7 +108,10 @@ class BaseOutputOptions(BaseModel1):
             print(yaml.dump(obj.to_dict(), indent=self.indent), file=file)
 
 
-def create_output_options(type_name: str, target_cls: type[SwaggerObject]):
+def create_output_options(type_name: str,
+                          target_cls: type[SwaggerObject],
+                          disambiguate: Optional[list[str]] = None):
+    disambiguate = disambiguate or []
     with warnings.catch_warnings():
         warnings.simplefilter("ignore") # Pydantic v1 demands that PrivateAttr begins with a hyphen but warns that _target_cls begins with a hyphen
         return create_model1(type_name,
@@ -118,9 +121,11 @@ def create_output_options(type_name: str, target_cls: type[SwaggerObject]):
                                          FieldInfo1(False,
                                                     alias='no-headers',
                                                     description='(tabular output) do not display column headers')),
-                             **{python_attr: (Optional[bool],
-                                              FieldInfo1(False,
-                                                         alias=python_attr.replace('_', '-') if '_' in python_attr else None,
-                                                         description=f'(tabular output) include the field {original_attr} in the output',
-                                                         column=True))
+                             **{f'{"include_" if python_attr in disambiguate else ""}{python_attr}':
+                                  (bool,
+                                   FieldInfo1(False,
+                                              alias=python_attr.replace('_', '-') if '_' in python_attr else None,
+                                              description=f'(tabular output) include the field {original_attr} in the output',
+                                              column=True,
+                                              disambiguated=python_attr in disambiguate))
                                 for python_attr, original_attr in target_cls.attribute_map.items()})

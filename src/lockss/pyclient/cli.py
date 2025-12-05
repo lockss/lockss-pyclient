@@ -121,7 +121,9 @@ class VersionsOptions(BaseModel1):
         else: return default
 
 
-ArtifactOptions = create_output_options('ArtifactOptions', rs.Artifact)
+ArtifactOptions = create_output_options('ArtifactOptions',
+                                        rs.Artifact,
+                                        disambiguate=['auid', 'namespace'])
 
 
 AuSizeOptions = create_output_options('AuSizeOptions', rs.AuSize)
