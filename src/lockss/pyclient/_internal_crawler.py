@@ -109,6 +109,35 @@ def crawler_get_crawl_by_type(node: Node,
 @_single_request_template(Node.make_crawler_conf,
                           crawler.ApiClient,
                           crawler.CrawlsApi,
+                          crawler.CrawlsApi.get_crawl_errors)
+def crawler_get_crawl_errors_page(node: Node,
+                                  job_id: str,
+                                  limit: Optional[int] = None,
+                                  continuation_token: Optional[str] = None) -> crawler.UrlPager:
+    pass
+
+
+@_paged_request_iterator_template(crawler_get_crawl_errors_page)
+def crawler_get_crawl_errors_iter(node: Node,
+                                  job_id: str,
+                                  limit: Optional[int] = None) -> Iterable[crawler.UrlPager]:
+    pass
+
+
+def crawler_get_crawl_errors(node: Node,
+                               job_id: str,
+                               limit: Optional[int] = None) -> list[crawler.UrlInfo]:
+    ret: list[crawler.UrlInfo] = []
+    for page in crawler_get_crawl_errors_iter(node,
+                                              job_id=job_id,
+                                              limit=limit):
+        ret.extend(page.urls)
+    return ret
+
+
+@_single_request_template(Node.make_crawler_conf,
+                          crawler.ApiClient,
+                          crawler.CrawlsApi,
                           crawler.CrawlsApi.get_crawl_excluded)
 def crawler_get_crawl_excluded_page(node: Node,
                                     job_id: str,

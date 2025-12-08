@@ -41,7 +41,7 @@ from .output import output_options
 from . import *
 from . import __copyright__, __license__, __version__
 from ._internal_common import _param_default, _RS
-from . import config, poller, rs
+from . import config, crawler, poller, rs
 
 
 class NodeOptions(BaseModel1):
@@ -79,7 +79,11 @@ class NamespaceOptions(BaseModel1):
 
 
 class AuidOptions(NamespaceOptions):
-    auid: str = Field1(aliases=["-a"], description="Archival Unit ID (AUID)")
+    auid: str = Field1(aliases=["-a"], description="Archival Unit identifier (AUID)")
+
+
+class CrawlerIdOptions(BaseModel1):
+    crawler_id: str = Field1(alias='crawler-id', aliases=["-c"], description="crawler identifier")
 
 
 class IfMatchOptions(BaseModel1):
@@ -214,6 +218,15 @@ ArtifactOptions = output_options('ArtifactOptions', rs.Artifact, disambiguate=['
 AuConfigurationOptions = output_options('AuConfigurationOptions', config.AuConfiguration)
 
 
+CrawlJobOptions = output_options('CrawlJobOptions', crawler.CrawlJob, disambiguate=['job-id'])
+
+
+CrawlStatusOptions = output_options('CrawlStatusOptions', crawler.CrawlStatus, disambiguate=['job-id'])
+
+
+UrlInfoOptions = output_options('UrlInfoOptions', crawler.UrlInfo)
+
+
 class LockssApi(BaseModel1):
 
     class Config(BaseModel1):
@@ -260,7 +273,6 @@ class LockssApi(BaseModel1):
             get: Optional[Get] = Field1(description='Get the named configuration file')
 
         class Status(output_options('ConfigApiStatusOptions', config.ApiStatus), NodeOptions): pass
-        #class Status(ConfigApiStatusOptions, NodeOptions): pass
 
         class Url(IfMatchOptions, OutputOptions, AuthOptions):
             url: str = Field1(aliases=['-u'], description='the URL for which the configuration is requested')
@@ -282,6 +294,74 @@ class LockssApi(BaseModel1):
         status: Optional[Status] = Field1(description='Get the status of the service')
         url: Optional[Url] = Field1(description='Get the configuration file for a URL')
         users: Optional[Users] = Field1(description='User operations')
+
+    class Crawler(BaseModel1):
+
+        class Crawlers(BaseModel1):
+
+            class Get(output_options('CrawlerConfigOptions', crawler.CrawlerConfig, disambiguate=['crawler-id']), CrawlerIdOptions, AuthOptions): pass
+
+            class GetAll(output_options('CrawlerStatusesOptions', crawler.CrawlerStatuses), AuthOptions): pass
+
+            get: Optional[Get] = Field1(description='Get queued crawl job')
+            get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of crawl jobs')
+
+        class Crawls(BaseModel1):
+
+            class Get(CrawlStatusOptions, JobOptions, AuthOptions): pass
+
+            class GetAll(CrawlStatusOptions, AuthOptions): pass
+
+            class Urls(BaseModel1):
+
+                class Errors(UrlInfoOptions, JobOptions, AuthOptions): pass
+
+                class Excluded(UrlInfoOptions, JobOptions, AuthOptions): pass
+
+                class Fetched(UrlInfoOptions, JobOptions, AuthOptions): pass
+
+                class NotModified(UrlInfoOptions, JobOptions, AuthOptions): pass
+
+                class Parsed(UrlInfoOptions, JobOptions, AuthOptions): pass
+
+                class Pending(UrlInfoOptions, JobOptions, AuthOptions): pass
+
+                errors: Optional[Errors] = Field1(description='Get the error URLs for a crawl')
+                excluded: Optional[Excluded] = Field1(description='Get the excluded URLs for a crawl')
+                fetched: Optional[Fetched] = Field1(description='Get the fetched URLs for a crawl')
+                # FIXME content types
+                not_modified: Optional[NotModified] = Field1(alias='not-modified', description='Get the not modified URLs for a crawl')
+                parsed: Optional[Parsed] = Field1(description='Get the parsed URLs for a crawl')
+                pending: Optional[Pending] = Field1(description='Get the pending URLs for a crawl')
+
+            get: Optional[Get] = Field1(description='Get the list of crawls')
+            get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the crawl status of a job')
+            urls: Optional[Urls] = Field1(description='Subcommand for crawl URL operations')
+
+        class Jobs(BaseModel1):
+
+            class Delete(BaseModel1): pass # FIXME
+
+            class DeleteAll(BaseModel1): pass # FIXME
+
+            class Get(CrawlJobOptions, JobOptions, AuthOptions): pass
+
+            class GetAll(CrawlJobOptions, AuthOptions): pass
+
+            class Request(AuthOptions): pass # FIXME
+
+            delete: Optional[Delete] = Field1(description='Remove or stop a crawl job') # FIXME
+            delete_all: Optional[DeleteAll] = Field1(alias='delete-all', description='Delete all of the currently queued and active jobs') # FIXME
+            get: Optional[Get] = Field1(description='Get queued poll status')
+            get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of crawl jobs')
+            request: Optional[Request] = Field1(description='Request a crawl as defined by the descriptor') # FIXME
+
+        class Status(output_options('CrawlerApiStatusOptions', crawler.ApiStatus), NodeOptions): pass
+
+        crawlers: Optional[Crawlers] = Field1(description='Subcommand for crawler information operations')
+        crawls: Optional[Crawls] = Field1(description='Subcommand for crawl status operations')
+        jobs: Optional[Jobs] = Field1(description='Subcommand for crawler job operations')
+        status: Optional[Status] = Field1(description='Get the status of the service')
 
     class Poller(BaseModel1):
 
@@ -329,7 +409,7 @@ class LockssApi(BaseModel1):
         class Status(output_options('PollerApiStatusOptions', poller.ApiStatus), NodeOptions): pass
 
         jobs: Optional[Jobs] = Field1(description='Subcommand for poller job operations')
-        polls: Optional[Polls] = Field1(description='Subcommand for poll operations')
+        polls: Optional[Polls] = Field1(description='Subcommand for poll status operations')
         status: Optional[Status] = Field1(description='Get the status of the service')
 
     class Repo(BaseModel1):
@@ -388,6 +468,7 @@ class LockssApi(BaseModel1):
 
     config: Optional[Config] = Field1(description='Configuration Service operations')
     copyright: Optional[BaseModel1] = Field1(description=COPYRIGHT_DESCRIPTION)
+    crawler: Optional[Config] = Field1(description='Crawler Service operations')
     license: Optional[BaseModel1] = Field1(description=LICENSE_DESCRIPTION)
     poller: Optional[Poller] = Field1(description='Poller Service operations')
     repo: Optional[Repo] = Field1(description='Repository Service operations')
@@ -492,6 +573,54 @@ class LockssApiCli(BaseCli[LockssApi]):
 
     def _copyright(self, cmd: BaseModel1) -> None:
         self._parser.exit(0, __copyright__)
+
+    def _crawler_crawlers_get(self, cmd: LockssApi.Crawler.Crawlers.Get) -> None:
+        cmd.display(crawler_get_crawler(cmd.make_node(),
+                                        cmd.crawler_id))
+
+    def _crawler_crawlers_get_all(self, cmd: LockssApi.Crawler.Crawlers.GetAll) -> None:
+        cmd.display(crawler_get_crawlers(cmd.make_node()))
+
+    def _crawler_crawls_urls_errors(self, cmd: LockssApi.Crawler.Crawls.Urls.Errors) -> None:
+        cmd.display(crawler_get_crawl_errors(cmd.make_node(),
+                                             cmd.job))
+
+    def _crawler_crawls_urls_excluded(self, cmd: LockssApi.Crawler.Crawls.Urls.Excluded) -> None:
+        cmd.display(crawler_get_crawl_excluded(cmd.make_node(),
+                                               cmd.job))
+
+    def _crawler_crawls_urls_fetched(self, cmd: LockssApi.Crawler.Crawls.Urls.Fetched) -> None:
+        cmd.display(crawler_get_crawl_fetched(cmd.make_node(),
+                                              cmd.job))
+
+    def _crawler_crawls_get(self, cmd: LockssApi.Crawler.Crawls.Get) -> None:
+        cmd.display(crawler_get_crawl(cmd.make_node(),
+                                      cmd.job))
+
+    def _crawler_crawls_get_all(self, cmd: LockssApi.Crawler.Crawls.GetAll) -> None:
+        cmd.display(crawler_get_crawls(cmd.make_node()))
+
+    def _crawler_crawls_urls_not_modified(self, cmd: LockssApi.Crawler.Crawls.Urls.NotModified) -> None:
+        cmd.display(crawler_get_crawl_not_modified(cmd.make_node(),
+                                                   cmd.job))
+
+    def _crawler_crawls_urls_parsed(self, cmd: LockssApi.Crawler.Crawls.Urls.Parsed) -> None:
+        cmd.display(crawler_get_crawl_parsed(cmd.make_node(),
+                                             cmd.job))
+
+    def _crawler_crawls_urls_pending(self, cmd: LockssApi.Crawler.Crawls.Urls.Pending) -> None:
+        cmd.display(crawler_get_crawl_pending(cmd.make_node(),
+                                              cmd.job))
+
+    def _crawler_jobs_get(self, cmd: LockssApi.Crawler.Jobs.Get) -> None:
+        cmd.display(crawler_get_job(cmd.make_node(),
+                                    cmd.job))
+
+    def _crawler_jobs_get_all(self, cmd: LockssApi.Crawler.Jobs.GetAll) -> None:
+        cmd.display(crawler_get_jobs(cmd.make_node()))
+
+    def _crawler_status(self, cmd: LockssApi.Crawler.Status) -> None:
+        cmd.display(crawler_get_status(cmd.make_node()))
 
     def _license(self, cmd: BaseModel1) -> None:
         self._parser.exit(0, __license__)
