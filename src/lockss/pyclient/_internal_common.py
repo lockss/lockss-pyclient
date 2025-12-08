@@ -35,7 +35,7 @@ Base of the lockss.pyclient package.
 # Remove in Python 3.14; see https://stackoverflow.com/a/33533514
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from getpass import getpass
 from importlib import resources
 from io import BytesIO
@@ -354,10 +354,15 @@ PageInfoResultT = Union[
 PageInfoResultFunction = Callable[..., PageInfoResultT]
 
 
+PageInfoAccessorFunction = Callable[[PageInfoResultT], Iterable[ResultT]]
+
+
 def _paged_request_iterator_template(single_request: PageInfoResultFunction,
-                                     remove_kwargs: Optional[list[str]] = None):
+                                     item_accessor: PageInfoAccessorFunction,
+                                     remove_kwargs: Optional[list[str]] = None,
+                                     default_limit: int = 100):
     def decorate(f):
-        def decorated_paged_request_iterator(*args, **kwargs) -> Iterable[PageInfoResultT]:
+        def decorated_paged_request_iterator(*args, **kwargs) -> Iterator[ResultT]:
             for remove in [key for key, val in kwargs.items() if key in (remove_kwargs or []) and val is None]:
                 kwargs.pop(remove, None)
             token = None
@@ -367,10 +372,12 @@ def _paged_request_iterator_template(single_request: PageInfoResultFunction,
                 else:
                     kwargs.pop('continuation_token', None)
                 if kwargs.get('limit') is None:
-                    kwargs['limit'] = 100
-                result: PageInfoResultT = single_request(*args, **kwargs)
-                token = result.page_info.continuation_token
-                yield result
+                    kwargs['limit'] = default_limit
+                result_page: PageInfoResultT = single_request(*args, **kwargs)
+                token = result_page.page_info.continuation_token
+                for result in item_accessor(result_page):
+                    result_t: ResultT = result
+                    yield result_t
                 if token is None:
                     break
         return decorated_paged_request_iterator

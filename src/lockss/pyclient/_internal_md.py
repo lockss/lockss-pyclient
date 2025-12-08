@@ -32,7 +32,7 @@
 Base of the lockss.pyclient package (metadata service).
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterator
 from typing import Optional
 
 from ._internal_common import Node, _paged_request_iterator_template, _single_request_template
@@ -67,19 +67,11 @@ def md_get_jobs_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(md_get_jobs_page)
-def md_get_jobs_iter(node: Node,
-                     limit: Optional[int] = None) -> Iterable[md.JobPageInfo]:
-    pass
-
-
+@_paged_request_iterator_template(md_get_jobs_page,
+                                  lambda x: x.jobs)
 def md_get_jobs(node: Node,
-                limit: Optional[int] = None) -> list[md.JobPageInfo]:
-    ret: list[md.JobPageInfo] = []
-    for page in md_get_jobs_iter(node,
-                                 limit=limit):
-        ret.extend(page.jobs)
-    return ret
+                limit: Optional[int] = None) -> Iterator[md.Job]:
+    pass
 
 
 @_single_request_template(Node.make_md_conf,
@@ -93,22 +85,12 @@ def md_get_metadata_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(md_get_metadata_page)
-def md_get_metadata_iter(node: Node,
-                         auid: str,
-                         limit: Optional[int] = None) -> Iterable[md.AuMetadataPageInfo]:
-    pass
-
-
+@_paged_request_iterator_template(md_get_metadata_page,
+                                  lambda x: x.items)
 def md_get_metadata(node: Node,
                     auid: str,
-                    limit: Optional[int] = None) -> list[md.ItemMetadata]:
-    ret: list[md.ItemMetadata] = []
-    for page in md_get_metadata_iter(node,
-                                     auid,
-                                     limit=limit):
-        ret.extend(page.items)
-    return ret
+                    limit: Optional[int] = None) -> Iterator[md.ItemMetadata]:
+    pass
 
 
 @_single_request_template(Node.make_md_conf,

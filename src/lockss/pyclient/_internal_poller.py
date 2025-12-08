@@ -32,7 +32,7 @@
 Base of the lockss.pyclient package (poller service).
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterator
 from typing import Optional
 
 from ._internal_common import Node, _single_request_template, _paged_request_iterator_template
@@ -52,28 +52,14 @@ def poller_get_peer_data_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(poller_get_peer_data_page)
+@_paged_request_iterator_template(poller_get_peer_data_page,
+                                  lambda x: x.urls)
 def poller_get_peer_data_iter(node: Node,
                               poll_key: str,
                               peer_id: str,
                               url_type: poller.VoterUrlsEnum,
-                              limit: Optional[int] = None) -> Iterable[poller.UrlPageInfo]:
+                              limit: Optional[int] = None) -> Iterator[str]:
     pass
-
-
-def poller_get_peer_data(node: Node,
-                         poll_key: str,
-                         peer_id: str,
-                         url_type: poller.VoterUrlsEnum,
-                         limit: Optional[int] = None) -> list[str]:
-    ret: list[str] = []
-    for page in poller_get_peer_data_iter(node,
-                                          poll_key,
-                                          peer_id,
-                                          url_type,
-                                          limit=limit):
-        ret.extend(page.urls)
-    return ret
 
 
 @_single_request_template(Node.make_poller_conf,
@@ -104,19 +90,11 @@ def poller_get_poller_polls_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(poller_get_poller_polls_page)
-def poller_get_poller_polls_iter(node: Node,
-                                 limit: Optional[int] = None) -> Iterable[poller.PollerPageInfo]:
-    pass
-
-
+@_paged_request_iterator_template(poller_get_poller_polls_page,
+                                  lambda x: x.polls)
 def poller_get_poller_polls(node: Node,
-                                 limit: Optional[int] = None) -> list[poller.PollerSummary]:
-    ret: list[poller.PollerSummary] = []
-    for page in poller_get_poller_polls_iter(node,
-                                             limit=limit):
-        ret.extend(page.polls)
-    return ret
+                            limit: Optional[int] = None) -> Iterator[poller.PollerSummary]:
+    pass
 
 
 @_single_request_template(Node.make_poller_conf,
@@ -131,25 +109,13 @@ def poller_get_repair_data_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(poller_get_repair_data_page)
-def poller_get_repair_data_iter(node: Node,
-                                poll_key: str,
-                                repair_type: poller.RepairTypeEnum,
-                                limit: Optional[int] = None) -> Iterable[poller.RepairPageInfo]:
-    pass
-
-
+@_paged_request_iterator_template(poller_get_repair_data_page,
+                                  lambda x: x.repairs)
 def poller_get_repair_data(node: Node,
                            poll_key: str,
                            repair_type: poller.RepairTypeEnum,
-                           limit: Optional[int] = None) -> list[poller.RepairData]:
-    ret: list[poller.RepairData] = []
-    for page in poller_get_repair_data_iter(node,
-                                            poll_key,
-                                            repair_type,
-                                            limit=limit):
-        ret.extend(page.repairs)
-    return ret
+                           limit: Optional[int] = None) -> Iterator[poller.RepairData]:
+    pass
 
 
 @_single_request_template(Node.make_poller_conf,
@@ -173,25 +139,13 @@ def poller_get_tally_urls_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(poller_get_tally_urls_page)
-def poller_get_tally_urls_iter(node: Node,
-                               poll_key: str,
-                               tally_type: poller.TallyTypeEnum,
-                               limit: Optional[int] = None) -> Iterable[poller.UrlPageInfo]:
-    pass
-
-
+@_paged_request_iterator_template(poller_get_tally_urls_page,
+                                  lambda x: x.urls)
 def poller_get_tally_urls(node: Node,
                           poll_key: str,
                           tally_type: poller.TallyTypeEnum,
-                          limit: Optional[int] = None) -> list[str]:
-    ret: list[str] = []
-    for page in poller_get_tally_urls_iter(node,
-                                           poll_key,
-                                           tally_type,
-                                           limit=limit):
-        ret.extend(page.urls)
-    return ret
+                          limit: Optional[int] = None) -> Iterator[str]:
+    pass
 
 
 @_single_request_template(Node.make_poller_conf,
@@ -213,16 +167,8 @@ def poller_get_voter_polls_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(poller_get_voter_polls_page)
-def poller_get_voter_polls_iter(node: Node,
-                                limit: Optional[int] = None) -> Iterable[poller.PollerPageInfo]:
-    pass
-
-
+@_paged_request_iterator_template(poller_get_voter_polls_page,
+                                  lambda x: x.polls)
 def poller_get_voter_polls(node: Node,
-                           limit: Optional[int] = None) -> list[poller.PollerSummary]:
-    ret: list[poller.PollerSummary] = []
-    for page in poller_get_voter_polls_iter(node,
-                                            limit=limit):
-        ret.extend(page.polls)
-    return ret
+                           limit: Optional[int] = None) -> Iterator[poller.PollerSummary]:
+    pass

@@ -32,7 +32,7 @@
 Base of the lockss.pyclient package (repository service).
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterator
 from typing import Optional, Union
 
 from multipart import MultipartParser
@@ -104,37 +104,17 @@ def repo_get_artifacts_by_auid_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(repo_get_artifacts_by_auid_page)
-def repo_get_artifacts_by_auid_page_iter(node: Node,
-                                         auid: str,
-                                         url: Optional[str] = None,
-                                         url_prefix: Optional[str] = None,
-                                         namespace: str = _param_default(_RS, '/aus/{auid}/artifacts', 'get', 'namespace'),
-                                         versions: Optional[Union[int, rs.VersionsEnum]] = None,
-                                         include_uncommitted: Optional[bool] = None,
-                                         limit: Optional[int] = None) -> Iterable[rs.ArtifactPageInfo]:
-    pass
-
-
+@_paged_request_iterator_template(repo_get_artifacts_by_auid_page,
+                                  lambda x: x.artifacts)
 def repo_get_artifacts_by_auid(node: Node,
                                auid: str,
                                url: Optional[str] = None,
                                url_prefix: Optional[str] = None,
-                               namespace: str = _param_default(_RS, '/aus', 'get', 'namespace'),
+                               namespace: str = _param_default(_RS, '/aus/{auid}/artifacts', 'get', 'namespace'),
                                versions: Optional[Union[int, rs.VersionsEnum]] = None,
                                include_uncommitted: Optional[bool] = None,
-                               limit: Optional[int] = None) -> list[rs.Artifact]:
-    ret: list[rs.Artifact] = []
-    for page in repo_get_artifacts_by_auid_page_iter(node,
-                                                     auid,
-                                                     url=url,
-                                                     url_prefix=url_prefix,
-                                                     namespace=namespace,
-                                                     versions=versions,
-                                                     include_uncommitted=include_uncommitted,
-                                                     limit=limit):
-        ret.extend(page.artifacts)
-    return ret
+                               limit: Optional[int] = None) -> Iterator[rs.Artifact]:
+    pass
 
 
 @_single_request_template(Node.make_rs_conf,
@@ -152,31 +132,15 @@ def repo_get_artifacts_by_url_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(repo_get_artifacts_by_url_page)
-def repo_get_artifacts_by_url_iter(node: Node,
-                                   url: Optional[str] = None,
-                                   url_prefix: Optional[str] = None,
-                                   namespace: str = _param_default(_RS, '/artifacts', 'get', 'namespace'),
-                                   versions: rs.VersionsEnum = _schema_default(_RS, 'versionsEnum'),
-                                   limit: Optional[int] = None) -> Iterable[rs.ArtifactPageInfo]:
-    pass
-
-
+@_paged_request_iterator_template(repo_get_artifacts_by_url_page,
+                                  lambda x: x.artifacts)
 def repo_get_artifacts_by_url(node: Node,
                               url: Optional[str] = None,
                               url_prefix: Optional[str] = None,
                               namespace: str = _param_default(_RS, '/artifacts', 'get', 'namespace'),
                               versions: rs.VersionsEnum = _schema_default(_RS, 'versionsEnum'),
-                              limit: Optional[int] = None) -> list[rs.Artifact]:
-    ret: list[rs.Artifact] = []
-    for page in repo_get_artifacts_by_url_iter(node,
-                                               url=url,
-                                               url_prefix=url_prefix,
-                                               namespace=namespace,
-                                               versions=versions,
-                                               limit=limit):
-        ret.extend(page.artifacts)
-    return ret
+                              limit: Optional[int] = None) -> Iterator[rs.Artifact]:
+    pass
 
 
 @_single_request_template(Node.make_rs_conf,
@@ -200,22 +164,12 @@ def repo_get_auids_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(repo_get_auids_page)
-def repo_get_auids_page_iter(node: Node,
-                             namespace: str = _param_default(_RS, '/aus', 'get', 'namespace'),
-                             limit: Optional[int] = None) -> Iterable[rs.AuidPageInfo]:
+@_paged_request_iterator_template(repo_get_auids_page,
+                                  lambda x: x.auids)
+def repo_get_auids_page(node: Node,
+                        namespace: str = _param_default(_RS, '/aus', 'get', 'namespace'),
+                        limit: Optional[int] = None) -> Iterator[str]:
     pass
-
-
-def repo_get_auids(node: Node,
-                   namespace: str = _param_default(_RS, '/aus', 'get', 'namespace'),
-                   limit: Optional[int] = None) -> list[str]:
-    ret: list[str] = []
-    for page in repo_get_auids_page_iter(node,
-                                         namespace=namespace,
-                                         limit=limit):
-        ret.extend(page.auids)
-    return ret
 
 
 @_single_request_template(Node.make_rs_conf,
@@ -276,8 +230,3 @@ def repo_update_artifact(node: Node,
                                  committed,
                                  uuid,
                                  namespace=namespace)
-
-
-if __name__ == '__main__':
-    node = Node('localhost', 'lockss-u')
-    print(type(repo_update_artifact(node, 'e4d7b700-95f1-4ec9-ab8f-7daf9ca7287c', True)))

@@ -32,7 +32,7 @@
 Base of the lockss.pyclient package (crawler service).
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterator
 from typing import Optional
 
 from ._internal_common import Node, _paged_request_iterator_template, _single_request_template
@@ -58,20 +58,11 @@ def crawler_get_crawls_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(crawler_get_crawls_page)
-def crawler_get_crawls_iter(node: Node,
-                            limit: Optional[int] = None) -> Iterable[crawler.CrawlPager]:
-    pass
-
-
+@_paged_request_iterator_template(crawler_get_crawls_page,
+                                  lambda x: x.crawls)
 def crawler_get_crawls(node: Node,
-                       limit: Optional[int] = None) -> list[crawler.CrawlStatus]:
-    ret: list[crawler.CrawlStatus] = []
-    for page in crawler_get_crawls_iter(node,
-                                        limit=limit):
-        ret.extend(page.crawls)
-    return ret
-
+                       limit: Optional[int] = None) -> Iterator[crawler.CrawlStatus]:
+    pass
 
 @_single_request_template(Node.make_crawler_conf,
                           crawler.ApiClient,
@@ -85,25 +76,13 @@ def crawler_get_crawl_by_type_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(crawler_get_crawl_by_type_page)
-def crawler_get_crawl_by_type_iter(node: Node,
-                                   job_id: str,
-                                   content_type: str,
-                                   limit: Optional[int] = None) -> Iterable[crawler.UrlPager]:
-    pass
-
-
+@_paged_request_iterator_template(crawler_get_crawl_by_type_page,
+                                  lambda x: x.urls)
 def crawler_get_crawl_by_type(node: Node,
                               job_id: str,
                               content_type: str,
-                              limit: Optional[int] = None) -> list[crawler.UrlInfo]:
-    ret: list[crawler.UrlInfo] = []
-    for page in crawler_get_crawl_by_type_iter(node,
-                                                job_id=job_id,
-                                                content_type=content_type,
-                                                limit=limit):
-        ret.extend(page.urls)
-    return ret
+                              limit: Optional[int] = None) -> Iterator[crawler.UrlInfo]:
+    pass
 
 
 @_single_request_template(Node.make_crawler_conf,
@@ -117,22 +96,12 @@ def crawler_get_crawl_errors_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(crawler_get_crawl_errors_page)
-def crawler_get_crawl_errors_iter(node: Node,
-                                  job_id: str,
-                                  limit: Optional[int] = None) -> Iterable[crawler.UrlPager]:
-    pass
-
-
+@_paged_request_iterator_template(crawler_get_crawl_errors_page,
+                                  lambda x: x.urls)
 def crawler_get_crawl_errors(node: Node,
-                               job_id: str,
-                               limit: Optional[int] = None) -> list[crawler.UrlInfo]:
-    ret: list[crawler.UrlInfo] = []
-    for page in crawler_get_crawl_errors_iter(node,
-                                              job_id=job_id,
-                                              limit=limit):
-        ret.extend(page.urls)
-    return ret
+                             job_id: str,
+                             limit: Optional[int] = None) -> Iterator[crawler.UrlInfo]:
+    pass
 
 
 @_single_request_template(Node.make_crawler_conf,
@@ -146,22 +115,12 @@ def crawler_get_crawl_excluded_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(crawler_get_crawl_excluded_page)
-def crawler_get_crawl_excluded_iter(node: Node,
-                                    job_id: str,
-                                    limit: Optional[int] = None) -> Iterable[crawler.UrlPager]:
-    pass
-
-
+@_paged_request_iterator_template(crawler_get_crawl_excluded_page,
+                                  lambda x: x.urls)
 def crawler_get_crawl_excluded(node: Node,
                                job_id: str,
-                               limit: Optional[int] = None) -> list[crawler.UrlInfo]:
-    ret: list[crawler.UrlInfo] = []
-    for page in crawler_get_crawl_excluded_iter(node,
-                                                job_id=job_id,
-                                                limit=limit):
-        ret.extend(page.urls)
-    return ret
+                               limit: Optional[int] = None) -> Iterator[crawler.UrlInfo]:
+    pass
 
 
 @_single_request_template(Node.make_crawler_conf,
@@ -175,22 +134,12 @@ def crawler_get_crawl_fetched_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(crawler_get_crawl_fetched_page)
-def crawler_get_crawl_fetched_iter(node: Node,
-                                   job_id: str,
-                                   limit: Optional[int] = None) -> Iterable[crawler.UrlPager]:
-    pass
-
-
+@_paged_request_iterator_template(crawler_get_crawl_fetched_page,
+                                  lambda x: x.urls)
 def crawler_get_crawl_fetched(node: Node,
-                                   job_id: str,
-                                   limit: Optional[int] = None) -> list[crawler.UrlInfo]:
-    ret: list[crawler.UrlInfo] = []
-    for page in crawler_get_crawl_fetched_iter(node,
-                                               job_id=job_id,
-                                               limit=limit):
-        ret.extend(page.urls)
-    return ret
+                              job_id: str,
+                              limit: Optional[int] = None) -> Iterator[crawler.UrlInfo]:
+    pass
 
 
 @_single_request_template(Node.make_crawler_conf,
@@ -204,22 +153,12 @@ def crawler_get_crawl_not_modified_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(crawler_get_crawl_not_modified_page)
-def crawler_get_crawl_not_modified_iter(node: Node,
-                                        job_id: str,
-                                        limit: Optional[int] = None) -> Iterable[crawler.UrlPager]:
-    pass
-
-
+@_paged_request_iterator_template(crawler_get_crawl_not_modified_page,
+                                  lambda x: x.urls)
 def crawler_get_crawl_not_modified(node: Node,
                                    job_id: str,
-                                   limit: Optional[int] = None) -> list[crawler.UrlInfo]:
-    ret: list[crawler.UrlInfo] = []
-    for page in crawler_get_crawl_not_modified_iter(node,
-                                                    job_id=job_id,
-                                                    limit=limit):
-        ret.extend(page.urls)
-    return ret
+                                   limit: Optional[int] = None) -> Iterator[crawler.UrlInfo]:
+    pass
 
 
 @_single_request_template(Node.make_crawler_conf,
@@ -233,22 +172,12 @@ def crawler_get_crawl_parsed_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(crawler_get_crawl_parsed_page)
-def crawler_get_crawl_parsed_iter(node: Node,
-                                  job_id: str,
-                                  limit: Optional[int] = None) -> Iterable[crawler.UrlPager]:
-    pass
-
-
+@_paged_request_iterator_template(crawler_get_crawl_parsed_page,
+                                  lambda x: x.urls)
 def crawler_get_crawl_parsed(node: Node,
                              job_id: str,
-                             limit: Optional[int] = None) -> list[crawler.UrlInfo]:
-    ret: list[crawler.UrlInfo] = []
-    for page in crawler_get_crawl_parsed_iter(node,
-                                              job_id=job_id,
-                                              limit=limit):
-        ret.extend(page.urls)
-    return ret
+                             limit: Optional[int] = None) -> Iterator[crawler.UrlInfo]:
+    pass
 
 
 @_single_request_template(Node.make_crawler_conf,
@@ -262,22 +191,12 @@ def crawler_get_crawl_pending_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(crawler_get_crawl_pending_page)
-def crawler_get_crawl_pending_iter(node: Node,
-                                   job_id: str,
-                                   limit: Optional[int] = None) -> Iterable[crawler.UrlPager]:
-    pass
-
-
+@_paged_request_iterator_template(crawler_get_crawl_pending_page,
+                                  lambda x: x.urls)
 def crawler_get_crawl_pending(node: Node,
                               job_id: str,
-                              limit: Optional[int] = None) -> list[crawler.UrlInfo]:
-    ret: list[crawler.UrlInfo] = []
-    for page in crawler_get_crawl_pending_iter(node,
-                                               job_id=job_id,
-                                               limit=limit):
-        ret.extend(page.urls)
-    return ret
+                              limit: Optional[int] = None) -> Iterator[crawler.UrlInfo]:
+    pass
 
 
 @_single_request_template(Node.make_crawler_conf,
@@ -316,19 +235,11 @@ def crawler_get_jobs_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(crawler_get_jobs_page)
-def crawler_get_jobs_iter(node: Node,
-                          limit: Optional[int] = None) -> Iterable[crawler.JobPager]:
-    pass
-
-
+@_paged_request_iterator_template(crawler_get_jobs_page,
+                                  lambda x: x.jobs)
 def crawler_get_jobs(node: Node,
-                     limit: Optional[int] = None) -> list[crawler.CrawlJob]:
-    ret: list[crawler.CrawlJob] = []
-    for page in crawler_get_jobs_iter(node,
-                                      limit=limit):
-        ret.extend(page.jobs)
-    return ret
+                     limit: Optional[int] = None) -> Iterator[crawler.CrawlJob]:
+    pass
 
 
 @_single_request_template(Node.make_crawler_conf,

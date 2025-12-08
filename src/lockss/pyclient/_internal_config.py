@@ -71,19 +71,11 @@ def config_get_au_configs_page(node: Node,
     pass
 
 
-@_paged_request_iterator_template(config_get_au_configs_page)
-def config_get_au_configs_iter(node: Node,
-                               limit: Optional[int] = None) -> Iterable[config.AuConfigPageInfo]:
-    pass
-
-
+@_paged_request_iterator_template(config_get_au_configs_page,
+                                  lambda x: x.au_configs)
 def config_get_au_configs(node: Node,
-                          limit: Optional[int] = None) -> list[config.AuConfiguration]:
-    ret: list[config.AuConfiguration] = []
-    for page in config_get_au_configs_iter(node,
-                                           limit=limit):
-        ret.extend(page.au_configs)
-    return ret
+                          limit: Optional[int] = None) -> Iterable[config.AuConfiguration]:
+    pass
 
 
 @_single_request_template(Node.make_config_conf,
@@ -213,22 +205,3 @@ def config_normalize_url(node: Node,
 def config_last_update_time(node: Node,
                             url: str) -> datetime:
     pass
-
-
-if __name__ == '__main__':
-    node = Node('localhost', 'lockss-u')
-    print(f'Demo for {node.get_host()}:{node.get_config_port()}')
-    status = config_get_status(node)
-    print(f'config_get_status: {status.to_dict()}')
-    print(f'config_get_usernames: {config_get_usernames(node)}')
-    print(f'config_get_loaded_urls: {config_get_loaded_urls(node)}')
-    cfgurl = 'http://props.lockss.org:8001/demo/lockss.xml'
-    cfgurlmp = config_get_url(node, cfgurl)
-    print(f'config_get_url {cfgurl}:\n{cfgurlmp.get('configFile').value}')
-    section = 'cluster'
-    sectionmp = config_get_section(node, section)
-    print(f'config_get_section {section}:\n{sectionmp.get('configFile').value}')
-    print(f'config_get_platform_config: {config_get_platform_config(node).to_dict()}')
-    print(f'config_last_update_time: {config_last_update_time(node)}')
-    auid1 = 'org|lockss|plugin|edinburgh|EdinburghUniversityPressPlugin&base_url~https%3A%2F%2Fwww%2Eeuppublishing%2Ecom%2F&journal_id~gothic&volume_name~19'
-    print(f'config_get_au_state {auid1}: {config_get_au_state(node, auid1)}')
