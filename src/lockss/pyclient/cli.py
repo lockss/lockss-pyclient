@@ -41,7 +41,7 @@ from .output import output_options
 from . import *
 from . import __copyright__, __license__, __version__
 from ._internal_common import _param_default, _RS
-from . import config, crawler, poller, rs
+from . import config, crawler, md, poller, rs
 
 
 class NodeOptions(BaseModel1):
@@ -79,11 +79,15 @@ class NamespaceOptions(BaseModel1):
 
 
 class AuidOptions(NamespaceOptions):
-    auid: str = Field1(aliases=["-a"], description="Archival Unit identifier (AUID)")
+    auid: str = Field1(aliases=['-a'], description='Archival Unit identifier (AUID)')
 
 
 class CrawlerIdOptions(BaseModel1):
-    crawler_id: str = Field1(alias='crawler-id', aliases=["-c"], description="crawler identifier")
+    crawler_id: str = Field1(alias='crawler-id', aliases=['-c'], description='crawler identifier')
+
+
+class DoiOptions(BaseModel1):
+    doi: str = Field1(aliases=['-d'], description='DOI')
 
 
 class IfMatchOptions(BaseModel1):
@@ -95,6 +99,10 @@ class IfMatchOptions(BaseModel1):
 
 class JobOptions(BaseModel1):
     job: str = Field1(description='job identifier')
+
+
+class OpenUrlOptions(BaseModel1):
+    params: list[str] = Field1(aliases=['-p'], description='cumulative list of OpenURL parameters')
 
 
 class OutputOptions(BaseModel1):
@@ -169,11 +177,11 @@ class TallyTypeOptions(BaseModel1):
 
 
 class UrlOptions(BaseModel1):
-    url: Optional[str] = Field1(aliases=["-u"], description="URL")
+    url: Optional[str] = Field1(aliases=['-u'], description='URL')
 
 
 class UrlPrefixOptions(UrlOptions):
-    url_prefix: Optional[str] = Field1(aliases=["-p"], description="URL prefix")
+    url_prefix: Optional[str] = Field1(aliases=['-p'], description='URL prefix')
 
     @root_validator1
     def _validate_exactly_one(cls, values):
@@ -184,7 +192,7 @@ class UrlPrefixOptions(UrlOptions):
 
 
 class UuidOptions(NamespaceOptions):
-    uuid: str = Field1(aliases=["-w"], description="Artifact identifier")
+    uuid: str = Field1(aliases=['-w'], description='artifact identifier')
 
 
 class UncommittedOptions(BaseModel1):
@@ -218,13 +226,19 @@ ArtifactOptions = output_options('ArtifactOptions', rs.Artifact, disambiguate=['
 AuConfigurationOptions = output_options('AuConfigurationOptions', config.AuConfiguration)
 
 
-CrawlJobOptions = output_options('CrawlJobOptions', crawler.CrawlJob, disambiguate=['job-id'])
+CrawlJobOptions = output_options('CrawlJobOptions', crawler.CrawlJob)
 
 
-CrawlStatusOptions = output_options('CrawlStatusOptions', crawler.CrawlStatus, disambiguate=['job-id'])
+CrawlStatusOptions = output_options('CrawlStatusOptions', crawler.CrawlStatus)
 
 
-UrlInfoOptions = output_options('UrlInfoOptions', crawler.UrlInfo)
+CrawlUrlInfoOptions = output_options('CrawlUrlInfoOptions', crawler.UrlInfo)
+
+
+MdJobOptions = output_options('MdJobOptions', md.Job)
+
+
+MdUrlInfoOptions = output_options('MdUrlInfoOptions', md.UrlInfo)
 
 
 class LockssApi(BaseModel1):
@@ -314,17 +328,17 @@ class LockssApi(BaseModel1):
 
             class Urls(BaseModel1):
 
-                class Errors(UrlInfoOptions, JobOptions, AuthOptions): pass
+                class Errors(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
-                class Excluded(UrlInfoOptions, JobOptions, AuthOptions): pass
+                class Excluded(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
-                class Fetched(UrlInfoOptions, JobOptions, AuthOptions): pass
+                class Fetched(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
-                class NotModified(UrlInfoOptions, JobOptions, AuthOptions): pass
+                class NotModified(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
-                class Parsed(UrlInfoOptions, JobOptions, AuthOptions): pass
+                class Parsed(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
-                class Pending(UrlInfoOptions, JobOptions, AuthOptions): pass
+                class Pending(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
                 errors: Optional[Errors] = Field1(description='Get the error URLs for a crawl')
                 excluded: Optional[Excluded] = Field1(description='Get the excluded URLs for a crawl')
@@ -340,9 +354,9 @@ class LockssApi(BaseModel1):
 
         class Jobs(BaseModel1):
 
-            class Delete(BaseModel1): pass # FIXME
+            class Delete(AuthOptions): pass # FIXME
 
-            class DeleteAll(BaseModel1): pass # FIXME
+            class DeleteAll(AuthOptions): pass # FIXME
 
             class Get(CrawlJobOptions, JobOptions, AuthOptions): pass
 
@@ -351,7 +365,7 @@ class LockssApi(BaseModel1):
             class Request(AuthOptions): pass # FIXME
 
             delete: Optional[Delete] = Field1(description='Remove or stop a crawl job') # FIXME
-            delete_all: Optional[DeleteAll] = Field1(alias='delete-all', description='Delete all of the currently queued and active jobs') # FIXME
+            delete_all: Optional[DeleteAll] = Field1(alias='delete-all', description='Delete all of the currently queued and active crawl jobs') # FIXME
             get: Optional[Get] = Field1(description='Get queued poll status')
             get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of crawl jobs')
             request: Optional[Request] = Field1(description='Request a crawl as defined by the descriptor') # FIXME
@@ -361,6 +375,44 @@ class LockssApi(BaseModel1):
         crawlers: Optional[Crawlers] = Field1(description='Subcommand for crawler information operations')
         crawls: Optional[Crawls] = Field1(description='Subcommand for crawl status operations')
         jobs: Optional[Jobs] = Field1(description='Subcommand for crawler job operations')
+        status: Optional[Status] = Field1(description='Get the status of the service')
+
+    class Md(BaseModel1):
+
+        class Get(output_options('ItemMetadataOptions', md.ItemMetadata), AuidOptions, AuthOptions): pass
+
+        class Jobs(BaseModel1):
+
+            class Delete(AuthOptions): pass # FIXME
+
+            class DeleteAll(AuthOptions): pass # FIXME
+
+            class Get(MdJobOptions, JobOptions, AuthOptions): pass
+
+            class GetAll(MdJobOptions, AuthOptions): pass
+
+            class Request(AuthOptions): pass # FIXME
+
+            delete: Optional[Delete] = Field1(description='Delete a metadata job') # FIXME
+            delete_all: Optional[DeleteAll] = Field1(alias='delete-all', description='Delete all of the currently queued and active metadata jobs') # FIXME
+            get: Optional[Get] = Field1(description='Get queued job status')
+            get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of queued jobs')
+            request: Optional[Request] = Field1(description='Request a metadata update operation') # FIXME
+
+        class Query(BaseModel1):
+
+            class Doi(MdUrlInfoOptions, DoiOptions, AuthOptions): pass
+
+            class OpenUrl(MdUrlInfoOptions, OpenUrlOptions, AuthOptions): pass
+
+            doi: Optional[Doi] = Field1(description='Perform a DOI query')
+            openurl: Optional[OpenUrl] = Field1(description='Perform an OpenURL query')
+
+        class Status(output_options('MdApiStatusOptions', md.ApiStatus), NodeOptions): pass
+
+        get: Optional[Get] = Field1(description='Get the metadata stored for an AU')
+        jobs: Optional[Jobs] = Field1(description='Subcommand for metadata job operations')
+        query: Optional[Query] = Field1(description='Subcommand for query operations')
         status: Optional[Status] = Field1(description='Get the status of the service')
 
     class Poller(BaseModel1):
@@ -466,12 +518,13 @@ class LockssApi(BaseModel1):
         status: Optional[Status] = Field1(description="Get the status of the service")
         storage_info: Optional[StorageInfo] = Field1(alias='storage-info', description="Get repository storage information")
 
-    config: Optional[Config] = Field1(description='Configuration Service operations')
+    config: Optional[Config] = Field1(description='Subcommand for Configuration Service operations')
     copyright: Optional[BaseModel1] = Field1(description=COPYRIGHT_DESCRIPTION)
-    crawler: Optional[Config] = Field1(description='Crawler Service operations')
+    crawler: Optional[Crawler] = Field1(description='Subcommand for Crawler Service operations')
     license: Optional[BaseModel1] = Field1(description=LICENSE_DESCRIPTION)
-    poller: Optional[Poller] = Field1(description='Poller Service operations')
-    repo: Optional[Repo] = Field1(description='Repository Service operations')
+    md: Optional[Md] = Field1(description='Subcommand for Metadata Service operations')
+    poller: Optional[Poller] = Field1(description='Subcommand for Poller Service operations')
+    repo: Optional[Repo] = Field1(description='Subcommand for Repository Service operations')
     version: Optional[BaseModel1] = Field1(description=VERSION_DESCRIPTION)
 
 
@@ -624,6 +677,28 @@ class LockssApiCli(BaseCli[LockssApi]):
 
     def _license(self, cmd: BaseModel1) -> None:
         self._parser.exit(0, __license__)
+
+    def _md_get(self, cmd: LockssApi.Md.Get) -> None:
+        cmd.display(md_get_metadata(cmd.make_node(),
+                                    cmd.auid))
+
+    def _md_jobs_get(self, cmd: LockssApi.Md.Jobs.Get) -> None:
+        cmd.display(md_get_job(cmd.make_node(),
+                               cmd.job))
+
+    def _md_jobs_get_all(self, cmd: LockssApi.Md.Jobs.GetAll) -> None:
+        cmd.display(md_get_jobs(cmd.make_node()))
+
+    def _md_query_doi(self, cmd: LockssApi.Md.Query.Doi) -> None:
+        cmd.display(md_doi_query(cmd.make_node(),
+                                 cmd.doi))
+
+    def _md_query_openurl(self, cmd: LockssApi.Md.Query.OpenUrl) -> None:
+        cmd.display(md_openurl_query(cmd.make_node(),
+                                     cmd.params))
+
+    def _md_status(self, cmd: LockssApi.Md.Status) -> None:
+        cmd.display(md_get_status(cmd.make_node()))
 
     def _poller_jobs_get(self, cmd: LockssApi.Poller.Jobs.Get) -> None:
         cmd.display(poller_get_poll_status(cmd.make_node(),
