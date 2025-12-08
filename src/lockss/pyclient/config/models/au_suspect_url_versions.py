@@ -29,7 +29,7 @@ class AuSuspectUrlVersions(object):
     """
     swagger_types = {
         'auid': 'str',
-        'suspect_versions': 'list[list[SuspectUrlVersion]]'
+        'suspect_versions': 'list[SuspectUrlVersion]'
     }
 
     attribute_map = {
@@ -74,7 +74,7 @@ class AuSuspectUrlVersions(object):
 
 
         :return: The suspect_versions of this AuSuspectUrlVersions.  # noqa: E501
-        :rtype: list[list[SuspectUrlVersion]]
+        :rtype: list[SuspectUrlVersion]
         """
         return self._suspect_versions
 
@@ -84,7 +84,7 @@ class AuSuspectUrlVersions(object):
 
 
         :param suspect_versions: The suspect_versions of this AuSuspectUrlVersions.  # noqa: E501
-        :type: list[list[SuspectUrlVersion]]
+        :type: list[SuspectUrlVersion]
         """
 
         self._suspect_versions = suspect_versions

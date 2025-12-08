@@ -1596,9 +1596,7 @@ components:
           type: array
           nullable: true
           items:
-            type: object
-            items:
-              $ref: '#/components/schemas/SuspectUrlVersion'
+            $ref: '#/components/schemas/SuspectUrlVersion'
     auWsResult:
       required:
         - auId
