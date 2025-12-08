@@ -108,9 +108,9 @@ class BaseOutputOptions(BaseModel1):
             print(yaml.dump(obj.to_dict(), indent=self.indent), file=file)
 
 
-def create_output_options(type_name: str,
-                          target_cls: type[SwaggerObject],
-                          disambiguate: Optional[list[str]] = None):
+def output_options(type_name: str,
+                   target_cls: type[SwaggerObject],
+                   disambiguate: Optional[list[str]] = None):
     disambiguate = disambiguate or []
     with warnings.catch_warnings():
         warnings.simplefilter("ignore") # Pydantic v1 demands that PrivateAttr begins with a hyphen but warns that _target_cls begins with a hyphen

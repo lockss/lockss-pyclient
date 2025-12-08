@@ -34,13 +34,14 @@ from typing import Literal
 import sys
 
 from lockss.pybasic.cliutil import BaseCli, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, VERSION_DESCRIPTION
+from lockss.pybasic.errorutil import InternalError
 from pydantic.v1 import BaseModel as BaseModel1, Field as Field1, NonNegativeInt as NonNegativeInt1, root_validator as root_validator1
 
-from .output import create_output_options
+from .output import output_options
 from . import *
 from . import __copyright__, __license__, __version__
 from ._internal_common import _param_default, _RS
-from . import config, rs
+from . import config, poller, rs
 
 
 class NodeOptions(BaseModel1):
@@ -88,8 +89,79 @@ class IfMatchOptions(BaseModel1):
     if_unmodified_since: Optional[str] = Field1(description='set the If-Unmodified-Since HTTP header to the given value')
 
 
+class JobOptions(BaseModel1):
+    job: str = Field1(description='job identifier')
+
+
 class OutputOptions(BaseModel1):
     output: Optional[Path] = Field1(aliases=['-o'], description='write output to the given file')
+
+
+class PollKeyOptions(BaseModel1):
+    poll_key: str = Field1(aliases=['-k'], description='poll key')
+
+
+class PeerIdOptions(PollKeyOptions):
+    peer_id: str = Field1(aliases=['-p'], description='peer identifier')
+    agreed: bool = Field1(False, description='return the agreed peer URLs')
+    disagreed: bool = Field1(False, description='return the disagreed peer URLs')
+    poller_only: bool = Field1(False, description='return the poller-only peer URLs')
+    voter_only: bool = Field1(False, description='return the voter-only peer URLs')
+
+    @root_validator1
+    def _validate_exactly_one(cls, values):
+        attrs = ('agreed', 'disagreed', 'poller_only', 'voter_only')
+        if len([attr for attr in attrs if values.get(attr)]) != 1:
+            raise ValueError('Expected exactly one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
+        return values
+
+    def get_voter_urls_enum(self) -> poller.VoterUrlsEnum:
+        if self.agreed: return poller.VoterUrlsEnum.AGREED
+        elif self.disagreed: return poller.VoterUrlsEnum.DISAGREED
+        elif self.poller_only: return poller.VoterUrlsEnum.POLLERONLY
+        elif self.voter_only: return poller.VoterUrlsEnum.VOTERONLY
+        else: raise InternalError from ValueError(self.json())
+
+class RepairTypeOptions(BaseModel1):
+    active: bool = Field1(False, description='return the active repairs')
+    completed: bool = Field1(False, description='return the completed repairs')
+    pending: bool = Field1(False, description='return the pending repairs')
+
+    @root_validator1
+    def _validate_exactly_one(cls, values):
+        attrs = ('active', 'completed', 'pending')
+        if len([attr for attr in attrs if values.get(attr)]) != 1:
+            raise ValueError('Expected exactly one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
+        return values
+
+    def get_repair_type_enum(self) -> poller.RepairTypeEnum:
+        if self.active: return poller.RepairTypeEnum.ACTIVE
+        elif self.completed: return poller.RepairTypeEnum.COMPLETED
+        elif self.pending: return poller.RepairTypeEnum.PENDING
+        else: raise InternalError from ValueError(self.json())
+
+
+class TallyTypeOptions(BaseModel1):
+    agree: bool = Field1(False, description='return the tallies for URLs that agree')
+    disagree: bool = Field1(False, description='return the tallies for URLs that disagree')
+    error: bool = Field1(False, description='return the tallies for URLs that have errors')
+    no_quorum: bool = Field1(False, description='return the tallies for URLs that have no quorum')
+    too_close: bool = Field1(False, description='return the tallies for URLs that are too close')
+
+    @root_validator1
+    def _validate_exactly_one(cls, values):
+        attrs = ('active', 'completed', 'pending')
+        if len([attr for attr in attrs if values.get(attr)]) != 1:
+            raise ValueError('Expected exactly one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
+        return values
+
+    def get_tally_type_enum(self) -> poller.TallyTypeEnum:
+        if self.agree: return poller.TallyTypeEnum.AGREE
+        elif self.disagree: return poller.TallyTypeEnum.DISAGREE
+        elif self.error: return poller.TallyTypeEnum.ERROR
+        elif self.no_quorum: return poller.TallyTypeEnum.NOQUORUM
+        elif self.too_close: return poller.TallyTypeEnum.TOOCLOSE
+        else: raise InternalError from ValueError(self.json())
 
 
 class UrlOptions(BaseModel1):
@@ -136,37 +208,10 @@ class VersionsOptions(BaseModel1):
         else: return default
 
 
-ConfigApiStatusOptions = create_output_options('ConfigApiStatusOptions', config.ApiStatus)
+ArtifactOptions = output_options('ArtifactOptions', rs.Artifact, disambiguate=['auid', 'namespace'])
 
 
-ConfigAuConfigurationOptions = create_output_options('ConfigAuConfigurationOptions', config.AuConfiguration)
-
-
-ConfigAuStateBeanOptions = create_output_options('ConfigAuStateBeanOptions', config.AuStateBean, disambiguate=['auid'])
-
-
-ConfigAuStatusOptions = create_output_options('ConfigAuStatusOptions', config.AuStatus)
-
-
-ConfigSuspectUrlVersionOptions = create_output_options('ConfigSuspectUrlVersionOptions', config.SuspectUrlVersion)
-
-
-ConfigDatedPeerIdSetImplOptions = create_output_options('ConfigDatedPeerIdSetImplOptions', config.DatedPeerIdSetImpl)
-
-
-ConfigPlatformConfigurationWsResultOptions = create_output_options('ConfigPlatformConfigurationWsResultOptions', config.PlatformConfigurationWsResult)
-
-
-RsArtifactOptions = create_output_options('ArtifactOptions', rs.Artifact, disambiguate=['auid', 'namespace'])
-
-
-RsAuSizeOptions = create_output_options('AuSizeOptions', rs.AuSize)
-
-
-RsRepositoryInfoOptions = create_output_options('RepositoryInfoOptions', rs.RepositoryInfo)
-
-
-RsApiStatusOptions = create_output_options('RsApiStatusOptions', rs.ApiStatus)
+AuConfigurationOptions = output_options('AuConfigurationOptions', config.AuConfiguration)
 
 
 class LockssApi(BaseModel1):
@@ -179,20 +224,20 @@ class LockssApi(BaseModel1):
 
             class Configuration(BaseModel1):
 
-                class Get(ConfigAuConfigurationOptions, AuidOptions, AuthOptions): pass
+                class Get(AuConfigurationOptions, AuidOptions, AuthOptions): pass
 
-                class GetAll(ConfigAuConfigurationOptions, AuthOptions): pass
+                class GetAll(AuConfigurationOptions, AuthOptions): pass
 
                 get: Optional[Get] = Field1(description='Get the configuration of an AU')
                 get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the configurations of all AUs')
 
-            class NoAuPeerSet(ConfigDatedPeerIdSetImplOptions, AuidOptions, AuthOptions): pass
+            class NoAuPeerSet(output_options('DatedPeerIdSetImplOptions', config.DatedPeerIdSetImpl), AuidOptions, AuthOptions): pass
 
-            class State(ConfigAuStateBeanOptions, AuidOptions, AuthOptions): pass
+            class State(output_options('AuStateBeanOptions', config.AuStateBean, disambiguate=['auid']), AuidOptions, AuthOptions): pass
 
-            class Status(ConfigAuStatusOptions, AuidOptions, AuthOptions): pass
+            class Status(output_options('AuStatusOptions', config.AuStatus), AuidOptions, AuthOptions): pass
 
-            class SuspectUrls(ConfigSuspectUrlVersionOptions, AuidOptions, AuthOptions): pass
+            class SuspectUrls(output_options('SuspectUrlVersionOptions', config.SuspectUrlVersion), AuidOptions, AuthOptions): pass
 
             agreements: Optional[Agreements] = Field1(descriptions='Get the poll agreements of an AU')
             configuration: Optional[Configuration] = Field1(description='AU configuration operations')
@@ -205,7 +250,7 @@ class LockssApi(BaseModel1):
 
         class LoadedUrls(AuthOptions): pass
 
-        class Platform(ConfigPlatformConfigurationWsResultOptions, AuthOptions): pass
+        class Platform(output_options('PlatformConfigurationWsResultOptions', config.PlatformConfigurationWsResult), AuthOptions): pass
 
         class Section(BaseModel1):
 
@@ -214,7 +259,8 @@ class LockssApi(BaseModel1):
 
             get: Optional[Get] = Field1(description='Get the named configuration file')
 
-        class Status(ConfigApiStatusOptions, NodeOptions): pass
+        class Status(output_options('ConfigApiStatusOptions', config.ApiStatus), NodeOptions): pass
+        #class Status(ConfigApiStatusOptions, NodeOptions): pass
 
         class Url(IfMatchOptions, OutputOptions, AuthOptions):
             url: str = Field1(aliases=['-u'], description='the URL for which the configuration is requested')
@@ -237,6 +283,55 @@ class LockssApi(BaseModel1):
         url: Optional[Url] = Field1(description='Get the configuration file for a URL')
         users: Optional[Users] = Field1(description='User operations')
 
+    class Poller(BaseModel1):
+
+        class Jobs(BaseModel1):
+
+            class Get(output_options('PollerSummaryOptions', poller.PollerSummary, disambiguate=['poll-key']), JobOptions, AuthOptions): pass
+
+            class Request(AuthOptions): pass # FIXME
+
+            get: Optional[Get] = Field1(description='Get queued poll status')
+            request: Optional[Request] = Field1(description='Request to call a poll as the poller') # FIXME
+
+        class Polls(BaseModel1):
+
+            class AsPoller(BaseModel1):
+
+                class Get(output_options('PollerDetailOptions', poller.PollerDetail, disambiguate=['poll-key']), PollKeyOptions, AuthOptions): pass
+
+                class GetAll(output_options('PollerSummaryOptions', poller.PollerSummary, disambiguate=['poll-key']), AuthOptions): pass
+
+                get: Optional[Get] = Field1(description='Get the detailed information about a poll in which a node is the poller')
+                get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of recent polls in which a node is the poller')
+
+            class AsVoter(BaseModel1):
+
+                class Get(output_options('VoterDetailOptions', poller.VoterDetail, disambiguate=['poll-key']), PollKeyOptions, AuthOptions): pass
+
+                class GetAll(output_options('VoterSummaryOptions', poller.VoterSummary, disambiguate=['poll-key']), AuthOptions): pass
+
+                get: Optional[Get] = Field1(description='Get the detailed information about a poll in which a node is a voter')
+                get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of recent polls in which a node is a voter')
+
+            class PeerData(PeerIdOptions, AuthOptions): pass
+
+            class Repairs(output_options('RepairDataOptions', poller.RepairData), RepairTypeOptions, PollKeyOptions, AuthOptions): pass
+
+            class Tallies(TallyTypeOptions, PollKeyOptions, AuthOptions): pass
+
+            as_poller: Optional[AsPoller] = Field1(alias='as-poller', description='Subcommand for polls in which a node is the poller')
+            as_voter: Optional[AsVoter] = Field1(alias='as-voter', description='Subcommand for polls in which a node is the voter')
+            peer_data: Optional[PeerData] = Field1(alias='peer-data', description='Get peer data for a poll')
+            repairs: Optional[Repairs] = Field1(description='Get the repairs for a poll')
+            tallies: Optional[Tallies] = Field1(description='Get the tallies for a poll')
+
+        class Status(output_options('PollerApiStatusOptions', poller.ApiStatus), NodeOptions): pass
+
+        jobs: Optional[Jobs] = Field1(description='Subcommand for poller job operations')
+        polls: Optional[Polls] = Field1(description='Subcommand for poll operations')
+        status: Optional[Status] = Field1(description='Get the status of the service')
+
     class Repo(BaseModel1):
 
         class Artifacts(BaseModel1):
@@ -245,9 +340,9 @@ class LockssApi(BaseModel1):
 
             class Get(BaseModel1):
 
-                class ByAuid(RsArtifactOptions, UncommittedOptions, VersionsOptions, UrlPrefixOptions, AuidOptions, AuthOptions): pass
+                class ByAuid(ArtifactOptions, UncommittedOptions, VersionsOptions, UrlPrefixOptions, AuidOptions, AuthOptions): pass
 
-                class ByUrl(RsArtifactOptions, VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
+                class ByUrl(ArtifactOptions, VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
 
                 class ByUuid(UuidOptions, AuthOptions):
                     response: Optional[Union[Path, Literal['-']]] = Field1(description='write the response headers to the given file, or "-" for standard output')
@@ -268,18 +363,18 @@ class LockssApi(BaseModel1):
 
             class Auids(NamespaceOptions, AuthOptions): pass
 
-            class Size(RsAuSizeOptions, AuidOptions, AuthOptions): pass
+            class Size(output_options('AuSizeOptions', rs.AuSize), AuidOptions, AuthOptions): pass
 
             auids: Optional[Auids] = Field1(description='Get Archival Unit IDs (AUIDs) in a namespace')
             size: Optional[Size] = Field1(description='Get the size of Archival Unit artifacts in a namespace')
 
         class ChecksumAlgorithms(AuthOptions): pass
 
-        class Info(RsRepositoryInfoOptions, AuthOptions): pass
+        class Info(output_options('RepositoryInfoOptions', rs.RepositoryInfo), AuthOptions): pass
 
         class Namespaces(AuthOptions): pass
 
-        class Status(RsApiStatusOptions, NodeOptions): pass
+        class Status(output_options('RsApiStatusOptions', rs.ApiStatus), NodeOptions): pass
 
         class StorageInfo(AuthOptions): pass
 
@@ -294,6 +389,7 @@ class LockssApi(BaseModel1):
     config: Optional[Config] = Field1(description='Configuration Service operations')
     copyright: Optional[BaseModel1] = Field1(description=COPYRIGHT_DESCRIPTION)
     license: Optional[BaseModel1] = Field1(description=LICENSE_DESCRIPTION)
+    poller: Optional[Poller] = Field1(description='Poller Service operations')
     repo: Optional[Repo] = Field1(description='Repository Service operations')
     version: Optional[BaseModel1] = Field1(description=VERSION_DESCRIPTION)
 
@@ -399,6 +495,45 @@ class LockssApiCli(BaseCli[LockssApi]):
 
     def _license(self, cmd: BaseModel1) -> None:
         self._parser.exit(0, __license__)
+
+    def _poller_jobs_get(self, cmd: LockssApi.Poller.Jobs.Get) -> None:
+        cmd.display(poller_get_poll_status(cmd.make_node(),
+                                           cmd.job))
+
+    def _poller_polls_as_poller_get(self, cmd: LockssApi.Poller.Polls.AsPoller.Get) -> None:
+        cmd.display(poller_get_poller_poll(cmd.make_node(),
+                                           cmd.poll_key))
+
+    def _poller_polls_as_poller_get_all(self, cmd: LockssApi.Poller.Polls.AsPoller.GetAll) -> None:
+        cmd.display(poller_get_poller_polls(cmd.make_node()))
+
+    def _poller_polls_as_voter_get(self, cmd: LockssApi.Poller.Polls.AsVoter.Get) -> None:
+        cmd.display(poller_get_voter_poll(cmd.make_node(),
+                                          cmd.poll_key))
+
+    def _poller_polls_as_voter_get_all(self, cmd: LockssApi.Poller.Polls.AsVoter.GetAll) -> None:
+        cmd.display(poller_get_voter_polls(cmd.make_node()))
+
+    def _poller_polls_peer_data(self, cmd: LockssApi.Poller.Polls.PeerData) -> None:
+        for url in poller_get_peer_data(cmd.make_node(),
+                                        cmd.poll_key,
+                                        cmd.peer_id,
+                                        cmd.get_voter_urls_enum()):
+            print(url)
+
+    def _poller_polls_repairs(self, cmd: LockssApi.Poller.Polls.Repairs) -> None:
+        cmd.display(poller_get_repair_data(cmd.make_node(),
+                                           cmd.poll_key,
+                                           cmd.get_repair_type_enum()))
+
+    def _poller_polls_tallies(self, cmd: LockssApi.Poller.Polls.Tallies) -> None:
+        for url in poller_get_tally_urls(cmd.make_node(),
+                                         cmd.poll_key,
+                                         cmd.get_tally_type_enum()):
+            print(url)
+
+    def _poller_status(self, cmd: LockssApi.Poller.Status) -> None:
+        cmd.display(poller_get_status(cmd.make_node()))
 
     def _repo_artifacts_delete(self, cmd: LockssApi.Repo.Artifacts.Delete) -> None:
         repo_delete_artifact(cmd.make_node(),
