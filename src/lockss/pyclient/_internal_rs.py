@@ -166,9 +166,9 @@ def repo_get_auids_page(node: Node,
 
 @_paged_request_iterator_template(repo_get_auids_page,
                                   lambda x: x.auids)
-def repo_get_auids_page(node: Node,
-                        namespace: str = _param_default(_RS, '/aus', 'get', 'namespace'),
-                        limit: Optional[int] = None) -> Iterator[str]:
+def repo_get_auids(node: Node,
+                   namespace: str = _param_default(_RS, '/aus', 'get', 'namespace'),
+                   limit: Optional[int] = None) -> Iterator[str]:
     pass
 
 

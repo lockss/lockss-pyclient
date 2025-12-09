@@ -54,11 +54,11 @@ def poller_get_peer_data_page(node: Node,
 
 @_paged_request_iterator_template(poller_get_peer_data_page,
                                   lambda x: x.urls)
-def poller_get_peer_data_iter(node: Node,
-                              poll_key: str,
-                              peer_id: str,
-                              url_type: poller.VoterUrlsEnum,
-                              limit: Optional[int] = None) -> Iterator[str]:
+def poller_get_peer_data(node: Node,
+                         poll_key: str,
+                         peer_id: str,
+                         url_type: poller.VoterUrlsEnum,
+                         limit: Optional[int] = None) -> Iterator[str]:
     pass
 
 
