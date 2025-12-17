@@ -1228,7 +1228,7 @@ paths:
           description: Internal Server Error
           content: {}
       x-codegen-request-body-name: userAccount
-  /utils/normalizeUrl:
+  /utils/normalizeurl:
     get:
       tags:
         - utils

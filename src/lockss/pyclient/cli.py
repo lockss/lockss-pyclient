@@ -334,6 +334,16 @@ class LockssApi(BaseModel1):
 
                 class Fetched(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
+                class MediaTypes(BaseModel1):
+
+                    class Get(CrawlUrlInfoOptions, JobOptions, AuthOptions):
+                        media_type: str = Field1(description='the media type (e.g. application/pdf)')
+
+                    #class GetAll(JobOptions, AuthOptions): pass
+
+                    get: Optional[Get] = Field1(description='Get the URLs of a given media type for a crawl')
+                    #get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the media types for a crawl')
+
                 class NotModified(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
                 class Parsed(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
@@ -343,7 +353,7 @@ class LockssApi(BaseModel1):
                 errors: Optional[Errors] = Field1(description='Get the error URLs for a crawl')
                 excluded: Optional[Excluded] = Field1(description='Get the excluded URLs for a crawl')
                 fetched: Optional[Fetched] = Field1(description='Get the fetched URLs for a crawl')
-                # FIXME content types
+                media_types: Optional[MediaTypes] = Field1(alias='media-types', description='Subcommand for media type operations')
                 not_modified: Optional[NotModified] = Field1(alias='not-modified', description='Get the not modified URLs for a crawl')
                 parsed: Optional[Parsed] = Field1(description='Get the parsed URLs for a crawl')
                 pending: Optional[Pending] = Field1(description='Get the pending URLs for a crawl')
@@ -652,6 +662,11 @@ class LockssApiCli(BaseCli[LockssApi]):
 
     def _crawler_crawls_get_all(self, cmd: LockssApi.Crawler.Crawls.GetAll) -> None:
         cmd.display(crawler_get_crawls(cmd.make_node()))
+
+    def _crawler_crawls_urls_media_types_get(self, cmd: LockssApi.Crawler.Crawls.Urls.MediaTypes.Get) -> None:
+        cmd.display(crawler_get_crawl_by_media_type(cmd.make_node(),
+                                                    cmd.job,
+                                                    cmd.media_type))
 
     def _crawler_crawls_urls_not_modified(self, cmd: LockssApi.Crawler.Crawls.Urls.NotModified) -> None:
         cmd.display(crawler_get_crawl_not_modified(cmd.make_node(),

@@ -112,7 +112,7 @@ class UtilsApi(object):
         auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
-            '/utils/normalizeUrl', 'GET',
+            '/utils/normalizeurl', 'GET',
             path_params,
             query_params,
             header_params,

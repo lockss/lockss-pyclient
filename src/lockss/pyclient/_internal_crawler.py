@@ -68,20 +68,20 @@ def crawler_get_crawls(node: Node,
                           crawler.ApiClient,
                           crawler.CrawlsApi,
                           crawler.CrawlsApi.get_crawl_by_mime_type)
-def crawler_get_crawl_by_type_page(node: Node,
-                                   job_id: str,
-                                   content_type: str,
-                                   limit: Optional[int] = None,
-                                   continuation_token: Optional[str] = None) -> crawler.UrlPager:
+def crawler_get_crawl_by_media_type_page(node: Node,
+                                         job_id: str,
+                                         media_type: str,
+                                         limit: Optional[int] = None,
+                                         continuation_token: Optional[str] = None) -> crawler.UrlPager:
     pass
 
 
-@_paged_request_iterator_template(crawler_get_crawl_by_type_page,
+@_paged_request_iterator_template(crawler_get_crawl_by_media_type_page,
                                   lambda x: x.urls)
-def crawler_get_crawl_by_type(node: Node,
-                              job_id: str,
-                              content_type: str,
-                              limit: Optional[int] = None) -> Iterator[crawler.UrlInfo]:
+def crawler_get_crawl_by_media_type(node: Node,
+                                    job_id: str,
+                                    media_type: str,
+                                    limit: Optional[int] = None) -> Iterator[crawler.UrlInfo]:
     pass
 
 

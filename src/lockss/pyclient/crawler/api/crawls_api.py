@@ -223,7 +223,7 @@ class CrawlsApi(object):
         auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
-            '/crawls/{jobId}/mimeType/{type}', 'GET',
+            '/crawls/{jobId}/mediatypes/{type}', 'GET',
             path_params,
             query_params,
             header_params,
@@ -635,7 +635,7 @@ class CrawlsApi(object):
         auth_settings = ['basicAuth']  # noqa: E501
 
         return self.api_client.call_api(
-            '/crawls/{jobId}/notModified', 'GET',
+            '/crawls/{jobId}/notmodified', 'GET',
             path_params,
             query_params,
             header_params,
