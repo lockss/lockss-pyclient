@@ -28,11 +28,11 @@
 
 [project]
 name = "lockss-pyclient"
-version = "0.1.0-dev2" # Always change in __init__.py, and at release time in README.rst and CHANGELOG.rst
+version = "0.1.0-dev3" # Always change in __init__.py, and at release time in README.rst and CHANGELOG.rst
 description = "LOCKSS Python clients"
 license = { text = "BSD-3-Clause" }
 readme = "README.rst"
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.9,<3.14"
 authors = [
     { name = "Thib Guicherd-Callin",  email = "thib@cs.stanford.edu" },
     { name = "Daniel Vargas",  email = "dlvargas@stanford.edu" },
