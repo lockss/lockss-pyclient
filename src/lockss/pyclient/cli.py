@@ -33,17 +33,24 @@ from pathlib import Path
 from typing import Literal
 import sys
 
+from click import Choice
+from click_extra import ExtraContext, color_option, command, echo, group, option, option_group, pass_context, pass_obj, password_option, show_params_option
+from lockss.pybasic.cliutil import NonNegativeInt, make_extra_context_settings
+
+'''
 from lockss.pybasic.cliutil import BaseCli, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, VERSION_DESCRIPTION
 from lockss.pybasic.errorutil import InternalError
 from pydantic.v1 import BaseModel as BaseModel1, Field as Field1, NonNegativeInt as NonNegativeInt1, root_validator as root_validator1
 
 from .output import output_options
+'''
 from . import *
 from . import __copyright__, __license__, __version__
 from ._internal_common import _param_default, _RS
 from . import config, crawler, md, poller, rs
+from .output import _format_options
 
-
+'''
 class NodeOptions(BaseModel1):
     host: str = Field1(aliases=["-H"], description="The IP address or FQDN of the LOCKSS node, optionally followed by a colon and port number")
     repo: NonNegativeInt1 = Field1(RS_DEFAULT_PORT, aliases=['--repository-port', '-R'], description='Repository Service port')
@@ -826,13 +833,90 @@ class LockssApiCli(BaseCli[LockssApi]):
 
     def _version(self, cmd: BaseModel1) -> None:
         self._parser.exit(0, __version__)
+'''
+
+class _LockssApiCli(object):
+
+    def __init__(self, ctx: ExtraContext):
+        super().__init__()
+        self._ctx: ExtraContext = ctx
+        self._node: Optional[Node] = None
+
+    def initialize_repo_operation(self,
+                                  cli_node: str,
+                                  cli_username: str,
+                                  cli_password: str,
+                                  cli_repository_port: int):
+        self._node = Node(cli_node, username=cli_username, password=cli_password, rs_port=cli_repository_port)
+
+    def repo_status(self):
+        echo(repo_get_status(self._node))
+
+
+_node_options = (
+    option('--node', '--host', '-n', '-H', metavar='HOST', required=True, help='Set the host of the node to be processed to HOST.'),
+    option('--username', '-U', metavar='USER', show_default='interactive prompt', help='Set the API username to USER.', prompt='API username'),
+    password_option('--password', '-P', metavar='PASS', show_default='interactive prompt', help='Set the API password to PASS.', prompt='API password', confirmation_prompt=False)
+)
+
+
+def _make_node_options(long: str,
+                       short: str,
+                       default: int,
+                       service: str):
+    return option_group('Node options',
+                        *_node_options,
+                        option(f'--{long}-port', f'-{short}', metavar='PORT', type=NonNegativeInt, default=default, help=f'Set the {service} Service API port to PORT')), \
+           ('node', 'username', 'password', f'{long}_port')
+
+
+_repo_node_options, _repo_node_args = _make_node_options('repository', 'R', RS_DEFAULT_PORT, 'Repository')
+
+
+@group('lockssapi', params=None, context_settings=make_extra_context_settings())
+@color_option
+@show_params_option
+@pass_context
+def _lockssapi(ctx: ExtraContext, **kwargs):
+    ctx.obj = _LockssApiCli(ctx)
+
+
+@_lockssapi.command('copyright', help='Show the copyright then exit.')
+def _copyright() -> None:
+    echo(__copyright__)
+
+
+@_lockssapi.command('license', help='Show the software license then exit.')
+def license() -> None:
+    echo(__license__)
+
+
+@_lockssapi.group('repo', help='Subcommand for Repository Service operations.')
+@pass_obj
+def _repo(cli: _LockssApiCli, **kwargs):
+    pass
+
+
+@_repo.command('status', help='Get the status of the Repository Service.')
+@_repo_node_options
+@_format_options
+@pass_obj
+def _repo_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_repo_operation(*[kwargs.get(k) for k in _repo_node_args])
+    cli.repo_status()
+
+
+@_lockssapi.command('version', help='Show the version number then exit.')
+def version() -> None:
+    echo(__version__)
 
 
 def main() -> None:
     """
     Entry point for the lockssapi command line tool.
     """
-    LockssApiCli().run()
+    #LockssApiCli().run()
+    _lockssapi()
 
 
 if __name__ == '__main__':

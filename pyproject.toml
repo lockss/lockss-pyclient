@@ -32,7 +32,7 @@ version = "0.1.0-dev3" # Always change in __init__.py, and at release time in RE
 description = "LOCKSS Python clients"
 license = { text = "BSD-3-Clause" }
 readme = "README.rst"
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.10,<4.0"
 authors = [
     { name = "Thib Guicherd-Callin",  email = "thib@cs.stanford.edu" },
     { name = "Daniel Vargas",  email = "dlvargas@stanford.edu" },
@@ -43,7 +43,8 @@ maintainers = [
 ]
 dependencies = [
     "certifi (>=2025.8.0,<2025.9.0)",
-    "lockss-pybasic (==0.2.0-dev2)",
+    "click-extra (>=7.5.0,<7.6.0)",
+    "lockss-pybasic (==0.2.0-dev14)",
     "multipart (>=1.3.0,<1.4.0)",
     "pydantic (>=2.11.0,<2.12.0)",
     "python_dateutil (>=2.9.0,<2.10.0)",
