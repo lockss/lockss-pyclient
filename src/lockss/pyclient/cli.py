@@ -28,6 +28,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+from dataclasses import dataclass, field
 from io import TextIOWrapper
 from pathlib import Path
 from typing import Literal
@@ -48,7 +49,7 @@ from . import *
 from . import __copyright__, __license__, __version__
 from ._internal_common import _param_default, _RS
 from . import config, crawler, md, poller, rs
-from .output import _format_options
+from .output import _FormatOpts, display, make_output_option_group
 
 '''
 class NodeOptions(BaseModel1):
@@ -835,22 +836,32 @@ class LockssApiCli(BaseCli[LockssApi]):
         self._parser.exit(0, __version__)
 '''
 
+@dataclass(kw_only=True)
+class _Opts(_FormatOpts):
+    node: Optional[str] = None
+    repository_port: Optional[int] = None
+    username: Optional[str] = None
+    password: Optional[str] = field(default=None, repr=False)
+
+
 class _LockssApiCli(object):
 
     def __init__(self, ctx: ExtraContext):
         super().__init__()
         self._ctx: ExtraContext = ctx
+        self._opts: Optional[_Opts] = None
         self._node: Optional[Node] = None
 
-    def initialize_repo_operation(self,
-                                  cli_node: str,
-                                  cli_username: str,
-                                  cli_password: str,
-                                  cli_repository_port: int):
-        self._node = Node(cli_node, username=cli_username, password=cli_password, rs_port=cli_repository_port)
+    def initialize(self, opts: _Opts) -> None:
+        self._opts = opts
+
+    def initialize_repo_operation(self):
+        opts = self._opts
+        self._node = Node(opts.node, username=opts.username, password=opts.password, rs_port=opts.repository_port)
 
     def repo_status(self):
-        echo(repo_get_status(self._node))
+        self.initialize_repo_operation()
+        display(self._opts, repo_get_status(self._node))
 
 
 _node_options = (
@@ -860,17 +871,16 @@ _node_options = (
 )
 
 
-def _make_node_options(long: str,
-                       short: str,
-                       default: int,
-                       service: str):
+def _make_node_option_group(long: str,
+                            short: str,
+                            default: int,
+                            service: str):
     return option_group('Node options',
                         *_node_options,
-                        option(f'--{long}-port', f'-{short}', metavar='PORT', type=NonNegativeInt, default=default, help=f'Set the {service} Service API port to PORT')), \
-           ('node', 'username', 'password', f'{long}_port')
+                        option(f'--{long}-port', f'-{short}', metavar='PORT', type=NonNegativeInt, default=default, help=f'Set the {service} Service API port to PORT'))
 
 
-_repo_node_options, _repo_node_args = _make_node_options('repository', 'R', RS_DEFAULT_PORT, 'Repository')
+_repo_node_option_group = _make_node_option_group('repository', 'R', RS_DEFAULT_PORT, 'Repository')
 
 
 @group('lockssapi', params=None, context_settings=make_extra_context_settings())
@@ -898,11 +908,11 @@ def _repo(cli: _LockssApiCli, **kwargs):
 
 
 @_repo.command('status', help='Get the status of the Repository Service.')
-@_repo_node_options
-@_format_options
+@_repo_node_option_group
+@make_output_option_group(rs.ApiStatus)
 @pass_obj
 def _repo_status(cli: _LockssApiCli, **kwargs) -> None:
-    cli.initialize_repo_operation(*[kwargs.get(k) for k in _repo_node_args])
+    cli.initialize(_Opts(**kwargs))
     cli.repo_status()
 
 
