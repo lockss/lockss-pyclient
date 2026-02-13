@@ -35,7 +35,7 @@ from typing import Literal
 import sys
 
 from click import Choice
-from click_extra import ExtraContext, color_option, command, echo, group, option, option_group, pass_context, pass_obj, password_option, show_params_option
+from click_extra import ExtraContext, Section, color_option, command, echo, group, option, option_group, pass_context, pass_obj, password_option, show_params_option
 from lockss.pybasic.cliutil import NonNegativeInt, make_extra_context_settings
 
 '''
@@ -891,17 +891,10 @@ def _lockssapi(ctx: ExtraContext, **kwargs):
     ctx.obj = _LockssApiCli(ctx)
 
 
-@_lockssapi.command('copyright', help='Show the copyright then exit.')
-def _copyright() -> None:
-    echo(__copyright__)
+_SUBCOMMANDS = Section('Subcommands')
 
 
-@_lockssapi.command('license', help='Show the software license then exit.')
-def license() -> None:
-    echo(__license__)
-
-
-@_lockssapi.group('repo', help='Subcommand for Repository Service operations.')
+@_lockssapi.group('repo', section=_SUBCOMMANDS, help='Subcommand for Repository Service operations.')
 @pass_obj
 def _repo(cli: _LockssApiCli, **kwargs):
     pass
@@ -914,6 +907,16 @@ def _repo(cli: _LockssApiCli, **kwargs):
 def _repo_status(cli: _LockssApiCli, **kwargs) -> None:
     cli.initialize(_Opts(**kwargs))
     cli.repo_status()
+
+
+@_lockssapi.command('copyright', help='Show the copyright then exit.')
+def _copyright() -> None:
+    echo(__copyright__)
+
+
+@_lockssapi.command('license', help='Show the software license then exit.')
+def license() -> None:
+    echo(__license__)
 
 
 @_lockssapi.command('version', help='Show the version number then exit.')
