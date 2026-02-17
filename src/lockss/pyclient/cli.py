@@ -34,9 +34,8 @@ from pathlib import Path
 from typing import Literal
 import sys
 
-from click import Choice
 from click_extra import ExtraContext, Section, color_option, command, echo, group, option, option_group, pass_context, pass_obj, password_option, show_params_option
-from lockss.pybasic.cliutil import NonNegativeInt, make_extra_context_settings
+from lockss.pybasic.cliutil import UInt16, click_path, make_extra_context_settings
 
 '''
 from lockss.pybasic.cliutil import BaseCli, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, VERSION_DESCRIPTION
@@ -310,7 +309,7 @@ class LockssApi(BaseModel1):
 
         aus: Optional[Aus] = Field1(description='AU operations')
         last_update_time: Optional[LastUpdateTime] = Field1(alias='last-update-time', description='Get the timestamp when the configuration was last updated')
-        loaded_urls: Optional[LoadedUrls] = Field1(alias='loaded-urls', description='Get the URLs from which the cofniguration was loaded')
+        loaded_urls: Optional[LoadedUrls] = Field1(alias='loaded-urls', description='Get the URLs from which the configuration was loaded')
         platform: Optional[Platform] = Field1(description='Get the platform configuration')
         section: Optional[Section] = Field1(description='Section operations')
         status: Optional[Status] = Field1(description='Get the status of the service')
@@ -839,9 +838,20 @@ class LockssApiCli(BaseCli[LockssApi]):
 @dataclass(kw_only=True)
 class _Opts(_FormatOpts):
     node: Optional[str] = None
+    config_port: Optional[int] = None
+    crawler_port: Optional[int] = None
+    md_port: Optional[int] = None
+    poller_port: Optional[int] = None
     repository_port: Optional[int] = None
     username: Optional[str] = None
     password: Optional[str] = field(default=None, repr=False)
+    url: Optional[str] = None
+    section_name: Optional[str] = None
+    user_account: Optional[str] = None
+    if_match: Optional[str] = None
+    if_modified_since: Optional[str] = None
+    if_none_match: Optional[str] = None
+    if_unmodified_since: Optional[str] = None
 
 
 class _LockssApiCli(object):
@@ -852,17 +862,119 @@ class _LockssApiCli(object):
         self._opts: Optional[_Opts] = None
         self._node: Optional[Node] = None
 
-    def initialize(self, opts: _Opts) -> None:
+    def config_aus_suspect_urls(self) -> None:
+        self._initialize_config_operation()
+        display(self._opts, config_get_au_suspect_url_versions(self._node).suspect_versions) # of type list[config.SuspectUrlVersion]
+
+    def config_last_update_time(self) -> None:
+        self._initialize_config_operation()
+        echo(config_last_update_time(self._node))
+
+    def config_loaded_urls(self) -> None:
+        self._initialize_config_operation()
+        for loaded_url in config_get_loaded_urls(self._node):
+            echo(loaded_url)
+
+    def config_platform(self) -> None:
+        self._initialize_config_operation()
+        display(self._opts, config_get_platform_config(self._node))
+
+    def config_section_get(self) -> None:
+        self._initialize_config_operation()
+        mp: MultipartParser = config_get_section(self._node,
+                                                 url=(opts := self._opts).url,
+                                                 if_match=opts.if_match,
+                                                 if_modified_since=opts.if_modified_since,
+                                                 if_none_match=opts.if_none_match,
+                                                 if_unmodified_since=opts.if_unmodified_since)
+        for part in mp.parts(): # FIXME
+            echo(f'NAME: {part.name}')
+            echo(f'HEADERS:\n{part.headers}')
+            echo(f'VALUE:\n{part.value}')
+
+    def config_status(self) -> None:
+        self._initialize_config_operation()
+        display(self._opts, config_get_status(self._node))
+
+    def config_url(self) -> None:
+        self._initialize_config_operation()
+        mp: MultipartParser = config_get_url(self._node,
+                                             url=(opts := self._opts).url,
+                                             if_match=opts.if_match,
+                                             if_modified_since=opts.if_modified_since,
+                                             if_none_match=opts.if_none_match,
+                                             if_unmodified_since=opts.if_unmodified_since)
+        for part in mp.parts(): # FIXME
+            echo(f'NAME: {part.name}')
+            echo(f'HEADERS:\n{part.headers}')
+            echo(f'VALUE:\n{part.value}')
+
+    def config_users_get(self) -> None:
+        self._initialize_config_operation()
+        echo(config_get_user_account(self._node, self._opts.user_account))
+
+    def config_users_usernames(self) -> None:
+        self._initialize_config_operation()
+        for username in sorted(config_get_usernames(self._node)):
+            echo(username)
+
+    def crawler_status(self) -> None:
+        self.initialize_crawler_operation()
+        display(self._opts, crawler_get_status(self._node))
+
+    def initialize_opts(self, opts: _Opts) -> None:
         self._opts = opts
 
-    def initialize_repo_operation(self):
-        opts = self._opts
-        self._node = Node(opts.node, username=opts.username, password=opts.password, rs_port=opts.repository_port)
+    def md_status(self) -> None:
+        self.initialize_md_operation()
+        display(self._opts, md_get_status(self._node))
 
-    def repo_status(self):
-        self.initialize_repo_operation()
+    def poller_status(self) -> None:
+        self.initialize_poller_operation()
+        display(self._opts, poller_get_status(self._node))
+
+    def repo_checksum_algorithms(self) -> None:
+        self._initialize_repo_operation()
+        for checksum_algorithm in sorted(repo_get_checksum_algorithms(self._node), key=lambda x: x.lower()):
+            echo(checksum_algorithm)
+
+    def repo_info(self) -> None:
+        self._initialize_repo_operation()
+        display(self._opts, repo_get_info(self._node))
+
+    def repo_namespaces(self) -> None:
+        self._initialize_repo_operation()
+        for namespace in sorted(repo_get_namespaces(self._node)):
+            echo(namespace)
+
+    def repo_status(self) -> None:
+        self._initialize_repo_operation()
         display(self._opts, repo_get_status(self._node))
 
+    def repo_storage_info(self) -> None:
+        self._initialize_repo_operation()
+        display(self._opts, repo_get_storage_info(self._node))
+
+    def _initialize_config_operation(self):
+        self._node = Node((opts := self._opts).node, username=opts.username, password=opts.password, config_port=opts.config_port)
+
+    def _initialize_crawler_operation(self):
+        self._node = Node((opts := self._opts).node, username=opts.username, password=opts.password, crawler_port=opts.crawler_port)
+
+    def _initialize_metadata_operation(self):
+        self._node = Node((opts := self._opts).node, username=opts.username, password=opts.password, config_port=opts.md_port)
+
+    def _initialize_poller_operation(self):
+        self._node = Node((opts := self._opts).node, username=opts.username, password=opts.password, config_port=opts.poller_port)
+
+    def _initialize_repo_operation(self):
+        self._node = Node((opts := self._opts).node, username=opts.username, password=opts.password, rs_port=opts.repository_port)
+
+
+_auid_option_group = option_group(
+    'AUID options',
+    option('--auid', '-a', metavar='VALUE', required=True, help='Set the AUID to process to VALUE.')
+)
 
 _node_options = (
     option('--node', '--host', '-n', '-H', metavar='HOST', required=True, help='Set the host of the node to be processed to HOST.'),
@@ -877,11 +989,44 @@ def _make_node_option_group(long: str,
                             service: str):
     return option_group('Node options',
                         *_node_options,
-                        option(f'--{long}-port', f'-{short}', metavar='PORT', type=NonNegativeInt, default=default, help=f'Set the {service} Service API port to PORT'))
+                        option(f'--{long}-port', f'-{short}', metavar='PORT', type=UInt16, default=default, help=f'Set the {service} Service API port to PORT'))
+
+
+_config_node_option_group = _make_node_option_group('config', 'C', CONFIG_DEFAULT_PORT, 'Configuration')
+
+
+_crawler_node_option_group = _make_node_option_group('crawler', 'W', CRAWLER_DEFAULT_PORT, 'Crawler')
+
+
+_md_node_option_group = _make_node_option_group('metadata', 'M', MD_DEFAULT_PORT, 'Metadata')
+
+
+_poller_node_option_group = _make_node_option_group('poller', 'L', POLLER_DEFAULT_PORT, 'Poller')
 
 
 _repo_node_option_group = _make_node_option_group('repository', 'R', RS_DEFAULT_PORT, 'Repository')
 
+
+_multipart_output_options = option_group(
+    'Multipart output options',
+    option('--headers/--no-headers', is_flag=True, default=True, help='Set whether to include HTTP headers in multipart output.'),
+    option('--output-file', '-o', metavar='FILE', type=click_path('fwz'), show_default='console output', help='Output the multipart body to the file FILE.')
+)
+
+_url_option = option('--url', '-u', metavar='VALUE', help='Set the URL to VALUE.')
+
+
+_url_match_option_group = option_group(
+    'URL match options',
+    option('--if-match', metavar='VALUE', help='Set the If-Match HTTP header to VALUE.'),
+    option('--if-modified-since', metavar='VALUE', help='Set the If-Modified-Since HTTP header to VALUE.'),
+    option('--if-none-match', metavar='VALUE', help='Set the If-None-Match HTTP header to VALUE.'),
+    option('--if-unmodified-since', metavar='VALUE', help='Set the If-Unmodified-Since HTTP header to VALUE.')
+)
+
+#
+# Top-level
+#
 
 @group('lockssapi', params=None, context_settings=make_extra_context_settings())
 @color_option
@@ -894,10 +1039,257 @@ def _lockssapi(ctx: ExtraContext, **kwargs):
 _SUBCOMMANDS = Section('Subcommands')
 
 
+#
+# config
+#
+
+@_lockssapi.group('config', section=_SUBCOMMANDS, help='Subcommand for Configuration Service operations.')
+@pass_obj
+def _config(cli: _LockssApiCli, **kwargs):
+    pass
+
+
+_SUBCOMMANDS_CONFIG = Section('Subcommands')
+
+
+@_config.command('last-update-time', help='Get the timestamp when the configuration was last updated.')
+@_config_node_option_group
+@pass_obj
+def _config_last_update_time(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.config_last_update_time()
+
+
+@_config.command('loaded-urls', help='Get the URLs from which the configuration was loaded.')
+@_config_node_option_group
+@pass_obj
+def _config_loaded_urls(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.config_loaded_urls()
+
+
+@_config.command('platform', help='Get the platform configuration.')
+@_config_node_option_group
+@make_output_option_group(config.PlatformConfigurationWsResult)
+@pass_obj
+def _config_platform(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.config_platform()
+
+
+@_config.command('status', help='Get the status of the Configuration Service.')
+@_config_node_option_group
+@make_output_option_group(config.ApiStatus)
+@pass_obj
+def _config_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.config_status()
+
+
+@_config.command('url', help='Get the file for a configuration URL.')
+@_config_node_option_group
+@option_group('URL options', _url_option)
+@_url_match_option_group
+@_multipart_output_options
+@pass_obj
+def _config_url(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.config_url()
+
+
+#
+# config aus
+#
+
+@_config.group('aus', section=_SUBCOMMANDS_CONFIG, help='Subcommand for AU operations.')
+@pass_obj
+def _config_aus(cli: _LockssApiCli, **kwargs):
+    pass
+
+
+_SUBCOMMANDS_CONFIG_AUS = Section('Subcommands')
+
+
+@_config_aus.command('suspect-urls', help='Get the suspect URL versions of an AU.')
+@_config_node_option_group
+@_auid_option_group
+@make_output_option_group(config.SuspectUrlVersion)
+@pass_obj
+def _config_aus_suspect_urls(cli: _LockssApiCli, **kwargs):
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.config_aus_suspect_urls()
+
+
+
+
+'''
+            class Agreements(AuidOptions, AuthOptions): pass
+
+            class Configuration(BaseModel1):
+
+                class Get(AuConfigurationOptions, AuidOptions, AuthOptions): pass
+
+                class GetAll(AuConfigurationOptions, AuthOptions): pass
+
+                get: Optional[Get] = Field1(description='Get the configuration of an AU')
+                get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the configurations of all AUs')
+
+            class NoAuPeerSet(output_options('DatedPeerIdSetImplOptions', config.DatedPeerIdSetImpl), AuidOptions, AuthOptions): pass
+
+            class State(output_options('AuStateBeanOptions', config.AuStateBean, disambiguate=['auid']), AuidOptions, AuthOptions): pass
+
+            class Status(output_options('AuStatusOptions', config.AuStatus), AuidOptions, AuthOptions): pass
+
+            class SuspectUrls(output_options('SuspectUrlVersionOptions', config.SuspectUrlVersion), AuidOptions, AuthOptions): pass
+
+            agreements: Optional[Agreements] = Field1(descriptions='Get the poll agreements of an AU')
+x           configuration: Optional[Configuration] = Field1(description='AU configuration operations')
+            no_au_peer_set: Optional[NoAuPeerSet] = Field1(alias='no-au-peer-set', description='Get the NoAuPeerSet object of an AU')
+            state: Optional[State] = Field1(description='Get the state of an AU')
+            status: Optional[Status] = Field1(description='Get the status of an AU')
+            suspect_urls: Optional[SuspectUrls] = Field1(description='Get the suspect URL versions of an AU')
+'''
+
+
+#
+# config section
+#
+
+@_config.group('section', section=_SUBCOMMANDS_CONFIG, help='Subcommand for section operations.')
+@pass_obj
+def _config_section(cli: _LockssApiCli, **kwargs):
+    pass
+
+
+@_config_section.command('get', help='Get the named configuration file.')
+@_config_node_option_group
+@option_group('Section options', option('--section-name', '--section', '-s', metavar='NAME', required=True, help='Set the section name to NAME.'))
+@_url_match_option_group
+@_multipart_output_options
+@pass_obj
+def _config_section_get(cli: _LockssApiCli, **kwargs):
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.config_section_get()
+
+
+#
+# config users
+#
+
+@_config.group('users', section=_SUBCOMMANDS_CONFIG, help='Subcommand for user operations.')
+@pass_obj
+def _config_users(cli: _LockssApiCli, **kwargs):
+    pass
+
+
+@_config_users.command('get', help='Get user account details.')
+@_config_node_option_group
+@option_group('User account options', option('--user-account', '--user', '-u', metavar='NAME', required=True, help='Set the user account name to NAME.'))
+@make_output_option_group(crawler.ApiStatus)
+@pass_obj
+def _config_users_get(cli: _LockssApiCli, **kwargs):
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.config_users_get()
+
+
+@_config_users.command('username', help='Get the usernames configured in the system.')
+@_config_node_option_group
+@pass_obj
+def _config_users_usernames(cli: _LockssApiCli, **kwargs):
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.config_users_usernames()
+
+
+#
+# crawler
+#
+
+@_lockssapi.group('crawler', section=_SUBCOMMANDS, help='Subcommand for Crawler Service operations.')
+@pass_obj
+def _crawler(cli: _LockssApiCli, **kwargs):
+    pass
+
+
+@_crawler.command('status', help='Get the status of the Crawler Service.')
+@_crawler_node_option_group
+@make_output_option_group(crawler.ApiStatus)
+@pass_obj
+def _crawler_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.crawler_status()
+
+
+#
+# md
+#
+
+@_lockssapi.group('md', section=_SUBCOMMANDS, help='Subcommand for Metadata Service operations.')
+@pass_obj
+def _md(cli: _LockssApiCli, **kwargs):
+    pass
+
+
+@_md.command('status', help='Get the status of the Metadata Service.')
+@_md_node_option_group
+@make_output_option_group(md.ApiStatus)
+@pass_obj
+def _md_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.md_status()
+
+
+#
+# poller
+#
+
+@_lockssapi.group('poller', section=_SUBCOMMANDS, help='Subcommand for Poller Service operations.')
+@pass_obj
+def _poller(cli: _LockssApiCli, **kwargs):
+    pass
+
+
+@_poller.command('status', help='Get the status of the Poller Service.')
+@_poller_node_option_group
+@make_output_option_group(poller.ApiStatus)
+@pass_obj
+def _poller_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.poller_status()
+
+
+#
+# repo
+#
+
 @_lockssapi.group('repo', section=_SUBCOMMANDS, help='Subcommand for Repository Service operations.')
 @pass_obj
 def _repo(cli: _LockssApiCli, **kwargs):
     pass
+
+
+@_repo.command('checksum-algorithms', help='Get the supported checksum algorithms.')
+@_repo_node_option_group
+@pass_obj
+def _repo_checksum_algorithms(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.repo_checksum_algorithms()
+
+
+@_repo.command('info', help='Get repository information.')
+@_repo_node_option_group
+@make_output_option_group(rs.RepositoryInfo, direct_default=True)
+@pass_obj
+def _repo_info(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.repo_info()
+
+
+@_repo.command('namespaces', help='Get namespaces of the committed artifacts in the repository.')
+@_repo_node_option_group
+@pass_obj
+def _repo_namespaces(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.repo_namespaces()
 
 
 @_repo.command('status', help='Get the status of the Repository Service.')
@@ -905,9 +1297,22 @@ def _repo(cli: _LockssApiCli, **kwargs):
 @make_output_option_group(rs.ApiStatus)
 @pass_obj
 def _repo_status(cli: _LockssApiCli, **kwargs) -> None:
-    cli.initialize(_Opts(**kwargs))
+    cli.initialize_opts(_Opts(**kwargs))
     cli.repo_status()
 
+
+@_repo.command('storage-info', help='Get repository storage information.')
+@_repo_node_option_group
+@make_output_option_group(rs.StorageInfo)
+@pass_obj
+def _repo_storage_info(cli: _LockssApiCli, **kwargs) -> None:
+    cli.initialize_opts(_Opts(**kwargs))
+    cli.repo_storage_info()
+
+
+#
+# Other
+#
 
 @_lockssapi.command('copyright', help='Show the copyright then exit.')
 def _copyright() -> None:
@@ -915,12 +1320,12 @@ def _copyright() -> None:
 
 
 @_lockssapi.command('license', help='Show the software license then exit.')
-def license() -> None:
+def _license() -> None:
     echo(__license__)
 
 
 @_lockssapi.command('version', help='Show the version number then exit.')
-def version() -> None:
+def _version() -> None:
     echo(__version__)
 
 

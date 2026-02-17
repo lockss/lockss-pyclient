@@ -71,22 +71,26 @@ class _FormatOpts:
     indent: Optional[int] = None
     jsonpath: Optional[str] = None
     field: Optional[tuple[str, ...]] = None
-    header: Optional[bool] = None
+    headings: Optional[bool] = None
     table_format: Optional[TableFormat] = None
     target_class: Optional[type[SwaggerObject]] = None
     hidden_field: Optional[tuple[str, ...]] = dataclass_field(default=None, repr=False)
+    hidden_direct_default: Optional[bool] = dataclass_field(default=None, repr=False)
 
     def __post_init__(self):
         if not(any([self.direct, self.json, self.tabular, self.yaml])):
-            self.tabular = True
+            if self.hidden_direct_default:
+                self.direct = True
+            else:
+                self.tabular = True
         if self.highlight is None:
             self.highlight = True
         if self.indent is None:
             self.indent = DEFAULT_INDENT
         if not self.field:
             self.field = self.hidden_field
-        if self.header is None:
-            self.header = True
+        if self.headings is None:
+            self.headings = True
         if self.table_format is None:
             self.table_format = TableFormat.ROUNDED_OUTLINE
 
@@ -95,28 +99,33 @@ class _FormatOpts:
         return tuple(python_attr for python_attr in target_cls.attribute_map.keys())
 
 
-def make_output_option_group(target_cls: type[SwaggerObject]):
+def make_output_option_group(target_cls: type[SwaggerObject],
+                             direct_default: bool = False):
     choices: tuple[str, ...] = _FormatOpts.python_attrs(target_cls)
+    structured = If(Not(AnySet('direct', 'json', 'yaml')), accept_none)(
+        option('--highlight/--no-highlight', is_flag=True, default=None, help='Set whether to perform syntax highlighting on the output. [default: --highlight]'),
+        option('--indent', metavar='N', type=NonNegativeInt, help=f'Set the indentation to N spaces. [default: {DEFAULT_INDENT}]'),
+        option('--jsonpath', '-J', metavar='EXPR', help='Apply the JSONPath expression EXPR before outputting the result.')
+    )
+    tabular = If(AnySet('direct', 'json', 'yaml'), accept_none)(
+        option('--field', '-f', type=Choice(choices), show_choices=True, multiple=True, show_default='include all fields', help=f'Include the given field in tabular output.'),
+        option('--headings/--no-headings', is_flag=True, default=None, help='Set whether to include column headings in tabular output. [default: --headings]'),
+        # Had runtime problems if table_format_option was in a constraint (KeyError: 'table_format'); reconstruct
+        option('--table-format', '-T', type=EnumChoice(TableFormat, choice_source=ChoiceSource.VALUE), help=f'Set the rendering of tables to the given style. [default: --table-format={TableFormat.ROUNDED_OUTLINE}]')
+    )
     return option_group(
         'Output options',
-        mutually_exclusive(
-            option('--direct', '-d', is_flag=True, help='Output the result directly as a Python object.'),
+        mutually_exclusive.rephrased(f'mutually exclusive; default: {"--direct" if direct_default else "--tabular"}')(
+            option('--direct', '-d', is_flag=True, help=f'Output the result directly as a Python object.{" [default]" if direct_default else ""}'),
             option('--json', '-j', is_flag=True, help='Output the result as JSON.'),
-            option('--tabular', '-t', is_flag=True, help='Output the result in tabular form. This is the default.'),
+            option('--tabular', '-t', is_flag=True, help=f'Output the result in tabular form.{"" if direct_default else " [default]"}'),
             option('--yaml', '-y', is_flag=True, help='Output the result as YAML.'),
         ),
-        If(Not(AnySet('direct', 'json', 'yaml')), accept_none)(
-            option('--highlight/--no-highlight', is_flag=True, default=None, help='Set whether to use Pygments to highlight the output. [default: --highlight]'),
-            option('--indent', metavar='N', type=NonNegativeInt, help=f'Set the indentation to N spaces. [default: {DEFAULT_INDENT}]'),
-            option('--jsonpath', '-J', metavar='EXPR', help='Apply the JSONPath expression EXPR before outputting the result.')
-        ),
-        If(AnySet('direct', 'json', 'yaml'), accept_none)(
-            option('--field', '-f', metavar='FIELD', type=Choice(choices), multiple=True, help=f'Include the field FIELD in tabular output. [default: {", ".join(choices)}]'),
-            option('--header/--no-header', is_flag=True, default=None, help='Set whether to include a header row in tabular output. [default: --header]'),
-            # Had runtime problems if table_format_option was in a constraint (KeyError: 'table_format')
-            option('--table-format', '-T', type=EnumChoice(TableFormat, choice_source=ChoiceSource.VALUE), help=f'Set the rendering of tables to the given style. [default: --table-format={TableFormat.ROUNDED_OUTLINE}]')
-        ),
-        option('--hidden-field', hidden=True, multiple=True, default=choices)
+        structured if direct_default else tabular,
+        tabular if direct_default else structured,
+        # Hidden data
+        option('--hidden-field', hidden=True, multiple=True, default=choices),
+        option('--hidden-direct-default', hidden=True, type=bool, default=direct_default)
     )
 
 
@@ -140,7 +149,7 @@ def display_tabular(opts: _FormatOpts,
                     file: TextIO = sys.stdout) -> None:
     obj_list: list[SwaggerObject] = list_or_obj if isinstance(list_or_obj, list) else [list_or_obj]
     print_table([[obj.get(attr) for attr in opts.field] for obj in obj_list],
-                headers=[*opts.field] if opts.header else None,
+                headers=[*opts.field] if opts.headings else None,
                 table_format=opts.table_format)
 
 
