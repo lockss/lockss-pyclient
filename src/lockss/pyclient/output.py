@@ -28,7 +28,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sized
 from dataclasses import dataclass, field as dataclass_field
 import json
 import jsonpath
@@ -63,7 +63,7 @@ DEFAULT_INDENT: int = 4
 
 @dataclass(kw_only=True)
 class _FormatOpts:
-    direct: Optional[bool] = None
+    basic: Optional[bool] = None
     json: Optional[bool] = None
     tabular: Optional[bool] = None
     yaml: Optional[bool] = None
@@ -74,13 +74,13 @@ class _FormatOpts:
     headings: Optional[bool] = None
     table_format: Optional[TableFormat] = None
     target_class: Optional[type[SwaggerObject]] = None
+    hidden_basic_default: Optional[bool] = dataclass_field(default=None, repr=False)
     hidden_field: Optional[tuple[str, ...]] = dataclass_field(default=None, repr=False)
-    hidden_direct_default: Optional[bool] = dataclass_field(default=None, repr=False)
 
     def __post_init__(self):
-        if not(any([self.direct, self.json, self.tabular, self.yaml])):
-            if self.hidden_direct_default:
-                self.direct = True
+        if not(any([self.basic, self.json, self.tabular, self.yaml])):
+            if self.hidden_basic_default:
+                self.basic = True
             else:
                 self.tabular = True
         if self.highlight is None:
@@ -100,14 +100,14 @@ class _FormatOpts:
 
 
 def make_output_option_group(target_cls: type[SwaggerObject],
-                             direct_default: bool = False):
+                             basic_default: bool = False):
     choices: tuple[str, ...] = _FormatOpts.python_attrs(target_cls)
-    structured = If(Not(AnySet('direct', 'json', 'yaml')), accept_none)(
+    structured = If(Not(AnySet('basic', 'json', 'yaml')), accept_none)(
         option('--highlight/--no-highlight', is_flag=True, default=None, help='Set whether to perform syntax highlighting on the output. [default: --highlight]'),
         option('--indent', metavar='N', type=NonNegativeInt, help=f'Set the indentation to N spaces. [default: {DEFAULT_INDENT}]'),
         option('--jsonpath', '-J', metavar='EXPR', help='Apply the JSONPath expression EXPR before outputting the result.')
     )
-    tabular = If(AnySet('direct', 'json', 'yaml'), accept_none)(
+    tabular = If(AnySet('basic', 'json', 'yaml'), accept_none)(
         option('--field', '-f', type=Choice(choices), show_choices=True, multiple=True, show_default='include all fields', help=f'Include the given field in tabular output.'),
         option('--headings/--no-headings', is_flag=True, default=None, help='Set whether to include column headings in tabular output. [default: --headings]'),
         # Had runtime problems if table_format_option was in a constraint (KeyError: 'table_format'); reconstruct
@@ -115,17 +115,17 @@ def make_output_option_group(target_cls: type[SwaggerObject],
     )
     return option_group(
         'Output options',
-        mutually_exclusive.rephrased(f'mutually exclusive; default: {"--direct" if direct_default else "--tabular"}')(
-            option('--direct', '-d', is_flag=True, help=f'Output the result directly as a Python object.{" [default]" if direct_default else ""}'),
+        mutually_exclusive.rephrased(f'mutually exclusive; default: {"--basic" if basic_default else "--tabular"}')(
+            option('--basic', '-b', is_flag=True, help=f'Output the result as a basic Python object.{" [default]" if basic_default else ""}'),
             option('--json', '-j', is_flag=True, help='Output the result as JSON.'),
-            option('--tabular', '-t', is_flag=True, help=f'Output the result in tabular form.{"" if direct_default else " [default]"}'),
+            option('--tabular', '-t', is_flag=True, help=f'Output the result in tabular form.{"" if basic_default else " [default]"}'),
             option('--yaml', '-y', is_flag=True, help='Output the result as YAML.'),
         ),
-        structured if direct_default else tabular,
-        tabular if direct_default else structured,
+        structured if basic_default else tabular,
+        tabular if basic_default else structured,
         # Hidden data
-        option('--hidden-field', hidden=True, multiple=True, default=choices),
-        option('--hidden-direct-default', hidden=True, type=bool, default=direct_default)
+        option('--hidden-basic-default', hidden=True, type=bool, default=basic_default),
+        option('--hidden-field', hidden=True, multiple=True, default=choices)
     )
 
 
@@ -133,10 +133,19 @@ def display(opts: _FormatOpts,
             iterable_or_obj: Union[Iterable[SwaggerObject], SwaggerObject],
             file: TextIO = sys.stdout) -> None:
     list_or_obj: Union[list[SwaggerObject], SwaggerObject]
-    if isinstance(iterable_or_obj, Iterable):
-        list_or_obj = [x.to_dict() for x in iterable_or_obj]
+    if isinstance(iterable_or_obj, Iterable) and not (isinstance(iterable_or_obj, str) or isinstance(iterable_or_obj, bytes)):
+        if not isinstance(iterable_or_obj, Sized):
+            iterable_or_obj = list(iterable_or_obj)
+        if len(iterable_or_obj) == 0:
+            list_or_obj = [] # empty list
+        elif hasattr(iterable_or_obj[0], 'to_dict'):
+            list_or_obj = [x.to_dict() for x in iterable_or_obj] # non-empty list of objects with to_dict()
+        else:
+            list_or_obj = iterable_or_obj # non-empty list of objects without to_dict()
+    elif hasattr(iterable_or_obj, 'to_dict'):
+        list_or_obj = iterable_or_obj.to_dict() # single object with to_dict()
     else:
-        list_or_obj = iterable_or_obj.to_dict()
+        list_or_obj = iterable_or_obj # single object
 
     if opts.tabular:
         display_tabular(opts, list_or_obj, file=file)
@@ -154,13 +163,13 @@ def display_tabular(opts: _FormatOpts,
 
 
 def display_structured(opts: _FormatOpts,
-                        list_or_obj: Union[list[SwaggerObject], SwaggerObject],
-                        file: TextIO = sys.stdout) -> None:
+                       list_or_obj: Union[list[SwaggerObject], SwaggerObject],
+                       file: TextIO = sys.stdout) -> None:
     if opts.jsonpath:
         list_or_obj = jsonpath.findall(opts.jsonpath, list_or_obj)
 
-    if opts.direct:
-        display_direct(opts, list_or_obj, file=file)
+    if opts.basic:
+        display_basic(opts, list_or_obj, file=file)
     elif opts.json:
         display_json(opts, list_or_obj, file=file)
     elif opts.yaml:
@@ -169,9 +178,9 @@ def display_structured(opts: _FormatOpts,
         raise InternalError from ValueError(opts)
 
 
-def display_direct(opts: _FormatOpts,
-                   list_or_obj: Union[list[SwaggerObject], SwaggerObject],
-                   file: TextIO = sys.stdout) -> None:
+def display_basic(opts: _FormatOpts,
+                  list_or_obj: Union[list[SwaggerObject], SwaggerObject],
+                  file: TextIO = sys.stdout) -> None:
     target = pformat(list_or_obj, indent=opts.indent)
     echo(highlight(target, PythonLexer(), Terminal256Formatter()) if opts.highlight else target, file=file)
 

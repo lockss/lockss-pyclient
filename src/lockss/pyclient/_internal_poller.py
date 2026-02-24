@@ -33,7 +33,7 @@ Base of the lockss.pyclient package (poller service).
 """
 
 from collections.abc import Iterator
-from typing import Optional
+from typing import Optional, Union
 
 from ._internal_common import Node, _single_request_template, _paged_request_iterator_template
 from . import poller
@@ -46,7 +46,7 @@ from . import poller
 def poller_get_peer_data_page(node: Node,
                               poll_key: str,
                               peer_id: str,
-                              url_type: poller.VoterUrlsEnum,
+                              url_type: Union[poller.VoterUrlsEnum, str],
                               limit: Optional[int] = None,
                               continuation_token: Optional[str] = None) -> poller.UrlPageInfo:
     pass
@@ -57,7 +57,7 @@ def poller_get_peer_data_page(node: Node,
 def poller_get_peer_data(node: Node,
                          poll_key: str,
                          peer_id: str,
-                         url_type: poller.VoterUrlsEnum,
+                         url_type: Union[poller.VoterUrlsEnum, str],
                          limit: Optional[int] = None) -> Iterator[str]:
     pass
 
@@ -103,7 +103,7 @@ def poller_get_poller_polls(node: Node,
                           poller.PollDetailApi.get_repair_queue_data)
 def poller_get_repair_data_page(node: Node,
                                 poll_key: str,
-                                repair_type: poller.RepairTypeEnum,
+                                repair_type: Union[poller.RepairTypeEnum, str],
                                 limit: Optional[int] = None,
                                 continuation_token: Optional[str] = None) -> poller.RepairPageInfo:
     pass
@@ -113,7 +113,7 @@ def poller_get_repair_data_page(node: Node,
                                   lambda x: x.repairs)
 def poller_get_repair_data(node: Node,
                            poll_key: str,
-                           repair_type: poller.RepairTypeEnum,
+                           repair_type: Union[poller.RepairTypeEnum, str],
                            limit: Optional[int] = None) -> Iterator[poller.RepairData]:
     pass
 
@@ -133,7 +133,7 @@ def poller_get_status(node: Node) -> poller.ApiStatus:
                           poller.PollDetailApi.get_tally_urls)
 def poller_get_tally_urls_page(node: Node,
                                poll_key: str,
-                               tally_type: poller.TallyTypeEnum,
+                               tally_type: Union[poller.TallyTypeEnum, str],
                                limit: Optional[int] = None,
                                continuation_token: Optional[str] = None) -> poller.UrlPageInfo:
     pass
@@ -143,7 +143,7 @@ def poller_get_tally_urls_page(node: Node,
                                   lambda x: x.urls)
 def poller_get_tally_urls(node: Node,
                           poll_key: str,
-                          tally_type: poller.TallyTypeEnum,
+                          tally_type: Union[poller.TallyTypeEnum, str],
                           limit: Optional[int] = None) -> Iterator[str]:
     pass
 

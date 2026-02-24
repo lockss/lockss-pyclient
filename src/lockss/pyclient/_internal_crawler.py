@@ -203,8 +203,8 @@ def crawler_get_crawl_pending(node: Node,
                           crawler.ApiClient,
                           crawler.CrawlersApi,
                           crawler.CrawlersApi.get_crawler_config)
-def crawler_get_crawler(node: Node,
-                        crawler_id: str) -> crawler.CrawlerConfig:
+def crawler_get_crawler_config(node: Node,
+                               crawler_id: str) -> crawler.CrawlerConfig:
     pass
 
 
@@ -212,7 +212,7 @@ def crawler_get_crawler(node: Node,
                           crawler.ApiClient,
                           crawler.CrawlersApi,
                           crawler.CrawlersApi.get_crawlers)
-def crawler_get_crawlers(node: Node) -> crawler.CrawlerStatuses:
+def crawler_get_crawler_statuses(node: Node) -> crawler.CrawlerStatuses:
     pass
 
 

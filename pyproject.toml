@@ -28,7 +28,7 @@
 
 [project]
 name = "lockss-pyclient"
-version = "0.1.0-dev3" # Always change in __init__.py, and at release time in README.rst and CHANGELOG.rst
+version = "0.1.0-dev5" # Always change in __init__.py, and at release time in README.rst and CHANGELOG.rst
 description = "LOCKSS Python clients"
 license = { text = "BSD-3-Clause" }
 readme = "README.rst"
@@ -42,13 +42,15 @@ maintainers = [
     { name = "Daniel Vargas",  email = "dlvargas@stanford.edu" },
 ]
 dependencies = [
+    "click-command-tree (>=1.2.0,<1.3.0)",
     "click-extra[pygments] (>=7.5.0,<7.6.0)",
-    "lockss-pybasic (==0.2.0-dev15)",
+    "click-plugins (>=1.1.1.2,<1.2.0)",
+    "lockss-pybasic (==0.2.0-dev16)",
     "multipart (>=1.3.0,<1.4.0)",
     "python-jsonpath[strict] (>=2.0.0,<2.1.0)",
     "pyyaml (>=6.0.0,<6.1.0)",
     "six (>=1.17,<1.18)",
-    "urllib3 (>=2.6.0,<2.7.0)"
+    "urllib3 (>=2.6.0,<2.7.0)",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
