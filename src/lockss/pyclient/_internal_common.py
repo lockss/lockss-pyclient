@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2000-2025, Board of Trustees of Leland Stanford Jr. University
+# Copyright (c) 2000-2026, Board of Trustees of Leland Stanford Jr. University
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -135,7 +135,7 @@ class Node(object):
                 conf.host = f'{self.get_host()}:{get_port(self)}'
                 if needs_auth:
                     conf.username = self.get_username()
-                    conf.password = self.get_password()()
+                    conf.password = self.get_password()
                 return conf
             return decorated_make_conf
         return decorate
@@ -164,7 +164,7 @@ class Node(object):
     def __init__(self,
                  node_reference: str,
                  username: Optional[str] = None,
-                 password: Optional[StrSupplier] = None,
+                 password: Optional[str] = None,
                  interactive: bool = True,
                  config_port: int = CONFIG_DEFAULT_PORT,
                  crawler_port: int = CRAWLER_DEFAULT_PORT,
@@ -174,7 +174,7 @@ class Node(object):
         super().__init__()
         self._host: str = Node._compute_host(node_reference)
         self._username: Optional[str] = username
-        self._password: Optional[StrSupplier] = password
+        self._password: Optional[str] = password
         self._interactive: bool = interactive
         self._config_port = config_port
         self._crawler_port = crawler_port
@@ -208,12 +208,11 @@ class Node(object):
     def get_username(self) -> str:
         return self._username
 
-    def get_password(self) -> Optional[StrSupplier]:
+    def get_password(self) -> Optional[str]:
         if not self._password:
             if not self._interactive:
                 raise RuntimeError('interactive prompts not allowed')
-            _p = getpass(f'Password ({self.get_host().partition("://")[2]}): ')
-            self._password = lambda: _p
+            self._password = getpass(f'Password ({self.get_host().partition("://")[2]}): ')
         return self._password
 
     @_make_conf_template(config.Configuration, get_config_port)

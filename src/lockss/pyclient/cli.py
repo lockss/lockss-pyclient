@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2000-2025, Board of Trustees of Leland Stanford Jr. University
+# Copyright (c) 2000-2026, Board of Trustees of Leland Stanford Jr. University
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -28,811 +28,1062 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from io import TextIOWrapper
-from pathlib import Path
-from typing import Literal
-import sys
+from dataclasses import dataclass, field
+from functools import partial
+from importlib.metadata import entry_points
+from inspect import ismethod
 
-from lockss.pybasic.cliutil import BaseCli, COPYRIGHT_DESCRIPTION, LICENSE_DESCRIPTION, VERSION_DESCRIPTION
+from click_extra import Choice, ExtraContext, Section, color_option, echo, group, option, option_group, pass_context, pass_obj, prompt, show_params_option
+from click_plugins import with_plugins
+from lockss.pybasic.cliutil import UInt16, click_path, compose_decorators, make_extra_context_settings
 from lockss.pybasic.errorutil import InternalError
-from pydantic.v1 import BaseModel as BaseModel1, Field as Field1, NonNegativeInt as NonNegativeInt1, root_validator as root_validator1
 
-from .output import output_options
+from lockss.pyclient.crawler import CrawlerStatus
+
 from . import *
 from . import __copyright__, __license__, __version__
-from ._internal_common import _param_default, _RS
 from . import config, crawler, md, poller, rs
+from .output import _FormatOpts, SwaggerObject, display, display_basic, make_output_option_group
+
+
+@dataclass(kw_only=True)
+class _Opts(_FormatOpts):
+    # Node
+    host: Optional[str] = None
+    configuration_port: Optional[int] = None
+    crawler_port: Optional[int] = None
+    metadata_port: Optional[int] = None
+    poller_port: Optional[int] = None
+    repository_port: Optional[int] = None
+    username: Optional[str] = None
+    password: Optional[str] = field(default=None, repr=False)
+    # crawler, md, poller
+    job_id: Optional[str] = None
+    # config
+    auid: Optional[str] = None
+    section_name: Optional[str] = None
+    user_account: Optional[str] = None
+    url: Optional[str] = None
+    if_match: Optional[str] = None
+    if_modified_since: Optional[str] = None
+    if_none_match: Optional[str] = None
+    if_unmodified_since: Optional[str] = None
+    # crawler
+    crawler_id: Optional[str] = None
+    media_type: Optional[str] = None
+    # md
+    doi: Optional[str] = None
+    openurl_param: Optional[tuple[str, ...]] = None
+    # poller
+    poll_key: Optional[str] = None
+    peer_id: Optional[str] = None
+    repair_type: Optional[str] = None
+    tally_type: Optional[str] = None
+    voter_urls_type: Optional[str] = None
+    # repo
+    committed: Optional[bool] = None
+    namespace: Optional[str] = None
+    uuid: Optional[str] = None
+
+
+    def get_repair_type(self) -> str:
+        match val := self.repair_type:
+            case poller.RepairTypeEnum.ACTIVE | poller.RepairTypeEnum.COMPLETED | poller.RepairTypeEnum.PENDING:
+                return val
+            case _:
+                raise InternalError from ValueError(val)
+
+    def get_tally_type(self) -> str:
+        match val := self.tally_type:
+            case poller.TallyTypeEnum.AGREE | poller.TallyTypeEnum.DISAGREE | poller.TallyTypeEnum.ERROR | poller.TallyTypeEnum.NOQUORUM | poller.TallyTypeEnum.TOOCLOSE:
+                return val
+            case _:
+                raise InternalError from ValueError(val)
+
+    def get_voter_urls_type(self) -> str:
+        match val := self.voter_urls_type:
+            case poller.VoterUrlsEnum.AGREED | poller.VoterUrlsEnum.DISAGREED | poller.VoterUrlsEnum.POLLERONLY | poller.VoterUrlsEnum.VOTERONLY:
+                return val
+            case _:
+                raise InternalError from ValueError(val)
+
+
+class _LockssApiCli(object):
+
+    def __init__(self, ctx: ExtraContext):
+        super().__init__()
+        self._ctx: ExtraContext = ctx
+        self._opts: Optional[_Opts] = None
+        self._node: Optional[Node] = None
+        self._auid: Optional[str] = None
+
+    def config_aus_agreements(self) -> None:
+        display_basic(self._opts, config_get_au_agreements(self._node, self._auid))
+
+    def config_aus_configuration_get(self) -> None:
+        display(self._opts, config_get_au_config(self._node, self._auid).au_config) # Note the .au_config
+
+    def config_aus_configuration_get_all(self) -> None:
+        display(self._opts, config_get_au_configs(self._node))
+
+    def config_aus_no_au_peer_set(self) -> None:
+        display(self._opts, config_get_no_au_peer_set(self._node, self._auid))
+
+    def config_aus_state(self) -> None:
+        display(self._opts, config_get_au_state(self._node, self._auid))
+
+    def config_aus_status(self) -> None:
+        display(self._opts, config_get_au_status(self._node, self._auid))
+
+    def config_aus_suspect_urls(self) -> None:
+        display(self._opts, config_get_au_suspect_url_versions(self._node).suspect_versions) # of type list[config.SuspectUrlVersion]
+
+    def config_last_update_time(self) -> None:
+        echo(config_last_update_time(self._node))
+
+    def config_loaded_urls(self) -> None:
+        for loaded_url in config_get_loaded_urls(self._node):
+            echo(loaded_url)
+
+    def config_platform(self) -> None:
+        display(self._opts, config_get_platform_config(self._node))
 
+    def config_section_get(self) -> None:
+        mp: MultipartParser = config_get_section(self._node,
+                                                 url=(opts := self._opts).url,
+                                                 if_match=opts.if_match,
+                                                 if_modified_since=opts.if_modified_since,
+                                                 if_none_match=opts.if_none_match,
+                                                 if_unmodified_since=opts.if_unmodified_since)
+        for part in mp.parts(): # FIXME
+            echo(f'NAME: {part.name}')
+            echo(f'HEADERS:\n{part.headers}')
+            echo(f'VALUE:\n{part.value}')
 
-class NodeOptions(BaseModel1):
-    host: str = Field1(aliases=["-H"], description="The IP address or FQDN of the LOCKSS node, optionally followed by a colon and port number")
-    repo: NonNegativeInt1 = Field1(RS_DEFAULT_PORT, aliases=['--repository-port', '-R'], description='Repository Service port')
-    config: NonNegativeInt1 = Field1(CONFIG_DEFAULT_PORT, aliases=['--configuration-port', '-C'], description='Configuration Service port')
-    poller: NonNegativeInt1 = Field1(POLLER_DEFAULT_PORT, aliases=['--poller-port', '-L'], description='Poller Service port')
-    crawler: NonNegativeInt1 = Field1(CRAWLER_DEFAULT_PORT, aliases=['--crawler-port', '-W'], description='Crawler Service port')
-    md: NonNegativeInt1 = Field1(MD_DEFAULT_PORT, aliases=['--metadata-port', '-M'], description='Metadata Service port')
+    def config_status(self) -> None:
+        display(self._opts, config_get_status(self._node))
 
-    def make_node(self, **kwargs) -> Node:
-        return Node(self.host,
-                    rs_port=self.repo,
-                    config_port=self.config,
-                    poller_port=self.poller,
-                    crawler_port=self.crawler,
-                    md_port=self.md,
-                    **kwargs)
+    def config_url(self) -> None:
+        mp: MultipartParser = config_get_url(self._node,
+                                             url=(opts := self._opts).url,
+                                             if_match=opts.if_match,
+                                             if_modified_since=opts.if_modified_since,
+                                             if_none_match=opts.if_none_match,
+                                             if_unmodified_since=opts.if_unmodified_since)
+        for part in mp.parts(): # FIXME
+            echo(f'NAME: {part.name}')
+            echo(f'HEADERS:\n{part.headers}')
+            echo(f'VALUE:\n{part.value}')
 
+    def config_users_get(self) -> None:
+        echo(config_get_user_account(self._node, self._opts.user_account))
 
-class AuthOptions(NodeOptions):
-    username: str = Field1(aliases=["-U"], description="Username")
-    password: Optional[str] = Field1(aliases=["-P"], description="Password")
+    def config_users_usernames(self) -> None:
+        for username in sorted(config_get_usernames(self._node)):
+            echo(username)
 
-    def make_node(self) -> Node:
-        return super().make_node(username=self.username,
-                                 password=self.password)
+    def crawler_crawlers_config(self) -> None:
+        display(self._opts, crawler_get_crawler_config(self._node, self._opts.crawler_id))
 
+    def crawler_crawlers_status(self) -> None:
+        crawler_map: dict[str, CrawlerStatus] = crawler_get_crawler_statuses(self._node).crawler_map
+        display_basic(self._opts, {k: v.to_dict() for k, v in crawler_map.items()})
 
-class NamespaceOptions(BaseModel1):
-    namespace: Optional[str] = Field1(aliases=["-n"], description="Namespace")
+    def crawler_crawls_get(self) -> None:
+        display(self._opts, crawler_get_crawl(self._node, self._opts.job_id))
 
-    def get_namespace(self, default: str):
-        return self.namespace if self.namespace else default
+    def crawler_crawls_get_all(self) -> None:
+        display(self._opts, crawler_get_crawls(self._node))
 
+    def crawler_crawls_urls_errors(self) -> None:
+        display(self._opts, crawler_get_crawl_errors(self._node, self._opts.job_id))
 
-class AuidOptions(NamespaceOptions):
-    auid: str = Field1(aliases=['-a'], description='Archival Unit identifier (AUID)')
+    def crawler_crawls_urls_excluded(self) -> None:
+        display(self._opts, crawler_get_crawl_excluded(self._node, self._opts.job_id))
 
+    def crawler_crawls_urls_fetched(self) -> None:
+        display(self._opts, crawler_get_crawl_fetched(self._node, self._opts.job_id))
 
-class CrawlerIdOptions(BaseModel1):
-    crawler_id: str = Field1(alias='crawler-id', aliases=['-c'], description='crawler identifier')
+    def crawler_crawls_urls_media_types_get(self) -> None:
+        display(self._opts, crawler_get_crawl_by_media_type(self._node, (opts := self._opts).job_id, opts.media_type))
 
+    def crawler_crawls_urls_not_modified(self) -> None:
+        display(self._opts, crawler_get_crawl_not_modified(self._node, self._opts.job_id))
 
-class DoiOptions(BaseModel1):
-    doi: str = Field1(aliases=['-d'], description='DOI')
+    def crawler_crawls_urls_parsed(self) -> None:
+        display(self._opts, crawler_get_crawl_parsed(self._node, self._opts.job_id))
+
+    def crawler_crawls_urls_pending(self) -> None:
+        display(self._opts, crawler_get_crawl_pending(self._node, self._opts.job_id))
 
+    def crawler_jobs_get(self) -> None:
+        display(self._opts, crawler_get_job(self._node, self._opts.job_id))
 
-class IfMatchOptions(BaseModel1):
-    if_match: Optional[str] = Field1(description='set the If-Match HTTP header to the given value')
-    if_modified_since: Optional[str] = Field1(description='set the If-Modified-Since HTTP header to the given value')
-    if_none_match: Optional[str] = Field1(description='set the If-None-Match HTTP header to the given value')
-    if_unmodified_since: Optional[str] = Field1(description='set the If-Unmodified-Since HTTP header to the given value')
+    def crawler_jobs_get_all(self) -> None:
+        display(self._opts, crawler_get_jobs(self._node))
 
+    def crawler_status(self) -> None:
+        display(self._opts, crawler_get_status(self._node))
 
-class JobOptions(BaseModel1):
-    job: str = Field1(description='job identifier')
+    def dispatch(self, method: Callable[[], None], **cli_kwargs):
+        if not ismethod(method):
+            raise InternalError() from ValueError(method)
+        self._opts = _Opts(**cli_kwargs)
+        self._initialize_node(method)
+        method()
 
+    def initialize_opts(self, opts: _Opts) -> None:
+        self._opts = opts
+        # self._repo is operation-dependent
+        self._auid = opts.auid
+
+    def md_get(self) -> None:
+        display(self._opts, md_get_metadata(self._node, self._auid))
+
+    def md_jobs_get(self) -> None:
+        display(self._opts, md_get_job(self._node, self._opts.job_id))
+
+    def md_jobs_get_all(self) -> None:
+        display(self._opts, md_get_jobs(self._node))
+
+    def md_query_doi(self) -> None:
+        display(self._opts, md_doi_query(self._node, self._opts.doi))
+
+    def md_query_openurl(self) -> None:
+        display(self._opts, md_openurl_query(self._node, list(self._opts.openurl_param)))
+
+    def md_status(self) -> None:
+        display(self._opts, md_get_status(self._node))
+
+    def poller_jobs_get(self) -> None:
+        display(self._opts, poller_get_poll_status(self._node, self._opts.job_id))
+
+    def poller_polls_as_poller_get(self) -> None:
+        display(self._opts, poller_get_poller_poll(self._node, self._opts.poll_key))
+
+    def poller_polls_as_poller_get_all(self) -> None:
+        display(self._opts, poller_get_poller_polls(self._node))
+
+    def poller_polls_as_voter_get(self) -> None:
+        display(self._opts, poller_get_voter_poll(self._node, self._opts.poll_key))
+
+    def poller_polls_as_voter_get_all(self) -> None:
+        display(self._opts, poller_get_voter_polls(self._node))
 
-class OpenUrlOptions(BaseModel1):
-    params: list[str] = Field1(aliases=['-p'], description='cumulative list of OpenURL parameters')
+    def poller_polls_peer_data(self) -> None:
+        for url in poller_get_peer_data(self._node, (opts := self._opts).poll_key, opts.peer_id, opts.get_voter_urls_type()):
+            echo(url)
 
+    def poller_polls_repairs(self) -> None:
+        display(self._opts, poller_get_repair_data(self._node, (opts := self._opts).poll_key, opts.get_repair_type()))
 
-class OutputOptions(BaseModel1):
-    output: Optional[Path] = Field1(aliases=['-o'], description='write output to the given file')
+    def poller_polls_tallies(self) -> None:
+        for url in poller_get_tally_urls(self._node, (opts := self._opts).poll_key, opts.get_tally_type()):
+            echo(url)
 
+    def poller_status(self) -> None:
+        display(self._opts, poller_get_status(self._node))
 
-class PollKeyOptions(BaseModel1):
-    poll_key: str = Field1(aliases=['-k'], description='poll key')
+    def repo_artifacts_delete(self) -> None:
+        kwargs = {}
+        if ns := (opts := self._opts).namespace:
+            kwargs['namespace'] = ns
+        repo_delete_artifact(self._node, opts.uuid, **kwargs)
 
+    def repo_artifacts_update(self) -> None:
+        kwargs = {}
+        if ns := (opts := self._opts).namespace:
+            kwargs['namespace'] = ns
+        display(self._opts, repo_update_artifact(self._node, opts.uuid, opts.committed, **kwargs))
 
-class PeerIdOptions(PollKeyOptions):
-    peer_id: str = Field1(aliases=['-p'], description='peer identifier')
-    agreed: bool = Field1(False, description='return the agreed peer URLs')
-    disagreed: bool = Field1(False, description='return the disagreed peer URLs')
-    poller_only: bool = Field1(False, description='return the poller-only peer URLs')
-    voter_only: bool = Field1(False, description='return the voter-only peer URLs')
+    def repo_aus_auids(self) -> None:
+        kwargs = {}
+        if ns := self._opts.namespace:
+            kwargs['namespace'] = ns
+        for auid in sorted(repo_get_auids(self._node, **kwargs)):
+            echo(auid)
 
-    @root_validator1
-    def _validate_exactly_one(cls, values):
-        attrs = ('agreed', 'disagreed', 'poller_only', 'voter_only')
-        if len([attr for attr in attrs if values.get(attr)]) != 1:
-            raise ValueError('Expected exactly one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
-        return values
+    def repo_aus_size(self) -> None:
+        kwargs = {}
+        if ns := self._opts.namespace:
+            kwargs['namespace'] = ns
+        display(self._opts, repo_get_au_size(self._node, self._auid, **kwargs))
 
-    def get_voter_urls_enum(self) -> poller.VoterUrlsEnum:
-        if self.agreed: return poller.VoterUrlsEnum.AGREED
-        elif self.disagreed: return poller.VoterUrlsEnum.DISAGREED
-        elif self.poller_only: return poller.VoterUrlsEnum.POLLERONLY
-        elif self.voter_only: return poller.VoterUrlsEnum.VOTERONLY
-        else: raise InternalError from ValueError(self.json())
+    def repo_checksum_algorithms(self) -> None:
+        for checksum_algorithm in sorted(repo_get_checksum_algorithms(self._node), key=lambda x: x.lower()):
+            echo(checksum_algorithm)
 
-class RepairTypeOptions(BaseModel1):
-    active: bool = Field1(False, description='return the active repairs')
-    completed: bool = Field1(False, description='return the completed repairs')
-    pending: bool = Field1(False, description='return the pending repairs')
+    def repo_info(self) -> None:
+        display(self._opts, repo_get_info(self._node))
 
-    @root_validator1
-    def _validate_exactly_one(cls, values):
-        attrs = ('active', 'completed', 'pending')
-        if len([attr for attr in attrs if values.get(attr)]) != 1:
-            raise ValueError('Expected exactly one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
-        return values
+    def repo_namespaces(self) -> None:
+        for namespace in sorted(repo_get_namespaces(self._node)):
+            echo(namespace)
 
-    def get_repair_type_enum(self) -> poller.RepairTypeEnum:
-        if self.active: return poller.RepairTypeEnum.ACTIVE
-        elif self.completed: return poller.RepairTypeEnum.COMPLETED
-        elif self.pending: return poller.RepairTypeEnum.PENDING
-        else: raise InternalError from ValueError(self.json())
+    def repo_status(self) -> None:
+        display(self._opts, repo_get_status(self._node))
 
+    def repo_storage_info(self) -> None:
+        display(self._opts, repo_get_storage_info(self._node))
 
-class TallyTypeOptions(BaseModel1):
-    agree: bool = Field1(False, description='return the tallies for URLs that agree')
-    disagree: bool = Field1(False, description='return the tallies for URLs that disagree')
-    error: bool = Field1(False, description='return the tallies for URLs that have errors')
-    no_quorum: bool = Field1(False, description='return the tallies for URLs that have no quorum')
-    too_close: bool = Field1(False, description='return the tallies for URLs that are too close')
+    def _initialize_node(self, method: Callable[[], None]):
+        prefix, underscore, suffix = method.__name__.partition('_')
+        kwargs = {}
+        opts = self._opts
+        kw_prefix, opt_prefix = prefix, prefix
+        match prefix:
+            case 'config':
+                opt_prefix = 'configuration'
+            case 'crawler' | 'poller':
+                pass
+            case 'md':
+                opt_prefix = 'metadata'
+            case 'repo':
+                kw_prefix, opt_prefix = 'rs', 'repository'
+            case _:
+                self._ctx.fail(f'Internal error: method name is not recognized')
+        kwargs[f'{kw_prefix}_port'] = getattr(opts, f'{opt_prefix}_port')
+        if suffix != 'status': # All five 'status' operations are passwordless
+            if opts.username is None:
+                opts.username = prompt('API username')
+            if opts.password is None:
+                opts.password = prompt('API password', hide_input=True)
+        self._node = Node(opts.host, username=opts.username, password=opts.password, **kwargs)
 
-    @root_validator1
-    def _validate_exactly_one(cls, values):
-        attrs = ('active', 'completed', 'pending')
-        if len([attr for attr in attrs if values.get(attr)]) != 1:
-            raise ValueError('Expected exactly one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
-        return values
 
-    def get_tally_type_enum(self) -> poller.TallyTypeEnum:
-        if self.agree: return poller.TallyTypeEnum.AGREE
-        elif self.disagree: return poller.TallyTypeEnum.DISAGREE
-        elif self.error: return poller.TallyTypeEnum.ERROR
-        elif self.no_quorum: return poller.TallyTypeEnum.NOQUORUM
-        elif self.too_close: return poller.TallyTypeEnum.TOOCLOSE
-        else: raise InternalError from ValueError(self.json())
+#
+# Options
+#
 
 
-class UrlOptions(BaseModel1):
-    url: Optional[str] = Field1(aliases=['-u'], description='URL')
+def _make_port_option(long: str,
+                      short: str,
+                      default: int,
+                      service: str):
+    return option(f'--{long}-port', f'-{short}', metavar='PORT', type=UInt16, default=default, help=f'Set the {service} Service API port to PORT')
 
 
-class UrlPrefixOptions(UrlOptions):
-    url_prefix: Optional[str] = Field1(aliases=['-p'], description='URL prefix')
+_auid_option = option('--auid', '-a', metavar='VALUE', required=True, help='Set the AUID to process to VALUE.')
 
-    @root_validator1
-    def _validate_exactly_one(cls, values):
-        attrs = ('url', 'url_prefix')
-        if len([attr for attr in attrs if values.get(attr)]) != 1:
-            raise ValueError('Expected exactly one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
-        return values
 
+_config_port_option = _make_port_option('configuration', 'C', CONFIG_DEFAULT_PORT, 'Configuration')
 
-class UuidOptions(NamespaceOptions):
-    uuid: str = Field1(aliases=['-w'], description='artifact identifier')
 
+_crawler_port_option = _make_port_option('crawler', 'W', CRAWLER_DEFAULT_PORT, 'Crawler')
 
-class UncommittedOptions(BaseModel1):
-    uncommitted: bool = Field1(False, description='include uncommitted artifacts in results')
 
+_headers_option = option('--headers/--no-headers', is_flag=True, default=True, help='Set whether to include HTTP headers in multipart output.')
 
-class UserAccountOptions(BaseModel1):
-    user_account: str = Field1(description='user account name')
 
+_host_option = option('--host', '-h', metavar='HOST', required=True, help='Set the host of the node to be processed to HOST.')
 
-class VersionsOptions(BaseModel1):
-    all: bool = Field1(False, description='include all versions of artifacts in results')
-    latest: bool = Field1(False, description='include only the latest version of artifacts in results')
 
-    @root_validator1
-    def _validate_at_most_one(cls, values):
-        attrs = ('all', 'latest')
-        if len([attr for attr in attrs if values.get(attr)]) > 1:
-            raise ValueError('Expected at most one of {", ".join(f"--{hattr}" for hattr in [attr.replace("_", "-") for attr in attrs])}')
-        return values
+_if_match_option = option('--if-match', metavar='VALUE', help='Set the If-Match HTTP header to VALUE.')
 
-    def get_versions_enum(self, default: rs.VersionsEnum) -> rs.VersionsEnum:
-        if self.all: return rs.VersionsEnum.ALL
-        elif self.latest: return rs.VersionsEnum.LATEST
-        else: return default
 
+_if_modified_since_option = option('--if-modified-since', metavar='VALUE', help='Set the If-Modified-Since HTTP header to VALUE.')
 
-ArtifactOptions = output_options('ArtifactOptions', rs.Artifact, disambiguate=['auid', 'namespace'])
 
+_if_none_match_option = option('--if-none-match', metavar='VALUE', help='Set the If-None-Match HTTP header to VALUE.')
 
-AuConfigurationOptions = output_options('AuConfigurationOptions', config.AuConfiguration)
 
+_if_unmodified_since_option = option('--if-unmodified-since', metavar='VALUE', help='Set the If-Unmodified-Since HTTP header to VALUE.')
 
-CrawlJobOptions = output_options('CrawlJobOptions', crawler.CrawlJob)
 
+_md_port_option = _make_port_option('metadata', 'M', MD_DEFAULT_PORT, 'Metadata')
 
-CrawlStatusOptions = output_options('CrawlStatusOptions', crawler.CrawlStatus)
 
+_namespace_option = option('--namespace', '-n', metavar='NAMESPACE', help='Set the namespace to NAMESPACE.')
 
-CrawlUrlInfoOptions = output_options('CrawlUrlInfoOptions', crawler.UrlInfo)
 
+_output_file_option = option('--output-file', '-o', metavar='FILE', type=click_path('fwz'), show_default='console output', help='Output the multipart body to the file FILE.')
 
-MdJobOptions = output_options('MdJobOptions', md.Job)
 
+_password_option = option('--password', '-P', metavar='PASS', show_default='interactive prompt', help='Set the API password to PASS.')
 
-MdUrlInfoOptions = output_options('MdUrlInfoOptions', md.UrlInfo)
 
+_peer_id_option = option('--peer-id', '-p', metavar='PEER', required=True, help='Set the peer ID to PEER.')
 
-class LockssApi(BaseModel1):
 
-    class Config(BaseModel1):
+_poller_port_option = _make_port_option('poller', 'L', POLLER_DEFAULT_PORT, 'Poller')
 
-        class Aus(BaseModel1):
 
-            class Agreements(AuidOptions, AuthOptions): pass
+_repo_port_option = _make_port_option('repository', 'R', RS_DEFAULT_PORT, 'Repository')
 
-            class Configuration(BaseModel1):
 
-                class Get(AuConfigurationOptions, AuidOptions, AuthOptions): pass
+_url_option = option('--url', '-u', metavar='VALUE', help='Set the URL to VALUE.')
 
-                class GetAll(AuConfigurationOptions, AuthOptions): pass
 
-                get: Optional[Get] = Field1(description='Get the configuration of an AU')
-                get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the configurations of all AUs')
+_uuid_option = option('--uuid', '-w', metavar='VALUE', required=True, help='Set the UUID to VALUE.')
 
-            class NoAuPeerSet(output_options('DatedPeerIdSetImplOptions', config.DatedPeerIdSetImpl), AuidOptions, AuthOptions): pass
 
-            class State(output_options('AuStateBeanOptions', config.AuStateBean, disambiguate=['auid']), AuidOptions, AuthOptions): pass
+_username_option = option('--username', '-U', metavar='USER', show_default='interactive prompt', help='Set the API username to USER.')
 
-            class Status(output_options('AuStatusOptions', config.AuStatus), AuidOptions, AuthOptions): pass
 
-            class SuspectUrls(output_options('SuspectUrlVersionOptions', config.SuspectUrlVersion), AuidOptions, AuthOptions): pass
+_voter_url_type_option = option('--voter-url-type', type=Choice(((vue := poller.VoterUrlsEnum).AGREED, vue.DISAGREED, vue.POLLERONLY, vue.VOTERONLY)), required=True, help='Set the voter URL type to the given type.')
 
-            agreements: Optional[Agreements] = Field1(descriptions='Get the poll agreements of an AU')
-            configuration: Optional[Configuration] = Field1(description='AU configuration operations')
-            no_au_peer_set: Optional[NoAuPeerSet] = Field1(alias='no-au-peer-set', description='Get the NoAuPeerSet object of an AU')
-            state: Optional[State] = Field1(description='Get the state of an AU')
-            status: Optional[Status] = Field1(description='Get the status of an AU')
-            suspect_urls: Optional[SuspectUrls] = Field1(description='Get the suspect URL versions of an AU')
 
-        class LastUpdateTime(AuthOptions): pass
+#
+# Option groups
+#
 
-        class LoadedUrls(AuthOptions): pass
+def _make_node_option_group(port_option):
+    return option_group('Node options', _host_option, _username_option, _password_option, port_option)
 
-        class Platform(output_options('PlatformConfigurationWsResultOptions', config.PlatformConfigurationWsResult), AuthOptions): pass
 
-        class Section(BaseModel1):
+_artifact_namespace_uuid_option_group = option_group('Artifact options', _namespace_option, _uuid_option)
 
-            class Get(IfMatchOptions, OutputOptions, AuthOptions):
-                section: str = Field1(description='the name of the section for which the configuration file is requested')
 
-            get: Optional[Get] = Field1(description='Get the named configuration file')
+_auid_option_group = option_group('AUID options', _auid_option)
 
-        class Status(output_options('ConfigApiStatusOptions', config.ApiStatus), NodeOptions): pass
 
-        class Url(IfMatchOptions, OutputOptions, AuthOptions):
-            url: str = Field1(aliases=['-u'], description='the URL for which the configuration is requested')
+_commit_option_group = option_group('Commit options', option('--committed/--not-committed', is_flag=True, required=True, help="Set the artifact's committed flag to the given state."))
 
-        class Users(BaseModel1):
 
-            class Get(UserAccountOptions, AuthOptions): pass
+_config_node_option_group = _make_node_option_group(_config_port_option)
 
-            class Usernames(AuthOptions): pass
 
-            get: Optional[Get] = Field1(description='Get user account details')
-            usernames: Optional[Usernames] = Field1(description='Get the usernames configured in the system')
+_crawler_option_group = option_group('Crawler options', option('--crawler-id', '-c', metavar='IDENT', required=True, help='Set the crawler identifier to IDENT.'))
 
-        aus: Optional[Aus] = Field1(description='AU operations')
-        last_update_time: Optional[LastUpdateTime] = Field1(alias='last-update-time', description='Get the timestamp when the configuration was last updated')
-        loaded_urls: Optional[LoadedUrls] = Field1(alias='loaded-urls', description='Get the URLs from which the cofniguration was loaded')
-        platform: Optional[Platform] = Field1(description='Get the platform configuration')
-        section: Optional[Section] = Field1(description='Section operations')
-        status: Optional[Status] = Field1(description='Get the status of the service')
-        url: Optional[Url] = Field1(description='Get the configuration file for a URL')
-        users: Optional[Users] = Field1(description='User operations')
 
-    class Crawler(BaseModel1):
+_crawler_node_option_group = _make_node_option_group(_crawler_port_option)
 
-        class Crawlers(BaseModel1):
 
-            class Get(output_options('CrawlerConfigOptions', crawler.CrawlerConfig, disambiguate=['crawler-id']), CrawlerIdOptions, AuthOptions): pass
+_doi_option_group = option_group('DOI options', option('--doi', '-d', metavar='VALUE', required=True, help='Set the DOI to VALUE.'))
 
-            class GetAll(output_options('CrawlerStatusesOptions', crawler.CrawlerStatuses), AuthOptions): pass
 
-            get: Optional[Get] = Field1(description='Get queued crawl job')
-            get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of crawl jobs')
+_job_option_group = option_group('Job options', option('--job-id', '-i', metavar='JOBID', required=True, help='Set the job ID to JOBID'))
 
-        class Crawls(BaseModel1):
 
-            class Get(CrawlStatusOptions, JobOptions, AuthOptions): pass
+_md_node_option_group = _make_node_option_group(_md_port_option)
 
-            class GetAll(CrawlStatusOptions, AuthOptions): pass
 
-            class Urls(BaseModel1):
+_media_type_option_group = option_group('Media type options', option('--media-type', '-m', metavar='TYPE', required=True, help='Set the media type to TYPE.'))
 
-                class Errors(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
-                class Excluded(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
+_multipart_output_options = option_group('Multipart output options', _headers_option, _output_file_option)
 
-                class Fetched(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
-                class MediaTypes(BaseModel1):
+_namespace_option_group = option_group('Namespace options', _namespace_option)
 
-                    class Get(CrawlUrlInfoOptions, JobOptions, AuthOptions):
-                        media_type: str = Field1(description='the media type (e.g. application/pdf)')
 
-                    #class GetAll(JobOptions, AuthOptions): pass
+_openurl_option_group = option_group('OpenURL options', option('--openurl-param', '-p', metavar='VALUE', required=True, multiple=True, help='Add VALUE to the list of OpenURL parameters.'))
 
-                    get: Optional[Get] = Field1(description='Get the URLs of a given media type for a crawl')
-                    #get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the media types for a crawl')
 
-                class NotModified(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
+_peer_data_option_group = option_group('Peer data options', _peer_id_option, _voter_url_type_option)
 
-                class Parsed(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
 
-                class Pending(CrawlUrlInfoOptions, JobOptions, AuthOptions): pass
+_poll_key_option_group = option_group('Poll key options', option('--poll-key', '-k', metavar='KEY', required=True, help='Set the poll key to KEY.'))
 
-                errors: Optional[Errors] = Field1(description='Get the error URLs for a crawl')
-                excluded: Optional[Excluded] = Field1(description='Get the excluded URLs for a crawl')
-                fetched: Optional[Fetched] = Field1(description='Get the fetched URLs for a crawl')
-                media_types: Optional[MediaTypes] = Field1(alias='media-types', description='Subcommand for media type operations')
-                not_modified: Optional[NotModified] = Field1(alias='not-modified', description='Get the not modified URLs for a crawl')
-                parsed: Optional[Parsed] = Field1(description='Get the parsed URLs for a crawl')
-                pending: Optional[Pending] = Field1(description='Get the pending URLs for a crawl')
 
-            get: Optional[Get] = Field1(description='Get the list of crawls')
-            get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the crawl status of a job')
-            urls: Optional[Urls] = Field1(description='Subcommand for crawl URL operations')
+_poller_node_option_group = _make_node_option_group(_poller_port_option)
 
-        class Jobs(BaseModel1):
 
-            class Delete(AuthOptions): pass # FIXME
+_repair_type_option_group = option_group('Repair type options', option('--repair-type', type=Choice(((rte := poller.RepairTypeEnum).ACTIVE, rte.COMPLETED, rte.PENDING)), required=True, help='Set the repair type to the given type.'))
 
-            class DeleteAll(AuthOptions): pass # FIXME
 
-            class Get(CrawlJobOptions, JobOptions, AuthOptions): pass
+_repo_node_option_group = _make_node_option_group(_repo_port_option)
 
-            class GetAll(CrawlJobOptions, AuthOptions): pass
 
-            class Request(AuthOptions): pass # FIXME
+_section_option_group = option_group('Section options', option('--section-name', '-s', metavar='NAME', required=True, help='Set the section name to NAME.'))
 
-            delete: Optional[Delete] = Field1(description='Remove or stop a crawl job') # FIXME
-            delete_all: Optional[DeleteAll] = Field1(alias='delete-all', description='Delete all of the currently queued and active crawl jobs') # FIXME
-            get: Optional[Get] = Field1(description='Get queued poll status')
-            get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of crawl jobs')
-            request: Optional[Request] = Field1(description='Request a crawl as defined by the descriptor') # FIXME
 
-        class Status(output_options('CrawlerApiStatusOptions', crawler.ApiStatus), NodeOptions): pass
+_tally_type_option_group = option_group('Tally type options', option('--tally-type', type=Choice(((tt := poller.TallyTypeEnum).AGREE, tt.DISAGREE, tt.ERROR, tt.NOQUORUM, tt.TOOCLOSE)), required=True, help='Set the repair type to the given type.'))
 
-        crawlers: Optional[Crawlers] = Field1(description='Subcommand for crawler information operations')
-        crawls: Optional[Crawls] = Field1(description='Subcommand for crawl status operations')
-        jobs: Optional[Jobs] = Field1(description='Subcommand for crawler job operations')
-        status: Optional[Status] = Field1(description='Get the status of the service')
 
-    class Md(BaseModel1):
+_url_option_group = option_group('URL options', _url_option)
 
-        class Get(output_options('ItemMetadataOptions', md.ItemMetadata), AuidOptions, AuthOptions): pass
 
-        class Jobs(BaseModel1):
+_url_match_option_group = option_group('URL match options', _if_match_option, _if_modified_since_option, _if_none_match_option, _if_unmodified_since_option)
 
-            class Delete(AuthOptions): pass # FIXME
 
-            class DeleteAll(AuthOptions): pass # FIXME
+_user_account_option_group = option_group('User account options', option('--user-account', '-u', metavar='NAME', required=True, help='Set the user account name to NAME.'))
 
-            class Get(MdJobOptions, JobOptions, AuthOptions): pass
 
-            class GetAll(MdJobOptions, AuthOptions): pass
+#
+# Command decorators
+#
 
-            class Request(AuthOptions): pass # FIXME
+def _make_command(node_option_group: Callable,
+                  parent: Callable,
+                  name: str,
+                  help: str,
+                  *inputs,
+                  output_cls: Optional[type[SwaggerObject]] = None,
+                  output_dec: Optional[Callable] = None):
+    output_tuple: Optional[tuple[Callable]] = None
+    if output_cls:
+        output_tuple = (make_output_option_group(output_cls),)
+    elif output_dec:
+        output_tuple = (output_dec,)
+    return compose_decorators(parent.command(name, help=help), node_option_group, *inputs, *(output_tuple or ()), pass_obj)
 
-            delete: Optional[Delete] = Field1(description='Delete a metadata job') # FIXME
-            delete_all: Optional[DeleteAll] = Field1(alias='delete-all', description='Delete all of the currently queued and active metadata jobs') # FIXME
-            get: Optional[Get] = Field1(description='Get queued job status')
-            get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of queued jobs')
-            request: Optional[Request] = Field1(description='Request a metadata update operation') # FIXME
 
-        class Query(BaseModel1):
+_make_config_command = partial(_make_command, _config_node_option_group)
 
-            class Doi(MdUrlInfoOptions, DoiOptions, AuthOptions): pass
 
-            class OpenUrl(MdUrlInfoOptions, OpenUrlOptions, AuthOptions): pass
+_make_crawler_command = partial(_make_command, _crawler_node_option_group)
 
-            doi: Optional[Doi] = Field1(description='Perform a DOI query')
-            openurl: Optional[OpenUrl] = Field1(description='Perform an OpenURL query')
 
-        class Status(output_options('MdApiStatusOptions', md.ApiStatus), NodeOptions): pass
+_make_md_command = partial(_make_command, _md_node_option_group)
 
-        get: Optional[Get] = Field1(description='Get the metadata stored for an AU')
-        jobs: Optional[Jobs] = Field1(description='Subcommand for metadata job operations')
-        query: Optional[Query] = Field1(description='Subcommand for query operations')
-        status: Optional[Status] = Field1(description='Get the status of the service')
 
-    class Poller(BaseModel1):
+_make_poller_command = partial(_make_command, _poller_node_option_group)
 
-        class Jobs(BaseModel1):
 
-            class Get(output_options('PollerSummaryOptions', poller.PollerSummary, disambiguate=['poll-key']), JobOptions, AuthOptions): pass
+_make_repo_command = partial(_make_command, _repo_node_option_group)
 
-            class Request(AuthOptions): pass # FIXME
 
-            get: Optional[Get] = Field1(description='Get queued poll status')
-            request: Optional[Request] = Field1(description='Request to call a poll as the poller') # FIXME
+#
+# Top-level
+#
 
-        class Polls(BaseModel1):
+@with_plugins(entry_points(module='click_command_tree')) # adds a 'tree' command
+@group('lockssapi', params=None, context_settings=make_extra_context_settings())
+@color_option
+@show_params_option
+@pass_context
+def _lockssapi(ctx: ExtraContext, **kwargs):
+    ctx.obj = _LockssApiCli(ctx)
 
-            class AsPoller(BaseModel1):
 
-                class Get(output_options('PollerDetailOptions', poller.PollerDetail, disambiguate=['poll-key']), PollKeyOptions, AuthOptions): pass
+_SUBCOMMANDS = Section('Subcommands')
 
-                class GetAll(output_options('PollerSummaryOptions', poller.PollerSummary, disambiguate=['poll-key']), AuthOptions): pass
 
-                get: Optional[Get] = Field1(description='Get the detailed information about a poll in which a node is the poller')
-                get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of recent polls in which a node is the poller')
+@_lockssapi.command('copyright', help='Show the copyright and exit.')
+def _copyright() -> None:
+    echo(__copyright__)
 
-            class AsVoter(BaseModel1):
 
-                class Get(output_options('VoterDetailOptions', poller.VoterDetail, disambiguate=['poll-key']), PollKeyOptions, AuthOptions): pass
+@_lockssapi.command('license', help='Show the software license and exit.')
+def _license() -> None:
+    echo(__license__)
 
-                class GetAll(output_options('VoterSummaryOptions', poller.VoterSummary, disambiguate=['poll-key']), AuthOptions): pass
 
-                get: Optional[Get] = Field1(description='Get the detailed information about a poll in which a node is a voter')
-                get_all: Optional[GetAll] = Field1(alias='get-all', description='Get the list of recent polls in which a node is a voter')
+# 'tree' command implied by click_command_tree plugin
 
-            class PeerData(PeerIdOptions, AuthOptions): pass
 
-            class Repairs(output_options('RepairDataOptions', poller.RepairData), RepairTypeOptions, PollKeyOptions, AuthOptions): pass
+@_lockssapi.command('version', help='Show the version number and exit.')
+def _version() -> None:
+    echo(__version__)
 
-            class Tallies(TallyTypeOptions, PollKeyOptions, AuthOptions): pass
 
-            as_poller: Optional[AsPoller] = Field1(alias='as-poller', description='Subcommand for polls in which a node is the poller')
-            as_voter: Optional[AsVoter] = Field1(alias='as-voter', description='Subcommand for polls in which a node is the voter')
-            peer_data: Optional[PeerData] = Field1(alias='peer-data', description='Get peer data for a poll')
-            repairs: Optional[Repairs] = Field1(description='Get the repairs for a poll')
-            tallies: Optional[Tallies] = Field1(description='Get the tallies for a poll')
+#
+# config
+#
 
-        class Status(output_options('PollerApiStatusOptions', poller.ApiStatus), NodeOptions): pass
+@_lockssapi.group('config', section=_SUBCOMMANDS, help='Subcommand for Configuration Service operations.')
+def _config():
+    pass
 
-        jobs: Optional[Jobs] = Field1(description='Subcommand for poller job operations')
-        polls: Optional[Polls] = Field1(description='Subcommand for poll status operations')
-        status: Optional[Status] = Field1(description='Get the status of the service')
 
-    class Repo(BaseModel1):
+_SUBCOMMANDS_CONFIG = Section('Subcommands')
 
-        class Artifacts(BaseModel1):
 
-            class Delete(UuidOptions, NamespaceOptions, AuthOptions): pass
+@_make_config_command(_config, 'last-update-time', 'Get the timestamp when the configuration was last updated.')
+def _config_last_update_time(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.config_last_update_time, **kwargs)
 
-            class Get(BaseModel1):
 
-                class ByAuid(ArtifactOptions, UncommittedOptions, VersionsOptions, UrlPrefixOptions, AuidOptions, AuthOptions): pass
+@_make_config_command(_config, 'loaded-urls', 'Get the URLs from which the configuration was loaded.')
+def _config_loaded_urls(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.config_loaded_urls, **kwargs)
 
-                class ByUrl(ArtifactOptions, VersionsOptions, UrlPrefixOptions, NamespaceOptions, AuthOptions): pass
 
-                class ByUuid(UuidOptions, AuthOptions):
-                    response: Optional[Union[Path, Literal['-']]] = Field1(description='write the response headers to the given file, or "-" for standard output')
-                    payload: Optional[Union[Path, Literal['-']]] = Field1(description='write the payload to the given file, or "-" for standard output')
+@_make_config_command(_config, 'platform', 'Get the platform configuration.', output_cls=config.PlatformConfigurationWsResult)
+def _config_platform(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.config_platform, **kwargs)
 
-                by_auid: Optional[ByAuid] = Field1(alias='by-auid', description='Get artifacts in an Archival Unit')
-                by_url: Optional[ByUrl] = Field1(alias="by-url", description="Returns all artifacts that match a given URL or URL prefix and/or version")
-                by_uuid: Optional[ByUuid] = Field1(alias="by-uuid", description="Gets artifacts and artifact metadata")
 
-            class Update(UuidOptions, NamespaceOptions, AuthOptions):
-                commit: bool = Field1(description='Whether the artifact should be marked as committed or not committed')
+@_make_config_command(_config, 'status', 'Get the status of the Configuration Service.', output_cls=config.ApiStatus)
+def _config_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.config_status, **kwargs)
 
-            delete: Optional[Delete] = Field1(description='Deletes an artifact')
-            get: Optional[Get] = Field1(description='Gets one or more artifacts')
-            update: Optional[Update] = Field1(description='Updates an artifact')
 
-        class Aus(BaseModel1):
+@_make_config_command(_config, 'url', 'Get the file for a configuration URL.', _url_option_group, _url_match_option_group, output_dec=_multipart_output_options)
+def _config_url(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.config_url, **kwargs)
 
-            class Auids(NamespaceOptions, AuthOptions): pass
 
-            class Size(output_options('AuSizeOptions', rs.AuSize), AuidOptions, AuthOptions): pass
+#
+# config aus
+#
 
-            auids: Optional[Auids] = Field1(description='Get Archival Unit IDs (AUIDs) in a namespace')
-            size: Optional[Size] = Field1(description='Get the size of Archival Unit artifacts in a namespace')
+@_config.group('aus', section=_SUBCOMMANDS_CONFIG, help='Subcommand for AU operations.')
+def _config_aus():
+    pass
 
-        class ChecksumAlgorithms(AuthOptions): pass
 
-        class Info(output_options('RepositoryInfoOptions', rs.RepositoryInfo), AuthOptions): pass
+_SUBCOMMANDS_CONFIG_AUS = Section('Subcommands')
 
-        class Namespaces(AuthOptions): pass
 
-        class Status(output_options('RsApiStatusOptions', rs.ApiStatus), NodeOptions): pass
+@_make_config_command(_config_aus, 'agreements', 'Get the poll agreements of an AU.', _auid_option_group)
+def _config_aus_agreements(cli: _LockssApiCli, **kwargs):
+    cli.dispatch(cli.config_aus_agreements, **kwargs)
 
-        class StorageInfo(AuthOptions): pass
 
-        artifacts: Optional[Artifacts] = Field1(description="LOCKSS Repository Service API artifacts commands")
-        aus: Optional[Aus] = Field1(description='LOCKSS Repository Service API archival unit (AU) commands')
-        checksum_algorithms: Optional[ChecksumAlgorithms] = Field1(alias='checksum-algorithms', description='Get the supported checksum algorithms')
-        info: Optional[Info] = Field1(description='Get repository information')
-        namespaces: Optional[Namespaces] = Field1(description='Get namespaces of the committed artifacts in the repository')
-        status: Optional[Status] = Field1(description="Get the status of the service")
-        storage_info: Optional[StorageInfo] = Field1(alias='storage-info', description="Get repository storage information")
+@_make_config_command(_config_aus, 'no-au-peer-set', 'Get the NoAuPeerSet object of an AU.', _auid_option_group, output_dec=make_output_option_group(config.DatedPeerIdSetImpl, basic_default=True))
+def _config_aus_no_au_peer_set(cli: _LockssApiCli, **kwargs):
+    cli.dispatch(cli.config_aus_no_au_peer_set, **kwargs)
 
-    config: Optional[Config] = Field1(description='Subcommand for Configuration Service operations')
-    copyright: Optional[BaseModel1] = Field1(description=COPYRIGHT_DESCRIPTION)
-    crawler: Optional[Crawler] = Field1(description='Subcommand for Crawler Service operations')
-    license: Optional[BaseModel1] = Field1(description=LICENSE_DESCRIPTION)
-    md: Optional[Md] = Field1(description='Subcommand for Metadata Service operations')
-    poller: Optional[Poller] = Field1(description='Subcommand for Poller Service operations')
-    repo: Optional[Repo] = Field1(description='Subcommand for Repository Service operations')
-    version: Optional[BaseModel1] = Field1(description=VERSION_DESCRIPTION)
 
+@_make_config_command(_config_aus, 'state', 'Get the state of an AU.', _auid_option_group, output_cls=config.AuStateBean)
+def _config_aus_state(cli: _LockssApiCli, **kwargs):
+    cli.dispatch(cli.config_aus_state, **kwargs)
 
-class LockssApiCli(BaseCli[LockssApi]):
 
-    def __init__(self):
-        """
-        Constructs a new ``DebugPanelCli`` instance.
-        """
-        super().__init__(model=LockssApi,
-                         prog='lockssapi',
-                         description='LOCKSS Python client')
+@_make_config_command(_config_aus, 'status', 'Get the status of an AU.', _auid_option_group, output_cls=config.AuStatus)
+def _config_aus_status(cli: _LockssApiCli, **kwargs):
+    cli.dispatch(cli.config_aus_status, **kwargs)
 
-    def _config_aus_agreements(self, cmd: LockssApi.Config.Aus.Agreements) -> None:
-        print(config_get_au_agreements(cmd.make_node(),
-                                       cmd.auid).to_dict())
 
-    def _config_aus_configuration_get(self, cmd: LockssApi.Config.Aus.Configuration.Get) -> None:
-        cmd.display(config_get_au_config(cmd.make_node(),
-                                         cmd.auid))
+@_make_config_command(_config_aus, 'suspect-urls', 'Get the suspect URL versions of an AU.', _auid_option_group, output_cls=config.SuspectUrlVersion)
+def _config_aus_suspect_urls(cli: _LockssApiCli, **kwargs):
+    cli.dispatch(cli.config_aus_suspect_urls, **kwargs)
 
-    def _config_aus_configuration_get_all(self, cmd: LockssApi.Config.Aus.Configuration.GetAll) -> None:
-        cmd.display(config_get_au_configs(cmd.make_node()))
 
-    def _config_aus_no_au_peer_set(self, cmd: LockssApi.Config.Aus.NoAuPeerSet) -> None:
-        cmd.display(config_get_no_au_peer_set(cmd.make_node(),
-                                              cmd.auid))
+#
+# config aus configuration
+#
 
-    def _config_aus_state(self, cmd: LockssApi.Config.Aus.State) -> None:
-        cmd.display(config_get_au_state(cmd.make_node(),
-                                        cmd.auid))
+@_config_aus.group('configuration', section=_SUBCOMMANDS_CONFIG_AUS, help='Subcommand for AU configuration operations.')
+def _config_aus_configuration():
+    pass
 
-    def _config_aus_status(self, cmd: LockssApi.Config.Aus.Status) -> None:
-        cmd.display(config_get_au_status(cmd.make_node(),
-                                         cmd.auid))
 
-    def _config_aus_suspect_urls(self, cmd: LockssApi.Config.Aus.SuspectUrls) -> None:
-        cmd.display(config_get_au_suspect_url_versions(cmd.make_node(),
-                                                       cmd.auid).suspect_versions)
+@_make_config_command(_config_aus_configuration, 'get', 'Get the configuration of an AU.', _auid_option_group, output_dec=make_output_option_group(config.AuConfiguration, basic_default=True))
+def _config_aus_configuration_get(cli: _LockssApiCli, **kwargs):
+    cli.dispatch(cli.config_aus_configuration_get, **kwargs)
 
-    def _config_last_update_time(self, cmd: LockssApi.Config.LastUpdateTime) -> None:
-        print(config_last_update_time(cmd.make_node()))
 
-    def _config_loaded_urls(self, cmd: LockssApi.Config.LoadedUrls) -> None:
-        for url in config_get_loaded_urls(cmd.make_node()):
-            print(url)
+@_make_config_command(_config_aus_configuration, 'get-all', 'Get the configuration of an AU.', output_cls=config.AuConfiguration)
+def _config_aus_configuration_get_all(cli: _LockssApiCli, **kwargs):
+    cli.dispatch(cli.config_aus_configuration_get_all, **kwargs)
 
-    def _config_platform(self, cmd: LockssApi.Config.Platform) -> None:
-        cmd.display(config_get_platform_config(cmd.make_node()))
 
-    def _config_section_get(self, cmd: LockssApi.Config.Section.Get) -> None:
-        mp = config_get_section(cmd.make_node(),
-                                cmd.section,
-                                if_match=cmd.if_match,
-                                if_modified_since=cmd.if_modified_since,
-                                if_none_match=cmd.if_none_match,
-                                if_unmodified_since=cmd.if_unmodified_since)
-        part = None
-        try:
-            part = mp.get('configFile')
-            if cmd.output:
-                part.save_as(cmd.output)
-            else:
-                for line in TextIOWrapper(part.file):
-                    print(line, end='')
-        finally:
-            if part:
-                part.close()
+#
+# config section
+#
 
-    def _config_status(self, cmd: LockssApi.Config.Status) -> None:
-        cmd.display(config_get_status(cmd.make_node()))
+@_config.group('section', section=_SUBCOMMANDS_CONFIG, help='Subcommand for section operations.')
+def _config_section():
+    pass
 
-    def _config_url(self, cmd: LockssApi.Config.Url) -> None:
-        mp = config_get_url(cmd.make_node(),
-                            cmd.url,
-                            if_match=cmd.if_match,
-                            if_modified_since=cmd.if_modified_since,
-                            if_none_match=cmd.if_none_match,
-                            if_unmodified_since=cmd.if_unmodified_since)
-        part = None
-        try:
-            part = mp.get('configFile')
-            if cmd.output:
-                part.save_as(cmd.output)
-            else:
-                for line in TextIOWrapper(part.file):
-                    print(line, end='')
-        finally:
-            if part:
-                part.close()
 
-    def _config_users_get(self, cmd: LockssApi.Config.Users.Get) -> None:
-        print(config_get_user_account(cmd.make_node(),
-                                      cmd.user_account))
+@_make_config_command(_config_section, 'get', 'Get the named configuration file.', _section_option_group, _url_match_option_group, output_dec=_multipart_output_options)
+def _config_section_get(cli: _LockssApiCli, **kwargs):
+    cli.dispatch(cli.config_section_get, **kwargs)
 
-    def _config_users_usernames(self, cmd: LockssApi.Config.Users.Usernames) -> None:
-        for username in sorted(config_get_usernames(cmd.make_node())):
-            print(username)
 
-    def _copyright(self, cmd: BaseModel1) -> None:
-        self._parser.exit(0, __copyright__)
+#
+# config users
+#
 
-    def _crawler_crawlers_get(self, cmd: LockssApi.Crawler.Crawlers.Get) -> None:
-        cmd.display(crawler_get_crawler(cmd.make_node(),
-                                        cmd.crawler_id))
+@_config.group('users', section=_SUBCOMMANDS_CONFIG, help='Subcommand for user operations.')
+def _config_users():
+    pass
 
-    def _crawler_crawlers_get_all(self, cmd: LockssApi.Crawler.Crawlers.GetAll) -> None:
-        cmd.display(crawler_get_crawlers(cmd.make_node()))
 
-    def _crawler_crawls_urls_errors(self, cmd: LockssApi.Crawler.Crawls.Urls.Errors) -> None:
-        cmd.display(crawler_get_crawl_errors(cmd.make_node(),
-                                             cmd.job))
+@_make_config_command(_config_users, 'get', 'Get user account details.', _user_account_option_group, output_cls=crawler.ApiStatus)
+def _config_users_get(cli: _LockssApiCli, **kwargs):
+    cli.dispatch(cli.config_users_get, **kwargs)
 
-    def _crawler_crawls_urls_excluded(self, cmd: LockssApi.Crawler.Crawls.Urls.Excluded) -> None:
-        cmd.display(crawler_get_crawl_excluded(cmd.make_node(),
-                                               cmd.job))
 
-    def _crawler_crawls_urls_fetched(self, cmd: LockssApi.Crawler.Crawls.Urls.Fetched) -> None:
-        cmd.display(crawler_get_crawl_fetched(cmd.make_node(),
-                                              cmd.job))
+@_make_config_command(_config_users, 'username', 'Get the usernames configured in the system.')
+def _config_users_usernames(cli: _LockssApiCli, **kwargs):
+    cli.dispatch(cli.config_users_usernames, **kwargs)
 
-    def _crawler_crawls_get(self, cmd: LockssApi.Crawler.Crawls.Get) -> None:
-        cmd.display(crawler_get_crawl(cmd.make_node(),
-                                      cmd.job))
 
-    def _crawler_crawls_get_all(self, cmd: LockssApi.Crawler.Crawls.GetAll) -> None:
-        cmd.display(crawler_get_crawls(cmd.make_node()))
+#
+# crawler
+#
 
-    def _crawler_crawls_urls_media_types_get(self, cmd: LockssApi.Crawler.Crawls.Urls.MediaTypes.Get) -> None:
-        cmd.display(crawler_get_crawl_by_media_type(cmd.make_node(),
-                                                    cmd.job,
-                                                    cmd.media_type))
+@_lockssapi.group('crawler', section=_SUBCOMMANDS, help='Subcommand for Crawler Service operations.')
+def _crawler():
+    pass
 
-    def _crawler_crawls_urls_not_modified(self, cmd: LockssApi.Crawler.Crawls.Urls.NotModified) -> None:
-        cmd.display(crawler_get_crawl_not_modified(cmd.make_node(),
-                                                   cmd.job))
 
-    def _crawler_crawls_urls_parsed(self, cmd: LockssApi.Crawler.Crawls.Urls.Parsed) -> None:
-        cmd.display(crawler_get_crawl_parsed(cmd.make_node(),
-                                             cmd.job))
+@_make_crawler_command(_crawler, 'status', 'Get the status of the Crawler Service.', output_cls=crawler.ApiStatus)
+def _crawler_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_status, **kwargs)
 
-    def _crawler_crawls_urls_pending(self, cmd: LockssApi.Crawler.Crawls.Urls.Pending) -> None:
-        cmd.display(crawler_get_crawl_pending(cmd.make_node(),
-                                              cmd.job))
 
-    def _crawler_jobs_get(self, cmd: LockssApi.Crawler.Jobs.Get) -> None:
-        cmd.display(crawler_get_job(cmd.make_node(),
-                                    cmd.job))
+_SUBCOMMANDS_CRAWLER = Section('Subcommands')
 
-    def _crawler_jobs_get_all(self, cmd: LockssApi.Crawler.Jobs.GetAll) -> None:
-        cmd.display(crawler_get_jobs(cmd.make_node()))
 
-    def _crawler_status(self, cmd: LockssApi.Crawler.Status) -> None:
-        cmd.display(crawler_get_status(cmd.make_node()))
+#
+# crawler crawlers
+#
 
-    def _license(self, cmd: BaseModel1) -> None:
-        self._parser.exit(0, __license__)
+@_crawler.group('crawlers', section=_SUBCOMMANDS_CRAWLER, help='Subcommand for crawler information operations.')
+def _crawler_crawlers():
+    pass
 
-    def _md_get(self, cmd: LockssApi.Md.Get) -> None:
-        cmd.display(md_get_metadata(cmd.make_node(),
-                                    cmd.auid))
 
-    def _md_jobs_get(self, cmd: LockssApi.Md.Jobs.Get) -> None:
-        cmd.display(md_get_job(cmd.make_node(),
-                               cmd.job))
+@_make_crawler_command(_crawler_crawlers, 'config', 'Get the configuration information related to an installed crawler.', _crawler_option_group, output_cls=crawler.CrawlerConfig)
+def _crawler_crawlers_config(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawlers_config, **kwargs)
 
-    def _md_jobs_get_all(self, cmd: LockssApi.Md.Jobs.GetAll) -> None:
-        cmd.display(md_get_jobs(cmd.make_node()))
 
-    def _md_query_doi(self, cmd: LockssApi.Md.Query.Doi) -> None:
-        cmd.display(md_doi_query(cmd.make_node(),
-                                 cmd.doi))
+@_make_crawler_command(_crawler_crawlers, 'status', 'Get the status of installed crawlers.')
+def _crawler_crawlers_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawlers_status, **kwargs)
 
-    def _md_query_openurl(self, cmd: LockssApi.Md.Query.OpenUrl) -> None:
-        cmd.display(md_openurl_query(cmd.make_node(),
-                                     cmd.params))
 
-    def _md_status(self, cmd: LockssApi.Md.Status) -> None:
-        cmd.display(md_get_status(cmd.make_node()))
+#
+# crawler crawls
+#
 
-    def _poller_jobs_get(self, cmd: LockssApi.Poller.Jobs.Get) -> None:
-        cmd.display(poller_get_poll_status(cmd.make_node(),
-                                           cmd.job))
+@_crawler.group('crawls', section=_SUBCOMMANDS_CRAWLER, help='Subcommand for crawl operations.')
+def _crawler_crawls():
+    pass
 
-    def _poller_polls_as_poller_get(self, cmd: LockssApi.Poller.Polls.AsPoller.Get) -> None:
-        cmd.display(poller_get_poller_poll(cmd.make_node(),
-                                           cmd.poll_key))
 
-    def _poller_polls_as_poller_get_all(self, cmd: LockssApi.Poller.Polls.AsPoller.GetAll) -> None:
-        cmd.display(poller_get_poller_polls(cmd.make_node()))
+_SUBCOMMANDS_CRAWLER_CRAWLS = Section('Subcommands')
 
-    def _poller_polls_as_voter_get(self, cmd: LockssApi.Poller.Polls.AsVoter.Get) -> None:
-        cmd.display(poller_get_voter_poll(cmd.make_node(),
-                                          cmd.poll_key))
 
-    def _poller_polls_as_voter_get_all(self, cmd: LockssApi.Poller.Polls.AsVoter.GetAll) -> None:
-        cmd.display(poller_get_voter_polls(cmd.make_node()))
+@_make_crawler_command(_crawler_crawls, 'get', 'Get the crawl status of a job.', _job_option_group, output_cls=crawler.CrawlStatus)
+def _crawler_crawls_get(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawls_get, **kwargs)
 
-    def _poller_polls_peer_data(self, cmd: LockssApi.Poller.Polls.PeerData) -> None:
-        for url in poller_get_peer_data(cmd.make_node(),
-                                        cmd.poll_key,
-                                        cmd.peer_id,
-                                        cmd.get_voter_urls_enum()):
-            print(url)
 
-    def _poller_polls_repairs(self, cmd: LockssApi.Poller.Polls.Repairs) -> None:
-        cmd.display(poller_get_repair_data(cmd.make_node(),
-                                           cmd.poll_key,
-                                           cmd.get_repair_type_enum()))
+@_make_crawler_command(_crawler_crawls, 'get-all', 'Get the list of crawls.', output_cls=crawler.CrawlStatus)
+def _crawler_crawls_get_all(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawls_get_all, **kwargs)
 
-    def _poller_polls_tallies(self, cmd: LockssApi.Poller.Polls.Tallies) -> None:
-        for url in poller_get_tally_urls(cmd.make_node(),
-                                         cmd.poll_key,
-                                         cmd.get_tally_type_enum()):
-            print(url)
 
-    def _poller_status(self, cmd: LockssApi.Poller.Status) -> None:
-        cmd.display(poller_get_status(cmd.make_node()))
+#
+# crawler crawls urls
+#
 
-    def _repo_artifacts_delete(self, cmd: LockssApi.Repo.Artifacts.Delete) -> None:
-        repo_delete_artifact(cmd.make_node(),
-                             cmd.uuid,
-                             namespace=cmd.get_namespace(_param_default(_RS, '/artifacts/{uuid}', 'delete', 'namespace')))
-        print(cmd.uuid)
+@_crawler_crawls.group('urls', section=_SUBCOMMANDS_CRAWLER_CRAWLS, help='Subcommand for crawl operations.')
+def _crawler_crawls_urls():
+    pass
 
-    def _repo_artifacts_get_by_auid(self, cmd: LockssApi.Repo.Artifacts.Get.ByAuid) -> None:
-        cmd.display(repo_get_artifacts_by_auid(cmd.make_node(),
-                                               cmd.auid,
-                                               url=cmd.url,
-                                               url_prefix=cmd.url_prefix,
-                                               namespace=cmd.get_namespace(_param_default(_RS, '/aus/{auid}/artifacts', 'get', 'namespace')),
-                                               versions=cmd.get_versions_enum(rs.VersionsEnum.LATEST),
-                                               include_uncommitted=cmd.uncommitted))
 
-    def _repo_artifacts_by_url(self, cmd: LockssApi.Repo.Artifacts.Get.ByUrl) -> None:
-        cmd.display(repo_get_artifacts_by_url(cmd.make_node(),
-                                              url=cmd.url,
-                                              url_prefix=cmd.url_prefix,
-                                              namespace=cmd.get_namespace(_param_default(_RS, '/artifacts', 'get', 'namespace')),
-                                              versions=cmd.get_versions_enum(rs.VersionsEnum.LATEST)))
+_SUBCOMMANDS_CRAWLER_CRAWLS_URLS = Section('Subcommands')
 
-    def _repo_artifacts_get_by_uuid(self, cmd: LockssApi.Repo.Artifacts.Get.ByUuid) -> None:
-        mp = repo_get_artifact_by_uuid(cmd.make_node(),
-                                       cmd.uuid,
-                                       namespace=_param_default(_RS, '/artifacts/{uuid}', 'get', 'namespace'),
-                                       include_content=rs.IncludeContentEnum.ALWAYS if cmd.payload else rs.IncludeContentEnum.NEVER)
-        print(mp.get('artifactProps').value)
-        for path, part_name in ((cmd.response, 'httpResponseHeader'), (cmd.payload, 'payload')):
-            if path is None:
-                continue
-            part = None
-            try:
-                part = mp.get(part_name)
-                if path == '-':
-                    print()
-                    while len((bytez := part.file.read(1024))) > 0:
-                        sys.stdout.write(bytez)
-                else:
-                    part.save_as(path)
-            finally:
-                if part:
-                    part.close()
 
-    def _repo_aus_auids(self, cmd: LockssApi.Repo.Aus.Auids) -> None:
-        for auid in sorted(repo_get_auids(cmd.make_node())):
-            print(auid)
+@_make_crawler_command(_crawler_crawls_urls, 'errors', 'Get the error URLs for a crawl.', _job_option_group, output_cls=crawler.UrlInfo)
+def _crawler_crawls_urls_errors(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawls_urls_errors, **kwargs)
 
-    def _repo_aus_size(self, cmd: LockssApi.Repo.Aus.Size) -> None:
-        cmd.display(repo_get_au_size(cmd.make_node(),
-                                     cmd.auid,
-                                     namespace=cmd.get_namespace(_param_default(_RS, '/aus/{auid}/size', 'get', 'namespace'))))
 
-    def _repo_checksum_algorithms(self, cmd: LockssApi.Repo.ChecksumAlgorithms) -> None:
-        for checksum_algorithm in sorted(repo_get_checksum_algorithms(cmd.make_node())):
-            print(checksum_algorithm)
+@_make_crawler_command(_crawler_crawls_urls, 'excluded', 'Get the excluded URLs for a crawl.', _job_option_group, output_cls=crawler.UrlInfo)
+def _crawler_crawls_urls_excluded(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawls_urls_excluded, **kwargs)
 
-    def _repo_info(self, cmd: LockssApi.Repo.Info) -> None:
-        cmd.display(repo_get_info(cmd.make_node()))
 
-    def _repo_namespaces(self, cmd: LockssApi.Repo.Namespaces) -> None:
-        for namespace in sorted(repo_get_namespaces(cmd.make_node())):
-            print(namespace)
 
-    def _repo_status(self, cmd: LockssApi.Repo.Status) -> None:
-        cmd.display(repo_get_status(cmd.make_node()))
+@_make_crawler_command(_crawler_crawls_urls, 'fetched', 'Get the fetched URLs for a crawl.', _job_option_group, output_cls=crawler.UrlInfo)
+def _crawler_crawls_urls_fetched(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawls_urls_fetched, **kwargs)
 
-    def _repo_storage_info(self, cmd: LockssApi.Repo.StorageInfo) -> None:
-        print(repo_get_storage_info(cmd.make_node()).to_dict())
 
-    def _version(self, cmd: BaseModel1) -> None:
-        self._parser.exit(0, __version__)
+@_make_crawler_command(_crawler_crawls_urls, 'not-modified', 'Get the not modified URLs for a crawl.', _job_option_group, output_cls=crawler.UrlInfo)
+def _crawler_crawls_urls_not_modified(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawls_urls_not_modified, **kwargs)
+
+
+@_make_crawler_command(_crawler_crawls_urls, 'parsed', 'Get the parsed URLs for a crawl.', _job_option_group, output_cls=crawler.UrlInfo)
+def _crawler_crawls_urls_parsed(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawls_urls_parsed, **kwargs)
+
+
+@_make_crawler_command(_crawler_crawls_urls, 'pending', 'Get the pending URLs for a crawl.', _job_option_group, output_cls=crawler.UrlInfo)
+def _crawler_crawls_urls_pending(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawls_urls_pending, **kwargs)
+
+
+#
+# crawler crawls urls media-types
+#
+
+@_crawler_crawls_urls.group('media-types', section=_SUBCOMMANDS_CRAWLER_CRAWLS_URLS, help='Subcommand for media type operations.')
+def _crawler_crawls_urls_media_types():
+    pass
+
+
+@_make_crawler_command(_crawler_crawls_urls_media_types, 'get', 'Get the URLs of a given media type for a crawl.', _job_option_group, output_cls=crawler.UrlInfo)
+def _crawler_crawls_urls_media_types_get(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_crawls_urls_media_types_get, **kwargs)
+
+
+#
+# crawler jobs
+#
+
+@_crawler.group('jobs', section=_SUBCOMMANDS_CRAWLER, help='Subcommand for crawler job operations.')
+def _crawler_jobs():
+    pass
+
+
+@_make_crawler_command(_crawler_jobs, 'get', 'Get the status of a crawler job.', _job_option_group, output_cls=crawler.CrawlJob)
+def _crawler_jobs_get(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_jobs_get, **kwargs)
+
+
+@_make_crawler_command(_crawler_jobs, 'get-all', help='Get the status of all crawler jobs.', output_cls=crawler.CrawlJob)
+def _crawler_jobs_get_all(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.crawler_jobs_get_all, **kwargs)
+
+
+#
+# md
+#
+
+@_lockssapi.group('md', section=_SUBCOMMANDS, help='Subcommand for Metadata Service operations.')
+def _md():
+    pass
+
+
+_SUBCOMMANDS_MD = Section('Subcommands')
+
+
+@_make_md_command(_md, 'get', 'Get the metadata stored for an AU.', output_cls=md.ItemMetadata)
+def _md_get(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.md_get, **kwargs)
+
+
+@_make_md_command(_md, 'status', 'Get the status of the Metadata Service.', output_cls=md.ApiStatus)
+def _md_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.md_status, **kwargs)
+
+
+#
+# md jobs
+#
+
+@_md.group('jobs', section=_SUBCOMMANDS_MD, help='Subcommand for metadata job operations.')
+def _md_jobs():
+    pass
+
+
+@_make_md_command(_md_jobs, 'get', 'Get queued job status.', _job_option_group, output_cls=md.Job)
+def _md_jobs_get(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.md_jobs_get, **kwargs)
+
+
+@_make_md_command(_md_jobs, 'get-all', 'Get the list of queued jobs.', output_cls=md.Job)
+def _md_jobs_get_all(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.md_jobs_get_all, **kwargs)
+
+
+#
+# md query
+#
+
+@_md.group('query', section=_SUBCOMMANDS_MD, help='Subcommand for query operations.')
+def _md_query():
+    pass
+
+
+@_make_md_command(_md_query, 'doi', 'Perform a DOI query.', _doi_option_group, output_cls=md.UrlInfo)
+def _md_query_doi(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.md_query_doi, **kwargs)
+
+
+@_make_md_command(_md_query, 'openurl', 'Perform an OpenURL query.', _openurl_option_group, output_cls=md.UrlInfo)
+def _md_query_openurl(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.md_query_openurl, **kwargs)
+
+
+#
+# poller
+#
+
+@_lockssapi.group('poller', section=_SUBCOMMANDS, help='Subcommand for Poller Service operations.')
+def _poller():
+    pass
+
+
+_SUBCOMMANDS_POLLER = Section('Subcommands')
+
+
+@_make_poller_command(_poller, 'status', 'Get the status of the Poller Service.', output_cls=poller.ApiStatus)
+def _poller_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.poller_status, **kwargs)
+
+
+#
+# poller jobs
+#
+
+@_poller.group('jobs', section=_SUBCOMMANDS_POLLER, help='Subcommand for poller job operations.')
+def _poller_jobs():
+    pass
+
+
+@_make_poller_command(_poller_jobs, 'get', 'Get the status of a poller job.', _job_option_group, output_cls=poller.PollerSummary)
+def _poller_jobs_get(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.poller_jobs_get, **kwargs)
+
+
+#
+# poller polls
+#
+
+
+@_poller.group('polls', section=_SUBCOMMANDS_POLLER, help='Subcommand for poll operations.')
+def _poller_polls():
+    pass
+
+
+_SUBCOMMANDS_POLLER_POLLS = Section('Subcommands')
+
+
+@_make_poller_command(_poller_polls, 'peer-data', 'Get peer data for a poll.', _poll_key_option_group, _peer_data_option_group, output_cls=poller.PeerData)
+def _poller_polls_peer_data(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.poller_polls_peer_data, **kwargs)
+
+
+@_make_poller_command(_poller_polls, 'repairs', 'Get the repairs for a poll.', _poll_key_option_group, _repair_type_option_group, output_cls=poller.RepairData)
+def _poller_polls_repairs(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.poller_polls_repairs, **kwargs)
+
+
+@_make_poller_command(_poller_polls, 'tallies', 'Get the tallies for a poll.', _poll_key_option_group, _tally_type_option_group, output_cls=poller.TallyData)
+def _poller_polls_tallies(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.poller_polls_tallies, **kwargs)
+
+
+#
+# poller polls as-poller
+#
+
+@_poller_polls.group('as-poller', section=_SUBCOMMANDS_POLLER_POLLS, help='Subcommand for poller poll operations.')
+def _poller_polls_as_poller():
+    pass
+
+
+@_make_poller_command(_poller_polls_as_poller, 'get', 'Get detailed information about a poll in which a node is the poller.', _poll_key_option_group, output_cls=poller.PollerDetail)
+def _poller_polls_as_poller_get(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.poller_polls_as_poller_get, **kwargs)
+
+
+@_make_poller_command(_poller_polls_as_poller, 'get-all', 'Get summary information about polls in which a node is the poller.', output_cls=poller.PollerSummary)
+def _poller_polls_as_poller_get_all(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.poller_polls_as_poller_get_all, **kwargs)
+
+
+#
+# poller polls as-voter
+#
+
+@_poller_polls.group('as-voter', section=_SUBCOMMANDS_POLLER_POLLS, help='Subcommand for voter poll operations.')
+def _poller_polls_as_voter():
+    pass
+
+
+@_make_poller_command(_poller_polls_as_voter, 'get', 'Get detailed information about a poll in which a node is a voter.', _poll_key_option_group, output_cls=poller.VoterDetail)
+def _poller_polls_as_voter_get(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.poller_polls_as_voter_get, **kwargs)
+
+
+@_make_poller_command(_poller_polls_as_voter, 'get-all', help='Get summary information about polls in which a node is a voter.', output_cls=poller.VoterSummary)
+def _poller_polls_as_voter_get_all(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.poller_polls_as_voter_get_all, **kwargs)
+
+
+#
+# repo
+#
+
+@_lockssapi.group('repo', section=_SUBCOMMANDS, help='Subcommand for Repository Service operations.')
+def _repo():
+    pass
+
+
+_SUBCOMMANDS_REPO = Section('Subcommands')
+
+
+@_make_repo_command(_repo, 'checksum-algorithms', 'Get the supported checksum algorithms.')
+def _repo_checksum_algorithms(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_checksum_algorithms, **kwargs)
+
+
+@_make_repo_command(_repo, 'info', help='Get repository information.', output_dec=make_output_option_group(rs.RepositoryInfo, basic_default=True))
+def _repo_info(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_info, **kwargs)
+
+
+@_make_repo_command(_repo, 'namespaces', help='Get namespaces of the committed artifacts in the repository.')
+def _repo_namespaces(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_namespaces, **kwargs)
+
+
+@_make_repo_command(_repo, 'status', help='Get the status of the Repository Service.', output_cls=rs.ApiStatus)
+def _repo_status(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_status, **kwargs)
+
+
+@_make_repo_command(_repo, 'storage-info', help='Get repository storage information.', output_cls=rs.StorageInfo)
+def _repo_storage_info(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_storage_info, **kwargs)
+
+
+#
+# repo artifacts
+#
+
+@_repo.group('artifacts', section=_SUBCOMMANDS_REPO, help='Subcommand for artifact operations.')
+def _repo_artifacts():
+    pass
+
+
+_SUBCOMMANDS_REPO_ARTIFACTS = Section('Subcommands')
+
+
+@_make_repo_command(_repo_artifacts, 'delete', 'Delete an artifact.', _artifact_namespace_uuid_option_group)
+def _repo_artifacts_delete(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_artifacts_delete, **kwargs)
+
+
+@_make_repo_command(_repo_artifacts, 'update', 'Update an artifact.', _artifact_namespace_uuid_option_group, _commit_option_group)
+def _repo_artifacts_update(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_artifacts_update, **kwargs)
+
+
+#
+# repo artifacts get
+#
+
+@_repo_artifacts.group('get', section=_SUBCOMMANDS_REPO, help='Subcommand for artifact retrieval operations.')
+def _repo_artifacts_get():
+    pass
+
+
+_SUBCOMMANDS_REPO_ARTIFACTS_GET = Section('Subcommands')
+
+
+#
+# FIXME
+#
+
+#
+# repo aus
+#
+
+@_repo.group('aus', section=_SUBCOMMANDS_REPO, help='Subcommand for archival unit operations.')
+def _repo_aus():
+    pass
+
+
+@_make_repo_command(_repo_aus, 'auids', 'Get archival unit IDs (AUIDs) in a namespace.', _namespace_option_group)
+def _repo_aus_auids(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_aus_auids, **kwargs)
+
+
+@_make_repo_command(_repo_aus, 'size', 'Get the size of artifacts in a namespace.', _namespace_option_group, _auid_option_group, output_cls=rs.AuSize)
+def _repo_aus_size(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_aus_size, **kwargs)
 
 
 def main() -> None:
     """
     Entry point for the lockssapi command line tool.
     """
-    LockssApiCli().run()
+    _lockssapi()
 
 
 if __name__ == '__main__':

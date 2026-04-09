@@ -4,10 +4,10 @@
 LOCKSS Python clients
 """
 
-__version__ = '0.1.0-dev3'
+__version__ = '0.1.0-dev5'
 
 __copyright__ = '''
-Copyright (c) 2000-2025, Board of Trustees of Leland Stanford Jr. University
+Copyright (c) 2000-2026, Board of Trustees of Leland Stanford Jr. University
 '''.strip()
 
 __license__ = __copyright__ + '\n\n' + '''

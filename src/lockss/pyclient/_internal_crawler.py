@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2000-2025, Board of Trustees of Leland Stanford Jr. University
+# Copyright (c) 2000-2026, Board of Trustees of Leland Stanford Jr. University
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -203,8 +203,8 @@ def crawler_get_crawl_pending(node: Node,
                           crawler.ApiClient,
                           crawler.CrawlersApi,
                           crawler.CrawlersApi.get_crawler_config)
-def crawler_get_crawler(node: Node,
-                        crawler_id: str) -> crawler.CrawlerConfig:
+def crawler_get_crawler_config(node: Node,
+                               crawler_id: str) -> crawler.CrawlerConfig:
     pass
 
 
@@ -212,7 +212,7 @@ def crawler_get_crawler(node: Node,
                           crawler.ApiClient,
                           crawler.CrawlersApi,
                           crawler.CrawlersApi.get_crawlers)
-def crawler_get_crawlers(node: Node) -> crawler.CrawlerStatuses:
+def crawler_get_crawler_statuses(node: Node) -> crawler.CrawlerStatuses:
     pass
 
 
