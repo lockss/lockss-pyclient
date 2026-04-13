@@ -38,9 +38,9 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 '''.strip()
 
-from ._internal_common import *
-from ._internal_config import *
-from ._internal_crawler import *
-from ._internal_md import *
-from ._internal_poller import *
-from ._internal_rs import *
+from ._common import *
+from ._config import *
+from ._crawler import *
+from ._md import *
+from ._poller import *
+from ._rs import *

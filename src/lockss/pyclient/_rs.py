@@ -37,7 +37,7 @@ from typing import Optional, Union
 
 from multipart import MultipartParser
 
-from ._internal_common import Node, bytes_repr_to_multipart, bytes_repr_to_string, _param_default, _schema_default, _single_request_template, _paged_request_iterator_template, _RS
+from ._common import Node, bytes_repr_to_multipart, bytes_repr_to_string, _param_default, _schema_default, _single_request_template, _paged_request_iterator_template, _RS
 from . import rs
 
 

@@ -35,7 +35,7 @@ Base of the lockss.pyclient package (poller service).
 from collections.abc import Iterator
 from typing import Optional, Union
 
-from ._internal_common import Node, _single_request_template, _paged_request_iterator_template
+from ._common import Node, _single_request_template, _paged_request_iterator_template
 from . import poller
 
 

@@ -38,7 +38,7 @@ from typing import Optional
 
 from multipart import MultipartParser
 
-from ._internal_common import Node, bytes_repr_to_multipart, _paged_request_iterator_template, _single_request_template
+from ._common import Node, bytes_repr_to_multipart, _paged_request_iterator_template, _single_request_template
 from . import config
 
 
