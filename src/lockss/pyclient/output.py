@@ -29,7 +29,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from collections.abc import Iterable, Sized
-from dataclasses import dataclass, field as dataclass_field
+from dataclasses import dataclass, field as dataclasses_field
 import json
 import jsonpath
 from pprint import pformat
@@ -74,8 +74,8 @@ class _FormatOpts:
     headings: Optional[bool] = None
     table_format: Optional[TableFormat] = None
     target_class: Optional[type[SwaggerObject]] = None
-    hidden_basic_default: Optional[bool] = dataclass_field(default=None, repr=False)
-    hidden_field: Optional[tuple[str, ...]] = dataclass_field(default=None, repr=False)
+    hidden_basic_default: Optional[bool] = dataclasses_field(default=None, repr=False)
+    hidden_field: Optional[tuple[str, ...]] = dataclasses_field(default=None, repr=False)
 
     def __post_init__(self):
         if not(any([self.basic, self.json, self.tabular, self.yaml])):

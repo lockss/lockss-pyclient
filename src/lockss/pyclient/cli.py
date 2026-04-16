@@ -32,18 +32,21 @@ from dataclasses import dataclass, field
 from functools import partial
 from importlib.metadata import entry_points
 from inspect import ismethod
+import json
 
 from click_extra import Choice, ExtraContext, Section, color_option, echo, group, option, option_group, pass_context, pass_obj, prompt, show_params_option
 from click_plugins import with_plugins
+from dateutil.parser import parse as dateutil_parse, ParserError as dateutil_ParserError
 from lockss.pybasic.cliutil import UInt16, click_path, compose_decorators, make_extra_context_settings
 from lockss.pybasic.errorutil import InternalError
+from multipart import MultipartParser, MultipartPart
 
 from lockss.pyclient.crawler import CrawlerStatus
 
 from . import *
 from . import __copyright__, __license__, __version__
 from . import config, crawler, md, poller, rs
-from .output import _FormatOpts, SwaggerObject, display, display_basic, make_output_option_group
+from .output import _FormatOpts, SwaggerObject, display, display_basic, make_output_option_group, display_structured
 
 
 @dataclass(kw_only=True)
@@ -59,11 +62,14 @@ class _Opts(_FormatOpts):
     password: Optional[str] = field(default=None, repr=False)
     # crawler, md, poller
     job_id: Optional[str] = None
-    # config
+    # config, repo
     auid: Optional[str] = None
+    headers: Optional[bool] = None
+    url: Optional[str] = None
+    # config
+    output_file: Optional[Path] = None
     section_name: Optional[str] = None
     user_account: Optional[str] = None
-    url: Optional[str] = None
     if_match: Optional[str] = None
     if_modified_since: Optional[str] = None
     if_none_match: Optional[str] = None
@@ -82,9 +88,23 @@ class _Opts(_FormatOpts):
     voter_urls_type: Optional[str] = None
     # repo
     committed: Optional[bool] = None
+    date: Optional[str] = None
+    include_content: Optional[str] = None
+    input_file: Optional[Path] = None
     namespace: Optional[str] = None
+    response_header: Optional[str] = None
     uuid: Optional[str] = None
 
+    def get_include_content(self) -> str:
+        match val := self.include_content:
+            case "always":
+                return rs.IncludeContentEnum.ALWAYS
+            case "if-small":
+                return rs.IncludeContentEnum.IF_SMALL
+            case "never":
+                return rs.IncludeContentEnum.NEVER
+            case _:
+                raise InternalError from ValueError(val)
 
     def get_repair_type(self) -> str:
         match val := self.repair_type:
@@ -183,41 +203,41 @@ class _LockssApiCli(object):
             echo(username)
 
     def crawler_crawlers_config(self) -> None:
-        display(self._opts, crawler_get_crawler_config(self._node, self._opts.crawler_id))
+        display((opts := self._opts), crawler_get_crawler_config(self._node, opts.crawler_id))
 
     def crawler_crawlers_status(self) -> None:
         crawler_map: dict[str, CrawlerStatus] = crawler_get_crawler_statuses(self._node).crawler_map
         display_basic(self._opts, {k: v.to_dict() for k, v in crawler_map.items()})
 
     def crawler_crawls_get(self) -> None:
-        display(self._opts, crawler_get_crawl(self._node, self._opts.job_id))
+        display((opts := self._opts), crawler_get_crawl(self._node, opts.job_id))
 
     def crawler_crawls_get_all(self) -> None:
         display(self._opts, crawler_get_crawls(self._node))
 
     def crawler_crawls_urls_errors(self) -> None:
-        display(self._opts, crawler_get_crawl_errors(self._node, self._opts.job_id))
+        display((opts := self._opts), crawler_get_crawl_errors(self._node, opts.job_id))
 
     def crawler_crawls_urls_excluded(self) -> None:
-        display(self._opts, crawler_get_crawl_excluded(self._node, self._opts.job_id))
+        display((opts := self._opts), crawler_get_crawl_excluded(self._node, opts.job_id))
 
     def crawler_crawls_urls_fetched(self) -> None:
-        display(self._opts, crawler_get_crawl_fetched(self._node, self._opts.job_id))
+        display((opts := self._opts), crawler_get_crawl_fetched(self._node, opts.job_id))
 
     def crawler_crawls_urls_media_types_get(self) -> None:
-        display(self._opts, crawler_get_crawl_by_media_type(self._node, (opts := self._opts).job_id, opts.media_type))
+        display((opts := self._opts), crawler_get_crawl_by_media_type(self._node, opts.job_id, opts.media_type))
 
     def crawler_crawls_urls_not_modified(self) -> None:
-        display(self._opts, crawler_get_crawl_not_modified(self._node, self._opts.job_id))
+        display((opts := self._opts), crawler_get_crawl_not_modified(self._node, opts.job_id))
 
     def crawler_crawls_urls_parsed(self) -> None:
-        display(self._opts, crawler_get_crawl_parsed(self._node, self._opts.job_id))
+        display((opts := self._opts), crawler_get_crawl_parsed(self._node, opts.job_id))
 
     def crawler_crawls_urls_pending(self) -> None:
-        display(self._opts, crawler_get_crawl_pending(self._node, self._opts.job_id))
+        display((opts := self._opts), crawler_get_crawl_pending(self._node, opts.job_id))
 
     def crawler_jobs_get(self) -> None:
-        display(self._opts, crawler_get_job(self._node, self._opts.job_id))
+        display((opts := self._opts), crawler_get_job(self._node, opts.job_id))
 
     def crawler_jobs_get_all(self) -> None:
         display(self._opts, crawler_get_jobs(self._node))
@@ -241,31 +261,31 @@ class _LockssApiCli(object):
         display(self._opts, md_get_metadata(self._node, self._auid))
 
     def md_jobs_get(self) -> None:
-        display(self._opts, md_get_job(self._node, self._opts.job_id))
+        display((opts := self._opts), md_get_job(self._node, opts.job_id))
 
     def md_jobs_get_all(self) -> None:
         display(self._opts, md_get_jobs(self._node))
 
     def md_query_doi(self) -> None:
-        display(self._opts, md_doi_query(self._node, self._opts.doi))
+        display((opts := self._opts), md_doi_query(self._node, opts.doi))
 
     def md_query_openurl(self) -> None:
-        display(self._opts, md_openurl_query(self._node, list(self._opts.openurl_param)))
+        display((opts := self._opts), md_openurl_query(self._node, list(opts.openurl_param)))
 
     def md_status(self) -> None:
         display(self._opts, md_get_status(self._node))
 
     def poller_jobs_get(self) -> None:
-        display(self._opts, poller_get_poll_status(self._node, self._opts.job_id))
+        display((opts := self._opts), poller_get_poll_status(self._node, opts.job_id))
 
     def poller_polls_as_poller_get(self) -> None:
-        display(self._opts, poller_get_poller_poll(self._node, self._opts.poll_key))
+        display((opts := self._opts), poller_get_poller_poll(self._node, opts.poll_key))
 
     def poller_polls_as_poller_get_all(self) -> None:
         display(self._opts, poller_get_poller_polls(self._node))
 
     def poller_polls_as_voter_get(self) -> None:
-        display(self._opts, poller_get_voter_poll(self._node, self._opts.poll_key))
+        display((opts := self._opts), poller_get_voter_poll(self._node, opts.poll_key))
 
     def poller_polls_as_voter_get_all(self) -> None:
         display(self._opts, poller_get_voter_polls(self._node))
@@ -275,7 +295,7 @@ class _LockssApiCli(object):
             echo(url)
 
     def poller_polls_repairs(self) -> None:
-        display(self._opts, poller_get_repair_data(self._node, (opts := self._opts).poll_key, opts.get_repair_type()))
+        display((opts := self._opts), poller_get_repair_data(self._node, opts.poll_key, opts.get_repair_type()))
 
     def poller_polls_tallies(self) -> None:
         for url in poller_get_tally_urls(self._node, (opts := self._opts).poll_key, opts.get_tally_type()):
@@ -284,17 +304,55 @@ class _LockssApiCli(object):
     def poller_status(self) -> None:
         display(self._opts, poller_get_status(self._node))
 
+    def repo_artifacts_create(self) -> None:
+        opts = self._opts
+        props_obj = {'auid': opts.auid, 'uri': opts.url}
+        if date := opts.date:
+            try:
+                props_obj['collectionDate'] = int(dateutil_parse(date).timestamp() * 1000) # epoch milliseconds
+            except dateutil_ParserError:
+                pass
+        if ns := opts.namespace:
+            props_obj['namespace'] = ns
+        props: str = json.dumps(props_obj)
+        display(opts, repo_create_artifact(self._node, props, opts.input_file, opts.response_header))
+
     def repo_artifacts_delete(self) -> None:
         kwargs = {}
         if ns := (opts := self._opts).namespace:
             kwargs['namespace'] = ns
         repo_delete_artifact(self._node, opts.uuid, **kwargs)
 
+    def repo_artifacts_get_by_lookup(self) -> None:
+        raise RuntimeError('not yet implemented: repo_artifacts_get_by_lookup')
+
+    def repo_artifacts_get_by_uuid(self) -> None:
+        opts = self._opts
+        kwargs = {'include_content': opts.get_include_content()}
+        if ns := opts.namespace:
+            kwargs['namespace'] = ns
+        mp: MultipartParser = repo_get_artifact_by_uuid(self._node, opts.uuid, **kwargs)
+        # artifactProps
+        artifact_props_part: MultipartPart = mp.get('artifactProps')
+        artifact_props_obj = json.loads(artifact_props_part.value)
+        echo(artifact_props_obj) # FIXME
+        # httpResponseHeader
+        http_response_header_part: Optional[MultipartPart] = mp.get('httpResponseHeader', None)
+        if http_response_header_part and opts.headers:
+            echo()
+            echo(http_response_header_part.value)
+        for part in mp: echo(part.name)
+        payload_part: MultipartPart = mp.get('payload')
+        if of := opts.output_file:
+            written = payload_part.save_as(of)
+            echo()
+            echo(f'Wrote {written} bytes to {of!s}')
+
     def repo_artifacts_update(self) -> None:
         kwargs = {}
         if ns := (opts := self._opts).namespace:
             kwargs['namespace'] = ns
-        display(self._opts, repo_update_artifact(self._node, opts.uuid, opts.committed, **kwargs))
+        display(opts, repo_update_artifact(self._node, opts.uuid, opts.committed, **kwargs))
 
     def repo_aus_auids(self) -> None:
         kwargs = {}
@@ -305,9 +363,9 @@ class _LockssApiCli(object):
 
     def repo_aus_size(self) -> None:
         kwargs = {}
-        if ns := self._opts.namespace:
+        if ns := (opts := self._opts).namespace:
             kwargs['namespace'] = ns
-        display(self._opts, repo_get_au_size(self._node, self._auid, **kwargs))
+        display(opts, repo_get_au_size(self._node, self._auid, **kwargs))
 
     def repo_checksum_algorithms(self) -> None:
         for checksum_algorithm in sorted(repo_get_checksum_algorithms(self._node), key=lambda x: x.lower()):
@@ -372,6 +430,9 @@ _config_port_option = _make_port_option('configuration', 'C', CONFIG_DEFAULT_POR
 _crawler_port_option = _make_port_option('crawler', 'W', CRAWLER_DEFAULT_PORT, 'Crawler')
 
 
+_date_option = option('--date', '-d', metavar='DATE', show_default='now', help='Set the collection date to DATE.')
+
+
 _headers_option = option('--headers/--no-headers', is_flag=True, default=True, help='Set whether to include HTTP headers in multipart output.')
 
 
@@ -388,6 +449,12 @@ _if_none_match_option = option('--if-none-match', metavar='VALUE', help='Set the
 
 
 _if_unmodified_since_option = option('--if-unmodified-since', metavar='VALUE', help='Set the If-Unmodified-Since HTTP header to VALUE.')
+
+
+_include_content_option = option('--include-content', type=Choice(('always', 'if-small', 'never')), default='always', help='Whether to include the payload.')
+
+
+_input_file_option = option('--input-file', '-i', metavar='FILE', required=True, type=click_path('frz'), help='Read the payload from FILE.')
 
 
 _md_port_option = _make_port_option('metadata', 'M', MD_DEFAULT_PORT, 'Metadata')
@@ -411,7 +478,10 @@ _poller_port_option = _make_port_option('poller', 'L', POLLER_DEFAULT_PORT, 'Pol
 _repo_port_option = _make_port_option('repository', 'R', RS_DEFAULT_PORT, 'Repository')
 
 
-_url_option = option('--url', '-u', metavar='VALUE', help='Set the URL to VALUE.')
+_response_option = option('--response-header', '-r', metavar='RESP', help='Set the response (status line and HTTP headers) to RESP.')
+
+
+_url_option = option('--url', '--uri', '-u', metavar='VALUE', help='Set the URL to VALUE.')
 
 
 _uuid_option = option('--uuid', '-w', metavar='VALUE', required=True, help='Set the UUID to VALUE.')
@@ -432,6 +502,9 @@ def _make_node_option_group(port_option):
 
 
 _artifact_namespace_uuid_option_group = option_group('Artifact options', _namespace_option, _uuid_option)
+
+
+_artifact_creation_option_group = option_group('Artifact creation options', _namespace_option, _auid_option, _url_option, _date_option, _input_file_option, _response_option)
 
 
 _auid_option_group = option_group('AUID options', _auid_option)
@@ -488,7 +561,7 @@ _repo_node_option_group = _make_node_option_group(_repo_port_option)
 _section_option_group = option_group('Section options', option('--section-name', '-s', metavar='NAME', required=True, help='Set the section name to NAME.'))
 
 
-_tally_type_option_group = option_group('Tally type options', option('--tally-type', type=Choice(((tt := poller.TallyTypeEnum).AGREE, tt.DISAGREE, tt.ERROR, tt.NOQUORUM, tt.TOOCLOSE)), required=True, help='Set the repair type to the given type.'))
+_tally_type_option_group = option_group('Tally type options', option('--tally-type', type=Choice(((tte := poller.TallyTypeEnum).AGREE, tte.DISAGREE, tte.ERROR, tte.NOQUORUM, tte.TOOCLOSE)), required=True, help='Set the repair type to the given type.'))
 
 
 _url_option_group = option_group('URL options', _url_option)
@@ -1034,6 +1107,11 @@ def _repo_artifacts():
 _SUBCOMMANDS_REPO_ARTIFACTS = Section('Subcommands')
 
 
+@_make_repo_command(_repo_artifacts, 'create', 'Create an artifact.', _artifact_creation_option_group, output_cls=rs.Artifact)
+def _repo_artifacts_create(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_artifacts_create, **kwargs)
+
+
 @_make_repo_command(_repo_artifacts, 'delete', 'Delete an artifact.', _artifact_namespace_uuid_option_group)
 def _repo_artifacts_delete(cli: _LockssApiCli, **kwargs) -> None:
     cli.dispatch(cli.repo_artifacts_delete, **kwargs)
@@ -1048,17 +1126,30 @@ def _repo_artifacts_update(cli: _LockssApiCli, **kwargs) -> None:
 # repo artifacts get
 #
 
-@_repo_artifacts.group('get', section=_SUBCOMMANDS_REPO, help='Subcommand for artifact retrieval operations.')
+@_repo_artifacts.group('get', section=_SUBCOMMANDS_REPO_ARTIFACTS, help='Subcommand for artifact retrieval operations.')
 def _repo_artifacts_get():
     pass
 
 
-_SUBCOMMANDS_REPO_ARTIFACTS_GET = Section('Subcommands')
+@_make_repo_command(_repo_artifacts_get, 'by-lookup', 'Look up one or more artifacts.', _artifact_namespace_uuid_option_group) # FIXME
+def _repo_artifacts_get_lookup(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_artifacts_get_by_lookup, **kwargs)
 
 
-#
-# FIXME
-#
+@_make_repo_command(_repo_artifacts_get, 'by-uuid', 'Get an artifact.', _artifact_namespace_uuid_option_group, _include_content_option, _multipart_output_options)
+def _repo_artifacts_get_by_uuid(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_artifacts_get_by_uuid, **kwargs)
+
+
+@_make_repo_command(_repo_artifacts_get, 'payload', 'Get an artifact payload.', _artifact_namespace_uuid_option_group)
+def _repo_artifacts_get_by_uuid(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_artifacts_get_payload, **kwargs)
+
+
+@_make_repo_command(_repo_artifacts_get, 'response', 'Get artifact HTTP response.', _artifact_namespace_uuid_option_group)
+def _repo_artifacts_get_by_uuid(cli: _LockssApiCli, **kwargs) -> None:
+    cli.dispatch(cli.repo_artifacts_get_response, **kwargs)
+
 
 #
 # repo aus

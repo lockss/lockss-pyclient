@@ -33,12 +33,32 @@ Base of the lockss.pyclient package (repository service).
 """
 
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Optional, Union
 
 from multipart import MultipartParser
 
 from ._common import Node, bytes_repr_to_multipart, bytes_repr_to_string, _param_default, _schema_default, _single_request_template, _paged_request_iterator_template, _RS
 from . import rs
+
+
+def repo_create_artifact(node: Node,
+                         artifact_props: str,
+                         payload: Path,
+                         http_response_header: Optional[str] = None) -> rs.Artifact:
+    @_single_request_template(Node.make_rs_conf,
+                              rs.ApiClient,
+                              rs.ArtifactsApi,
+                              rs.ArtifactsApi.create_artifact)
+    def _repo_create_artifact(node: Node,
+                              artifact_props: Optional[str] = None,
+                              payload: Optional[Path] = None,
+                              http_response_header: Optional[str] = None) -> rs.Artifact:
+        pass
+    return _repo_create_artifact(node,
+                                 artifact_props=artifact_props,
+                                 payload=payload,
+                                 http_response_header=http_response_header)
 
 
 @_single_request_template(Node.make_rs_conf,
