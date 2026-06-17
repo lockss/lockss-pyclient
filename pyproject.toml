@@ -43,10 +43,11 @@ maintainers = [
 ]
 dependencies = [
     "click-command-tree (>=1.2.0,<1.3.0)",
-    "click-extra[pygments] (>=7.5.0,<7.6.0)",
+    "click-extra[pygments] (>=7.18.0,<7.19.0)",
     "click-plugins (>=1.1.1.2,<1.2.0)",
-    "lockss-pybasic (>=0.2.0,<0.3.0)",
+    "lockss-pybasic (==0.3.0-dev9)",
     "multipart (>=1.3.0,<1.4.0)",
+    "pydantic (>=2.13.0,<2.14.0)", # from lockss-pybasic 0.3.0-dev9
     "python-dateutil (>=2.9.0,<2.10.0)",
     "python-jsonpath[strict] (>=2.0.0,<2.1.0)",
     "pyyaml (>=6.0.0,<6.1.0)",
@@ -77,11 +78,12 @@ include = [
     "README.rst",
 ]
 packages = [
-    { include = "lockss", from = "src" }
+    { include = "lockss/pyclient", from = "src" }
 ]
 
 [tool.poetry.scripts]
 lockssapi = 'lockss.pyclient.cli:main'
+lockssapi2 = 'lockss.pyclient.cli2:main'
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
