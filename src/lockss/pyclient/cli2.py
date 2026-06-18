@@ -32,7 +32,7 @@
 Command line tool to interact with LOCKSS 1.x or 2.x via client interfaces.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import Executor, Future, ThreadPoolExecutor, as_completed
 from contextlib import nullcontext
 from dataclasses import dataclass, field
@@ -42,11 +42,12 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, Optional, TypeAlias
 
-from click_extra import ExtraContext, Section, echo, group, pass_context, prompt
+from click_extra import ExtraContext, Section, TableFormat, accessible_option, color_option, echo, group, jobs_option, option, option_group, pass_context, pass_obj, print_data, prompt, progressbar, timer_option
 from click_plugins import with_plugins
+from lockss.pybasic.cliutil import click_path
 from lockss.pybasic.errorutil import InternalError
 from lockss.pybasic.fileutil import file_lines
-from lockss.pybasic.nodeutil import NodeSet, get_node_spec_adapter
+from lockss.pybasic.nodeutil import NodeIdentifier, NodeSet, get_node_spec_adapter
 from pydantic import ValidationError
 import yaml
 
@@ -68,6 +69,14 @@ class _LockssApiCli(object):
         node_specs: tuple[Path, ...] = ()
         username: Optional[str] = None
         password: Optional[str] = field(default=None, repr=False)
+        # Job options
+        jobs: Optional[int] = None
+        # Display options
+        accessible: Optional[bool] = None
+        color: Optional[bool] = None
+        progress: Optional[bool] = None
+        theme: Optional[str] = None
+        time: Optional[bool] = None
 
     def __init__(self, ctx: ExtraContext) -> None:
         """
@@ -101,8 +110,26 @@ class _LockssApiCli(object):
     # REPOSITORY
     #
 
-    def get_repository_service_status(self) -> None:
-        pass
+    def get_repository_service_status(self, **kwargs) -> None:
+        self._initialize_clients()
+        opts: _LockssApiCli._Opts = self._opts
+        for client in self._clients:
+            res = client.get_repository_service_status()
+            print(client.get_id())
+            print_data(res.to_dict(), TableFormat.YAML)
+
+        # futures: dict[Future[rs.ApiStatus], LockssClient] = {self._executor.submit(LockssClient.get_repository_service_status, client, **kwargs): client for client in self._clients}
+        # completed: Iterator[Future[rs.ApiStatus]] = as_completed(futures)
+        # results: dict[NodeIdentifier, rs.ApiStatus] = {}
+        # with progressbar(completed, length=len(futures), label='Progress') if opts.progress else nullcontext(completed) as bar:
+        #     for future in bar:
+        #         client: LockssClient = futures[future]
+        #         k: NodeIdentifier = client.get_id()
+        #         try:
+        #             result: rs.ApiStatus = future.result()
+        #             results[k] = result
+        #         except Exception as exc:
+        #             results[k] = exc
 
     #
     # PROTECTED
@@ -141,6 +168,43 @@ class _LockssApiCli(object):
             client.authenticate(u, p)
         self._clients.extend(clients)
 
+
+#
+# OPTIONS AND OPTION GROUPS
+#
+
+#: The node option group: --node-set/-s, --node-spec/-n, --node-specs/-N, --username/-U, --password/-P
+_node_option_group = option_group(
+    'Node options',
+    option('--node-set', '-s', metavar='FILE', type=click_path('ferz'), multiple=True, help='Add the nodes from the node set in FILE to the list of nodes to process.'),
+    option('--node-spec', '--node', '-n', metavar='NODE', multiple=True, help='Add the compact node specification NODE to the list of nodes to process.'),
+    option('--node-specs', '--nodes', '-N', metavar='FILE', type=click_path('ferz'), multiple=True, help='Add the compact node specifications in FILE to the list of nodes to process.'),
+    option('--username', '-U', metavar='USER', show_default='interactive prompt', help='Set the UI username to USER.'),
+    option('--password', '-P', metavar='PASS', show_default='interactive prompt', help='Set the UI password to PASS.'),
+)
+
+
+#: The job option group: --pool-size, --pool-type
+_job_option_group = option_group(
+    'Job options',
+    jobs_option(expose_value=True),
+)
+
+
+#: The display option group: --accessible, --color/--no-color, --ansi/--no-ansi, --progress/--no-progress, --time/--no-time
+_display_option_group = option_group(
+    'Display options',
+    accessible_option(expose_value=True),
+    color_option(expose_value=True),
+#    option('--progress/--no-progress', is_flag=True, default=True, help='Set whether to display a progress bar during processing.'),
+    timer_option(expose_value=True),
+)
+
+
+#
+# CLICK INFRASTRUCTURE
+#
+
 @with_plugins(entry_points(module='click_command_tree')) # adds a 'tree' command
 @group(params=None)
 @pass_context
@@ -177,6 +241,9 @@ _REPOSITORY_COMMANDS = Section('Repository commands')
 
 
 @lockssapi.command(help='Get the status of the LOCKSS Repository Service.')
+@_node_option_group
+@_display_option_group
+@pass_obj
 def get_repository_service_status(cli: _LockssApiCli, **kwargs) -> None:
     """Get the status of the LOCKSS Repository Service"""
     cli.dispatch(cli.get_repository_service_status, **kwargs)

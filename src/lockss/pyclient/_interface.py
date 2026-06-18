@@ -34,7 +34,7 @@ LOCKSS client interface module.
 
 from abc import ABC, abstractmethod
 
-import rs
+from . import rs
 
 class _LockssClientInterface(ABC):
     """

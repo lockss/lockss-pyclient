@@ -32,9 +32,15 @@
 LOCKSS 1.x client implementation.
 """
 
+from typing import TYPE_CHECKING
+
 from . import rs
-from ._core import LockssClient
 from ._interface import _LockssClientInterface
+
+# Avoid circular import
+if TYPE_CHECKING:
+    from ._core import LockssClient
+
 
 class _LockssClient1(_LockssClientInterface):
 
