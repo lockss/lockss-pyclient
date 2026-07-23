@@ -36,14 +36,13 @@ from collections.abc import Callable, Iterator
 from concurrent.futures import Executor, Future, ThreadPoolExecutor, as_completed
 from contextlib import nullcontext
 from dataclasses import dataclass, field
-from importlib.metadata import entry_points
 from inspect import ismethod
 from itertools import chain
 from pathlib import Path
 from typing import Any, Optional, TypeAlias
 
-from click_extra import ExtraContext, Section, TableFormat, accessible_option, color_option, echo, group, jobs_option, option, option_group, pass_context, pass_obj, print_data, prompt, progressbar, timer_option
-from click_plugins import with_plugins
+from click_extra import Context, Section, ProgressOption, TableFormat, accessible_option, color_option, echo, group, jobs_option, no_color_option, option, option_group, pass_context, pass_obj, print_data, prompt, progressbar, show_params_option, timer_option, tree_option
+from click_extra.decorators import decorator_factory
 from lockss.pybasic.cliutil import click_path
 from lockss.pybasic.errorutil import InternalError
 from lockss.pybasic.fileutil import file_lines
@@ -53,12 +52,16 @@ import yaml
 
 from . import rs, __copyright__, __license__, __version__
 from ._core import LockssClient
+from .output import sort_by_option
 
 
 YamlT: TypeAlias = Any
 
 
-class _LockssApiCli(object):
+progress_option = decorator_factory(dec=option, cls=ProgressOption)
+
+
+class _LockssCli(object):
 
     @dataclass(kw_only=True)
     class _Opts(object):
@@ -78,7 +81,11 @@ class _LockssApiCli(object):
         theme: Optional[str] = None
         time: Optional[bool] = None
 
-    def __init__(self, ctx: ExtraContext) -> None:
+    _ctx: Context
+    _opts: _LockssCli._Opts
+    _clients: list[LockssClient]
+
+    def __init__(self, ctx: Context, **cli_kwargs) -> None:
         """
         Constructor.
 
@@ -86,25 +93,8 @@ class _LockssApiCli(object):
         :type ctx: ExtraContext
         """
         super().__init__()
-        self._ctx: ExtraContext = ctx
-        self._opts: Optional[_LockssApiCli._Opts] = None
-        self._clients: list[LockssClient] = list()
-        self._executor: Optional[Executor] = None
-
-    def dispatch(self, method: Callable[[], None], **cli_kwargs) -> None:
-        """
-        Initializes from the given command line options and invokes the given
-        (bound) method.
-
-        :param method: A (bound) method.
-        :type method: Callable[[], None]
-        :param cli_kwargs: The command line arguments passed by Click Extra.
-        :type cli_kwargs: dict[str, Any]
-        """
-        if not ismethod(method):
-            raise InternalError from ValueError(method)
-        self._opts = _LockssApiCli._Opts(**cli_kwargs)
-        method()
+        self._ctx = ctx
+        self._opts = _LockssCli._Opts(**cli_kwargs)
 
     #
     # REPOSITORY
@@ -112,7 +102,6 @@ class _LockssApiCli(object):
 
     def get_repository_service_status(self, **kwargs) -> None:
         self._initialize_clients()
-        opts: _LockssApiCli._Opts = self._opts
         for client in self._clients:
             res = client.get_repository_service_status()
             print(client.get_id())
@@ -137,11 +126,11 @@ class _LockssApiCli(object):
 
     def _initialize_clients(self) -> None:
         """
-        Initializes clients.
+        Initializes the list of clients. Fails if the list of nodes ends up
+        being empty.
         """
-        # First, process the nodes...
         clients: list[LockssClient] = list()
-        # ...first from node sets
+        # First from node sets
         for node_set_path in (opts := self._opts).node_set:
             with node_set_path.open('r') as node_set_input:
                 try:
@@ -151,22 +140,17 @@ class _LockssApiCli(object):
                         clients.append(LockssClient(node_spec))
                 except (yaml.YAMLError, ValidationError) as exc:
                     self._ctx.fail(str(exc))
-        # ...then from compact node specifications
+        # Then from compact node specifications
         for compact_node_spec in [*opts.node_spec, *chain.from_iterable(file_lines(file_path) for file_path in opts.node_specs)]:
             try:
                 clients.append(LockssClient(get_node_spec_adapter().validate_python(compact_node_spec)))
             except ValidationError as exc:
                 self._ctx.fail(str(exc))
+        # Fail if empty
         if len(clients) == 0:
             self._ctx.fail('The list of nodes to process is empty')
-        # Then, initialize the thread pool
-        self._executor = ThreadPoolExecutor(max_workers=opts.jobs)
-        # Finally, authenticate
-        u, opts.username = opts.username if opts.username else prompt('UI username'), None
-        p, opts.password = opts.password if opts.password else prompt('UI password', hide_input=True), None
-        for client in clients:
-            client.authenticate(u, p)
-        self._clients.extend(clients)
+        self._clients = clients
+
 
 
 #
@@ -184,20 +168,28 @@ _node_option_group = option_group(
 )
 
 
-#: The job option group: --pool-size, --pool-type
+#: The job option group: --jobs
 _job_option_group = option_group(
     'Job options',
-    jobs_option(expose_value=True),
+    jobs_option,
 )
 
 
-#: The display option group: --accessible, --color/--no-color, --ansi/--no-ansi, --progress/--no-progress, --time/--no-time
+#: The display option group: --accessible, --color, --no-color, --progress/--no-progress
 _display_option_group = option_group(
     'Display options',
-    accessible_option(expose_value=True),
-    color_option(expose_value=True),
-#    option('--progress/--no-progress', is_flag=True, default=True, help='Set whether to display a progress bar during processing.'),
-    timer_option(expose_value=True),
+    accessible_option,
+    color_option,
+    no_color_option,
+    progress_option,
+)
+
+
+#: The debug option group: --show-params, --time/--no-time
+_debug_option_group = option_group(
+    'Debug options',
+    show_params_option,
+    timer_option
 )
 
 
@@ -205,31 +197,25 @@ _display_option_group = option_group(
 # CLICK INFRASTRUCTURE
 #
 
-@with_plugins(entry_points(module='click_command_tree')) # adds a 'tree' command
 @group(params=None)
+@tree_option
 @pass_context
-def lockssapi(ctx: ExtraContext, **kwargs):
-    ctx.obj = _LockssApiCli(ctx)
+def locksscli(ctx: Context, **kwargs):
+    pass
 
 
-@lockssapi.command(help='Show the copyright and exit.')
-def copyright() -> None:
-    """Show the copyright and exit"""
+@locksscli.command(help='Show the copyright and exit.')
+def copyright(**kwargs) -> None:
     echo(__copyright__)
 
 
-@lockssapi.command(help='Show the software license and exit.')
-def license() -> None:
-    """Show the software license and exit"""
+@locksscli.command(help='Show the software license and exit.')
+def license(**kwargs) -> None:
     echo(__license__)
 
 
-# 'tree' command implied by click_command_tree plugin
-
-
-@lockssapi.command(help='Show the version number and exit.')
-def version() -> None:
-    """Show the version number and exit"""
+@locksscli.command(help='Show the version number and exit.')
+def version(**kwargs) -> None:
     echo(__version__)
 
 
@@ -240,17 +226,14 @@ def version() -> None:
 _REPOSITORY_COMMANDS = Section('Repository commands')
 
 
-@lockssapi.command(help='Get the status of the LOCKSS Repository Service.')
+@locksscli.command(section=_REPOSITORY_COMMANDS, help='Get the status of the LOCKSS Repository Service.')
 @_node_option_group
 @_display_option_group
 @pass_obj
-def get_repository_service_status(cli: _LockssApiCli, **kwargs) -> None:
-    """Get the status of the LOCKSS Repository Service"""
-    cli.dispatch(cli.get_repository_service_status, **kwargs)
+def get_repository_service_status(ctx: Context, **kwargs) -> None:
+    _LockssCli(ctx, **kwargs).get_repository_service_status()
 
 
 def main() -> None:
-    """
-    Entry point for the lockssapi2 command line tool.
-    """
-    lockssapi()
+    """Entry point for the locksscli command line tool."""
+    locksscli()

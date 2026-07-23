@@ -37,7 +37,8 @@ import sys
 from typing import Optional, TextIO, Union
 import yaml
 
-from click_extra import Choice, ChoiceSource, EnumChoice, TableFormat, echo, option, option_group, print_table
+from click_extra import Choice, ChoiceSource, EnumChoice, SortByOption, TableFormat, echo, option, option_group, print_table
+from click_extra.decorators import decorator_factory
 from cloup.constraints import AnySet, If, Not, accept_none, mutually_exclusive
 from pygments import highlight
 from pygments.formatters import Terminal256Formatter
@@ -197,3 +198,6 @@ def display_yaml(opts: _FormatOpts,
                  file: TextIO = sys.stdout) -> None:
     target = yaml.dump(list_or_obj, indent=opts.indent)
     echo(highlight(target, YamlLexer(), Terminal256Formatter()) if opts.highlight else target, file=file)
+
+
+sort_by_option = decorator_factory(dec=option, cls=SortByOption)
