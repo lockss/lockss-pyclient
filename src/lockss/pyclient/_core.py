@@ -43,16 +43,21 @@ from ._v2 import _LockssClient2
 
 class LockssClient(_LockssClientInterface):
     """
-    A client for either LOCKSS 1.x or 2.x.
+    A client for either LOCKSS 1.x, 2.x, or a 1.x/2.x migration pair.
     """
 
+    _impl: _LockssClientInterface
+    _node_spec: NodeSpec
+
     def __init__(self, node_spec: NodeSpec):
-        self._node_spec: NodeSpec = node_spec
+        self._node_spec = node_spec.model_copy()
         match typ := node_spec.type:
             case NodeTypeEnum.V1.value:
-                self._impl: _LockssClientInterface = _LockssClient1(self)
+                self._impl = _LockssClient1(self, self._node_spec)
             case NodeTypeEnum.V2.value:
-                self._impl: _LockssClientInterface = _LockssClient2(self)
+                self._impl = _LockssClient2(self, self._node_spec)
+            case NodeTypeEnum.V1_V2_MIGRATION_PAIR.value:
+                self._impl = _LockssClient12Pair(self, self._node_spec)
             case _:
                 raise InternalError from ValueError(typ)
 
@@ -84,3 +89,17 @@ class LockssClient(_LockssClientInterface):
 
     def get_repository_service_status(self) -> rs.ApiStatus:
         return self._impl.get_repository_service_status()
+
+
+class _BaseLockssClient(_LockssClientInterface):
+    """
+    Base _LockssClientInterface implementation.
+    """
+
+    _client: LockssClient
+    _node_spec: NodeSpec
+
+    def __init__(self, client: LockssClient, node_spec: NodeSpec) -> None:
+        super().__init__()
+        self._client = client
+        self._node_spec = node_spec

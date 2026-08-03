@@ -34,18 +34,19 @@ LOCKSS 1.x client implementation.
 
 from typing import TYPE_CHECKING
 
+from lockss.pybasic.nodeutil import NodeSpec
+
 from . import rs
-from ._interface import _LockssClientInterface
 
 # Avoid circular import
 if TYPE_CHECKING:
-    from ._core import LockssClient
+    from ._core import _BaseLockssClient, LockssClient
 
 
-class _LockssClient1(_LockssClientInterface):
+class _LockssClient1(_BaseLockssClient):
 
-    def __init__(self, client: LockssClient) -> None:
-        self._client: LockssClient = client
+    def __init__(self, client: LockssClient, node_spec: NodeSpec) -> None:
+        super().__init__(client, node_spec)
 
     def authenticate(self, u: str, p: str) -> _LockssClient1:
         raise NotImplementedError

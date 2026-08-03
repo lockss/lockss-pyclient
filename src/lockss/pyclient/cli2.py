@@ -39,11 +39,12 @@ from dataclasses import dataclass, field
 from inspect import ismethod
 from itertools import chain
 from pathlib import Path
-from typing import Any, Optional, TypeAlias
+from typing import Any, Concatenate, Optional, TypeAlias, TypeVar, Union
 
-from click_extra import Context, Section, ProgressOption, TableFormat, accessible_option, color_option, echo, group, jobs_option, no_color_option, option, option_group, pass_context, pass_obj, print_data, prompt, progressbar, show_params_option, timer_option, tree_option
+from click_extra import Context, OperationTrail, Section, ProgressOption, TableFormat, accessible_option, color_option, echo, group, jobs_option, no_color_option, option, option_group, pass_context, pass_obj, print_data, prompt, run_jobs, show_params_option, timer_option, tree_option
+from click_extra.context import JOBS, TABLE_FORMAT
 from click_extra.decorators import decorator_factory
-from lockss.pybasic.cliutil import click_path
+from lockss.pybasic.cliutil import click_path, compose_decorators
 from lockss.pybasic.errorutil import InternalError
 from lockss.pybasic.fileutil import file_lines
 from lockss.pybasic.nodeutil import NodeIdentifier, NodeSet, get_node_spec_adapter
@@ -53,6 +54,18 @@ import yaml
 from . import rs, __copyright__, __license__, __version__
 from ._core import LockssClient
 from .output import sort_by_option
+
+
+_OpArgs = TypeVar('_OpArgs')
+
+
+_OpResult = TypeVar('_OpResult')
+
+
+_ResultKey = TypeVar('_ResultKey')
+
+
+_ResultValue = TypeVar('_ResultValue')
 
 
 YamlT: TypeAlias = Any
@@ -75,11 +88,11 @@ class _LockssCli(object):
         # Job options
         jobs: Optional[int] = None
         # Display options
-        accessible: Optional[bool] = None
-        color: Optional[bool] = None
-        progress: Optional[bool] = None
-        theme: Optional[str] = None
-        time: Optional[bool] = None
+        # accessible: Optional[bool] = None
+        # color: Optional[bool] = None
+        # progress: Optional[bool] = None
+        # theme: Optional[str] = None
+        # time: Optional[bool] = None
 
     _ctx: Context
     _opts: _LockssCli._Opts
@@ -107,22 +120,39 @@ class _LockssCli(object):
             print(client.get_id())
             print_data(res.to_dict(), TableFormat.YAML)
 
-        # futures: dict[Future[rs.ApiStatus], LockssClient] = {self._executor.submit(LockssClient.get_repository_service_status, client, **kwargs): client for client in self._clients}
-        # completed: Iterator[Future[rs.ApiStatus]] = as_completed(futures)
-        # results: dict[NodeIdentifier, rs.ApiStatus] = {}
-        # with progressbar(completed, length=len(futures), label='Progress') if opts.progress else nullcontext(completed) as bar:
-        #     for future in bar:
-        #         client: LockssClient = futures[future]
-        #         k: NodeIdentifier = client.get_id()
-        #         try:
-        #             result: rs.ApiStatus = future.result()
-        #             results[k] = result
-        #         except Exception as exc:
-        #             results[k] = exc
-
     #
     # PROTECTED
     #
+
+    def _generic_action(self,
+                        func: Callable[Concatenate[_OpArgs, dict[str, Any]], _OpResult],
+                        get_tuples: Callable[[], list[tuple[_OpArgs, Optional[dict[str, Any]]]]],
+                        get_result: Optional[Callable[[_OpResult], _ResultValue]] = None,
+                        init_funcs: Optional[list[Callable[[], None]]] = None,
+                        transform_key: Optional[Callable[[_OpArgs], _ResultKey]] = None,
+                        get_task_label: Optional[Callable[[_OpArgs], str]] = None) \
+            -> dict[_ResultKey, Union[_ResultValue, Exception]]:
+        for init_func in init_funcs or []:
+            init_func()
+        tasks: list[tuple[_OpArgs, Optional[dict[str, Any]]]] = get_tuples()
+        actual_transform_key: Callable[[_OpArgs], _ResultKey] = transform_key or (lambda x: x)
+        actual_get_result: Callable[[_OpResult], _ResultValue] = get_result or (lambda x: x)
+        actual_get_task_label: Callable[[_OpArgs], str] = get_task_label or str
+        results: dict[_ResultKey, Union[_ResultValue, Exception]] = {}
+        with OperationTrail(jobs=(meta := self._ctx.meta)[JOBS], total=(total_tasks := len(tasks))) as trail:
+            def _one_task(args_and_kwargs: tuple[_OpArgs, Optional[dict[str, Any]]]) -> None:
+                result_key: _ResultKey = actual_transform_key(args := args_and_kwargs[0])
+                task_label = actual_get_task_label(args)
+                try:
+                    results[result_key] = actual_get_result(func(*args, **(args_and_kwargs[1] or {})))
+                    trail.mark(True, task_label)
+                except Exception as exc:
+                    results[result_key] = exc
+                    trail.mark(False, task_label)
+            for task in run_jobs(_one_task, tasks):
+                pass # I guess?
+            trail.finish(trail.ok_count == total_tasks, f'{trail.ok_count}/{total_tasks} succeeded')
+        return results
 
     def _initialize_clients(self) -> None:
         """
@@ -204,18 +234,25 @@ def locksscli(ctx: Context, **kwargs):
     pass
 
 
+#: The composite top-level command decorator
+_top_level_command = compose_decorators(_debug_option_group, pass_context)
+
+
 @locksscli.command(help='Show the copyright and exit.')
-def copyright(**kwargs) -> None:
+@_top_level_command
+def copyright(ctx: Context, **kwargs) -> None:
     echo(__copyright__)
 
 
 @locksscli.command(help='Show the software license and exit.')
-def license(**kwargs) -> None:
+@_top_level_command
+def license(ctx: Context, **kwargs) -> None:
     echo(__license__)
 
 
 @locksscli.command(help='Show the version number and exit.')
-def version(**kwargs) -> None:
+@_top_level_command
+def version(ctx: Context, **kwargs) -> None:
     echo(__version__)
 
 
@@ -223,12 +260,13 @@ def version(**kwargs) -> None:
 # REPOSITORY
 #
 
-_REPOSITORY_COMMANDS = Section('Repository commands')
+_REPOSITORY_COMMANDS = Section('Repository Service commands')
 
 
-@locksscli.command(section=_REPOSITORY_COMMANDS, help='Get the status of the LOCKSS Repository Service.')
+@locksscli.command(aliases=['grss'], section=_REPOSITORY_COMMANDS, help='Get the status of the LOCKSS Repository Service.')
 @_node_option_group
 @_display_option_group
+@_debug_option_group
 @pass_obj
 def get_repository_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_repository_service_status()

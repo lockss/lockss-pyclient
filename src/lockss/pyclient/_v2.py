@@ -32,25 +32,64 @@
 LOCKSS 2.x client implementation.
 """
 
-from typing import TYPE_CHECKING
+from typing import TypeAlias, TypeVar, Union, TYPE_CHECKING
 
 from collections.abc import Callable
-from typing import Optional
 
-from . import rs
-from ._interface import _LockssClientInterface
+from lockss.pybasic.nodeutil import NodeSpec
+
+from . import config, crawler, md, poller, rs
 
 # Avoid circular import
 if TYPE_CHECKING:
-    from ._core import LockssClient
+    from ._core import _BaseLockssClient, LockssClient
 
 
-class _LockssClient2(_LockssClientInterface):
+_ApiConfT = Union[
+    config.Configuration,
+    crawler.Configuration,
+    md.Configuration,
+    poller.Configuration,
+    rs.Configuration
+]
 
-    def __init__(self, client: LockssClient) -> None:
-        self._client: LockssClient = client
-        self._ul: Callable[[], Optional[str]] = lambda: None
-        self._pl: Callable[[], Optional[str]] = lambda: None
+
+_ApiConfSupplier: TypeAlias = Callable[[], _ApiConfT]
+
+
+_ApiClientT = Union[
+    config.ApiClient,
+    crawler.ApiClient,
+    md.ApiClient,
+    poller.ApiClient,
+    rs.ApiClient
+]
+
+
+_ApiClientSupplier: TypeAlias = Callable[[_ApiConfT], _ApiClientT]
+
+
+_ApiInstanceT: TypeAlias = Union[
+    rs.StatusApi
+]
+
+
+_ApiInstanceSupplier: TypeAlias = Callable[[_ApiClientT], _ApiInstanceT]
+
+
+_ApiResult = TypeVar('_ApiResult')
+
+
+_StrSupplier: TypeAlias = Callable[[], str]
+
+
+class _LockssClient2(_BaseLockssClient):
+
+    _ul: Callable[[], str]
+    _pl: Callable[[], str]
+
+    def __init__(self, client: LockssClient, node_spec: NodeSpec) -> None:
+        super().__init__(client, node_spec)
 
     def authenticate(self, u: str, p: str) -> _LockssClient2:
         self._ul = lambda: u
@@ -62,9 +101,27 @@ class _LockssClient2(_LockssClientInterface):
     #
 
     def get_repository_service_status(self) -> rs.ApiStatus:
-        conf: rs.Configuration = rs.Configuration()
-        conf.host = f'{(ns := self._client.get_node_spec()).host}:{ns.repository}'
-        api_client: rs.ApiClient = rs.ApiClient(conf)
-        api_instance: rs.StatusApi = rs.StatusApi(api_client)
-        api_result: rs.ApiStatus = api_instance.get_status()
+        return self._generic_single_repository_action()
+
+    #
+    # PROTECTED
+    #
+
+    def _generic_single_action(self,
+                               api_conf_supplier: _ApiConfSupplier,
+                               host_supplier: _StrSupplier,
+                               api_client_supplier: _ApiClientSupplier,
+                               api_instance_supplier: _ApiInstanceSupplier) -> _ApiResult:
+        conf: _ApiConfT = api_conf_supplier()
+        conf.host = host_supplier()
+        api_client: _ApiClientT = api_client_supplier(conf)
+        api_instance: _ApiInstanceT = api_instance_supplier(api_client)
+        api_result: _ApiResult = api_instance.get_status()
         return api_result
+
+    def _generic_single_repository_action(self) -> _ApiResult:
+        return self._generic_single_action(rs.Configuration,
+                                           lambda: f'{(ns := self._node_spec).protocol}://{ns.host}:{ns.repository}',
+                                           rs.ApiClient,
+                                           rs.StatusApi)
+
