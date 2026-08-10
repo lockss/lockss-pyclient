@@ -33,15 +33,12 @@ Command line tool to interact with LOCKSS 1.x or 2.x via client interfaces.
 """
 
 from collections.abc import Callable, Iterator
-from concurrent.futures import Executor, Future, ThreadPoolExecutor, as_completed
-from contextlib import nullcontext
 from dataclasses import dataclass, field
-from inspect import ismethod
 from itertools import chain
 from pathlib import Path
 from typing import Any, Concatenate, Optional, TypeAlias, TypeVar, Union
 
-from click_extra import Context, OperationTrail, Section, ProgressOption, TableFormat, accessible_option, color_option, echo, group, jobs_option, no_color_option, option, option_group, pass_context, pass_obj, print_data, prompt, run_jobs, show_params_option, timer_option, tree_option
+from click_extra import ColumnSpec, Context, OperationTrail, Section, ProgressOption, TableFormat, accessible_option, color_option, columns_option, echo, group, jobs_option, no_color_option, option, option_group, pass_context, pass_obj, print_data, prompt, run_jobs, show_params_option, sort_by_option, table_format_option, timer_option, tree_option
 from click_extra.context import JOBS, TABLE_FORMAT
 from click_extra.decorators import decorator_factory
 from lockss.pybasic.cliutil import click_path, compose_decorators
@@ -53,7 +50,6 @@ import yaml
 
 from . import rs, __copyright__, __license__, __version__
 from ._core import LockssClient
-from .output import sort_by_option
 
 
 _OpArgs = TypeVar('_OpArgs')
@@ -69,6 +65,9 @@ _ResultValue = TypeVar('_ResultValue')
 
 
 YamlT: TypeAlias = Any
+
+
+SwaggerObject: TypeAlias = Any
 
 
 progress_option = decorator_factory(dec=option, cls=ProgressOption)
@@ -114,9 +113,55 @@ class _LockssCli(object):
     #
 
     def get_repository_service_status(self, **kwargs) -> None:
-        self._initialize_clients()
+        result: dict[tuple[str], Union[rs.ApiStatus, Exception]] = \
+            self._generic_node_action(LockssClient.get_repository_service_status,
+                                      needs_auth=False)
         for client in self._clients:
             res = client.get_repository_service_status()
+            print(client.get_id())
+            print_data(res.to_dict(), TableFormat.YAML)
+
+    #
+    # CONFIGURATION
+    #
+
+    def get_configuration_service_status(self, **kwargs) -> None:
+        self._initialize_clients()
+        for client in self._clients:
+            res = client.get_configuration_service_status()
+            print(client.get_id())
+            print_data(res.to_dict(), TableFormat.YAML)
+
+    #
+    # POLLER
+    #
+
+    def get_poller_service_status(self, **kwargs) -> None:
+        self._initialize_clients()
+        for client in self._clients:
+            res = client.get_poller_service_status()
+            print(client.get_id())
+            print_data(res.to_dict(), TableFormat.YAML)
+
+    #
+    # CRAWLER
+    #
+
+    def get_crawler_service_status(self, **kwargs) -> None:
+        self._initialize_clients()
+        for client in self._clients:
+            res = client.get_crawler_service_status()
+            print(client.get_id())
+            print_data(res.to_dict(), TableFormat.YAML)
+
+    #
+    # METADATA
+    #
+
+    def get_metadata_service_status(self, **kwargs) -> None:
+        self._initialize_clients()
+        for client in self._clients:
+            res = client.get_metadata_service_status()
             print(client.get_id())
             print_data(res.to_dict(), TableFormat.YAML)
 
@@ -153,6 +198,23 @@ class _LockssCli(object):
                 pass # I guess?
             trail.finish(trail.ok_count == total_tasks, f'{trail.ok_count}/{total_tasks} succeeded')
         return results
+
+    def _generic_node_action(self,
+                             func: Callable[Concatenate[tuple[LockssClient], dict[str, Any]], _OpResult],
+                             needs_auth=True,
+                             **kwargs) \
+            -> dict[tuple[str], Union[_OpResult, Exception]]:
+        return self._generic_action(func,
+                                    lambda: [((client,), kwargs) for client in self._clients],
+                                    init_funcs=[self._initialize_clients, *([self._initialize_auth] if needs_auth else [])],
+                                    transform_key=lambda t: (t[0].get_id(),),
+                                    get_task_label=lambda t: f'{t[0].get_id()}')
+
+    def _initialize_auth(self) -> None:
+        u = opts.username if (opts := self._opts).username else prompt('UI username')
+        p, opts.password = opts.password if opts.password else prompt('UI password', hide_input=True), None
+        for client in self._clients:
+            client.authenticate(u, p)
 
     def _initialize_clients(self) -> None:
         """
@@ -197,6 +259,18 @@ _node_option_group = option_group(
     option('--password', '-P', metavar='PASS', show_default='interactive prompt', help='Set the UI password to PASS.'),
 )
 
+
+def _columns(swagger_type: type[SwaggerObject]) -> list[ColumnSpec]:
+    return [ColumnSpec(obj_attr, ' '.join(word.capitalize() for word in obj_attr.split('_'))) for obj_attr in swagger_type.attribute_map]
+
+
+def _output_option_group(swagger_type: type[SwaggerObject]):
+    return option_group(
+        'Output options',
+        columns_option(columns=_columns(swagger_type)),
+        sort_by_option(columns=_columns(swagger_type)),
+        table_format_option('--table-format', '-T'),
+    )
 
 #: The job option group: --jobs
 _job_option_group = option_group(
@@ -265,11 +339,76 @@ _REPOSITORY_COMMANDS = Section('Repository Service commands')
 
 @locksscli.command(aliases=['grss'], section=_REPOSITORY_COMMANDS, help='Get the status of the LOCKSS Repository Service.')
 @_node_option_group
+@_output_option_group(rs.ApiStatus)
 @_display_option_group
 @_debug_option_group
 @pass_obj
 def get_repository_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_repository_service_status()
+
+
+#
+# CONFIGURATION
+#
+
+_CONFIGURATION_COMMANDS = Section('Configuration Service commands')
+
+
+@locksscli.command(aliases=['gcss'], section=_CONFIGURATION_COMMANDS, help='Get the status of the LOCKSS Configuration Service.')
+@_node_option_group
+@_display_option_group
+@_debug_option_group
+@pass_obj
+def get_configuration_service_status(ctx: Context, **kwargs) -> None:
+    _LockssCli(ctx, **kwargs).get_configuration_service_status()
+
+
+#
+# POLLER
+#
+
+_POLLER_COMMANDS = Section('Poller Service commands')
+
+
+@locksscli.command(aliases=['gpss'], section=_POLLER_COMMANDS, help='Get the status of the LOCKSS Poller Service.')
+@_node_option_group
+@_display_option_group
+@_debug_option_group
+@pass_obj
+def get_poller_service_status(ctx: Context, **kwargs) -> None:
+    _LockssCli(ctx, **kwargs).get_poller_service_status()
+
+
+#
+# CRAWLER
+#
+
+_CRAWLER_COMMANDS = Section('Crawler Service commands')
+
+
+@locksscli.command(aliases=['gwss'], section=_CRAWLER_COMMANDS, help='Get the status of the LOCKSS Crawler Service.')
+@_node_option_group
+@_display_option_group
+@_debug_option_group
+@pass_obj
+def get_crawler_service_status(ctx: Context, **kwargs) -> None:
+    _LockssCli(ctx, **kwargs).get_crawler_service_status()
+
+
+#
+# METADATA
+#
+
+_METADATA_COMMANDS = Section('Metadata Service commands')
+
+
+@locksscli.command(aliases=['gmss'], section=_METADATA_COMMANDS, help='Get the status of the LOCKSS Metadata Service.')
+@_node_option_group
+@_display_option_group
+@_debug_option_group
+@pass_obj
+def get_metadata_service_status(ctx: Context, **kwargs) -> None:
+    _LockssCli(ctx, **kwargs).get_metadata_service_status()
 
 
 def main() -> None:

@@ -34,19 +34,24 @@ LOCKSS 1.x client implementation.
 
 from typing import TYPE_CHECKING
 
-from lockss.pybasic.nodeutil import NodeSpec
+from lockss.pybasic.nodeutil import NodeSpec1
 
-from . import rs
+from . import config, crawler, md, poller, rs
+from ._interface import _LockssClientInterface
 
 # Avoid circular import
 if TYPE_CHECKING:
-    from ._core import _BaseLockssClient, LockssClient
+    from ._core import LockssClient
 
 
-class _LockssClient1(_BaseLockssClient):
+class _LockssClient1(_LockssClientInterface):
 
-    def __init__(self, client: LockssClient, node_spec: NodeSpec) -> None:
-        super().__init__(client, node_spec)
+    _client: LockssClient
+    _node_spec: NodeSpec1
+
+    def __init__(self, client: LockssClient, node_spec: NodeSpec1) -> None:
+        self._client = client
+        self._node_spec = node_spec
 
     def authenticate(self, u: str, p: str) -> _LockssClient1:
         raise NotImplementedError
@@ -56,4 +61,32 @@ class _LockssClient1(_BaseLockssClient):
     #
 
     def get_repository_service_status(self) -> rs.ApiStatus:
+        raise NotImplementedError
+
+    #
+    # CONFIGURATION
+    #
+
+    def get_configuration_service_status(self) -> config.ApiStatus:
+        raise NotImplementedError
+
+    #
+    # POLLER
+    #
+
+    def get_poller_service_status(self) -> poller.ApiStatus:
+        raise NotImplementedError
+
+    #
+    # CRAWLER
+    #
+
+    def get_crawler_service_status(self) -> crawler.ApiStatus:
+        raise NotImplementedError
+
+    #
+    # METADATA
+    #
+
+    def get_metadata_service_status(self) -> md.ApiStatus:
         raise NotImplementedError

@@ -32,13 +32,16 @@
 Core of the lockss.pyclient package.
 """
 
-from lockss.pybasic.errorutil import InternalError
-from lockss.pybasic.nodeutil import NodeIdentifier, NodeSpec, NodeTypeEnum
+from typing import cast
 
-from . import rs
+from lockss.pybasic.errorutil import InternalError
+from lockss.pybasic.nodeutil import NodeIdentifier, NodeSpec, NodeSpec1, NodeSpec2, NodeSpec12Pair, NodeTypeEnum
+
+from . import config, crawler, md, poller, rs
 from ._interface import _LockssClientInterface
 from ._v1 import _LockssClient1
 from ._v2 import _LockssClient2
+from ._v1_v2_pair import _LockssClient12Pair
 
 
 class LockssClient(_LockssClientInterface):
@@ -53,11 +56,11 @@ class LockssClient(_LockssClientInterface):
         self._node_spec = node_spec.model_copy()
         match typ := node_spec.type:
             case NodeTypeEnum.V1.value:
-                self._impl = _LockssClient1(self, self._node_spec)
+                self._impl = _LockssClient1(self, cast(NodeSpec1, self._node_spec))
             case NodeTypeEnum.V2.value:
-                self._impl = _LockssClient2(self, self._node_spec)
+                self._impl = _LockssClient2(self, cast(NodeSpec2, self._node_spec))
             case NodeTypeEnum.V1_V2_MIGRATION_PAIR.value:
-                self._impl = _LockssClient12Pair(self, self._node_spec)
+                self._impl = _LockssClient12Pair(self, cast(NodeSpec12Pair, self._node_spec))
             case _:
                 raise InternalError from ValueError(typ)
 
@@ -72,16 +75,7 @@ class LockssClient(_LockssClientInterface):
         :return: This client's node identifier.
         :rtype: NodeIdentifier
         """
-        return self.get_node_spec().id
-
-    def get_node_spec(self) -> NodeSpec:
-        """
-        Returns this client's node spec.
-
-        :return: This client's node spec.
-        :rtype: NodeSpec
-        """
-        return self._node_spec.model_copy()
+        return self._node_spec.id
 
     #
     # REPOSITORY
@@ -90,16 +84,31 @@ class LockssClient(_LockssClientInterface):
     def get_repository_service_status(self) -> rs.ApiStatus:
         return self._impl.get_repository_service_status()
 
+    #
+    # CONFIGURATION
+    #
 
-class _BaseLockssClient(_LockssClientInterface):
-    """
-    Base _LockssClientInterface implementation.
-    """
+    def get_configuration_service_status(self) -> config.ApiStatus:
+        return self._impl.get_configuration_service_status()
 
-    _client: LockssClient
-    _node_spec: NodeSpec
+    #
+    # POLLER
+    #
 
-    def __init__(self, client: LockssClient, node_spec: NodeSpec) -> None:
-        super().__init__()
-        self._client = client
-        self._node_spec = node_spec
+    def get_poller_service_status(self) -> poller.ApiStatus:
+        return self._impl.get_poller_service_status()
+
+    #
+    # CRAWLER
+    #
+
+    def get_crawler_service_status(self) -> crawler.ApiStatus:
+        return self._impl.get_crawler_service_status()
+
+
+    #
+    # METADATA
+    #
+
+    def get_metadata_service_status(self) -> md.ApiStatus:
+        return self._impl.get_metadata_service_status()

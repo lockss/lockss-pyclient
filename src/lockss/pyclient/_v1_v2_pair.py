@@ -29,68 +29,70 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 """
-LOCKSS client interface module.
+LOCKSS client implementation for a 1.x/2.x migration pair.
 """
 
-from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+from lockss.pybasic.nodeutil import NodeSpec12Pair
 
 from . import config, crawler, md, poller, rs
+from ._interface import _LockssClientInterface
+from ._v1 import _LockssClient1
+from ._v2 import _LockssClient2
 
-class _LockssClientInterface(ABC):
-    """
-    Abstract base class for LOCKSS clients.
-    """
+# Avoid circular import
+if TYPE_CHECKING:
+    from ._core import LockssClient
 
-    @abstractmethod
-    def authenticate(self, u: str, p: str) -> _LockssClientInterface:
-        """
-        Stores authentication information for this node.
 
-        :param u: The UI username.
-        :type u: str
-        :param p: The UI password.
-        :type p: str
-        :return: This instance, for chaining.
-        :rtype: _DebugPanelClientInterface
-        """
+class _LockssClient12Pair(_LockssClientInterface):
+
+    _client: LockssClient
+    _node_spec: NodeSpec12Pair
+    _v1: _LockssClient1
+    _v2: _LockssClient2
+
+    def __init__(self, client: LockssClient, node_spec: NodeSpec12Pair) -> None:
+        self._client = client
+        self._node_spec = node_spec
+        self._v1 = _LockssClient1(client, node_spec.origin)
+        self._v2 = _LockssClient2(client, node_spec.destination)
+
+    def authenticate(self, u: str, p: str) -> _LockssClient12Pair:
         raise NotImplementedError
 
     #
     # REPOSITORY
     #
 
-    @abstractmethod
     def get_repository_service_status(self) -> rs.ApiStatus:
-        raise NotImplementedError
+        return self._v2.get_repository_service_status()
 
     #
     # CONFIGURATION
     #
 
-    @abstractmethod
     def get_configuration_service_status(self) -> config.ApiStatus:
-        raise NotImplementedError
+        return self._v2.get_configuration_service_status()
 
     #
     # POLLER
     #
 
-    @abstractmethod
     def get_poller_service_status(self) -> poller.ApiStatus:
-        raise NotImplementedError
+        return self._v2.get_poller_service_status()
 
     #
     # CRAWLER
     #
 
-    @abstractmethod
     def get_crawler_service_status(self) -> crawler.ApiStatus:
-        raise NotImplementedError
+        return self._v2.get_crawler_service_status()
 
     #
     # METADATA
     #
 
-    @abstractmethod
     def get_metadata_service_status(self) -> md.ApiStatus:
-        raise NotImplementedError
+        return self._v2.get_metadata_service_status()
