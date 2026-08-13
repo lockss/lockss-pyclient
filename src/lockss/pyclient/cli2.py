@@ -32,23 +32,23 @@
 Command line tool to interact with LOCKSS 1.x or 2.x via client interfaces.
 """
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from itertools import chain
 from pathlib import Path
 from typing import Any, Concatenate, Optional, TypeAlias, TypeVar, Union
 
-from click_extra import ColumnSpec, Context, OperationTrail, Section, ProgressOption, TableFormat, accessible_option, color_option, columns_option, echo, group, jobs_option, no_color_option, option, option_group, pass_context, pass_obj, print_data, prompt, run_jobs, show_params_option, sort_by_option, table_format_option, timer_option, tree_option
-from click_extra.context import JOBS, TABLE_FORMAT
+from click_extra import ColumnSpec, Context, OperationTrail, Section, ProgressOption, TableFormat, accessible_option, color_option, columns_option, echo, group, jobs_option, no_color_option, option, option_group, pass_context, print_data, print_table, prompt, run_jobs, select_columns, select_row, show_params_option, sort_by_option, table_format_option, timer_option, tree_option
+from click_extra.context import COLUMNS, JOBS, PROGRESS, TABLE_FORMAT
 from click_extra.decorators import decorator_factory
 from lockss.pybasic.cliutil import click_path, compose_decorators
 from lockss.pybasic.errorutil import InternalError
 from lockss.pybasic.fileutil import file_lines
-from lockss.pybasic.nodeutil import NodeIdentifier, NodeSet, get_node_spec_adapter
+from lockss.pybasic.nodeutil import NodeSet, get_node_spec_adapter
 from pydantic import ValidationError
 import yaml
 
-from . import rs, __copyright__, __license__, __version__
+from . import config, crawler, md, poller, rs, __copyright__, __license__, __version__
 from ._core import LockssClient
 
 
@@ -67,7 +67,16 @@ _ResultValue = TypeVar('_ResultValue')
 YamlT: TypeAlias = Any
 
 
-SwaggerObject: TypeAlias = Any
+SwaggerModel: TypeAlias = Union[
+    config.ApiStatus,
+    crawler.ApiStatus,
+    md.ApiStatus,
+    poller.ApiStatus,
+    rs.ApiStatus,
+]
+
+
+SwaggerModelT: TypeAlias = type[SwaggerModel]
 
 
 progress_option = decorator_factory(dec=option, cls=ProgressOption)
@@ -85,7 +94,7 @@ class _LockssCli(object):
         username: Optional[str] = None
         password: Optional[str] = field(default=None, repr=False)
         # Job options
-        jobs: Optional[int] = None
+        # jobs: Optional[int] = None
         # Display options
         # accessible: Optional[bool] = None
         # color: Optional[bool] = None
@@ -113,102 +122,121 @@ class _LockssCli(object):
     #
 
     def get_repository_service_status(self, **kwargs) -> None:
-        result: dict[tuple[str], Union[rs.ApiStatus, Exception]] = \
-            self._generic_node_action(LockssClient.get_repository_service_status,
-                                      needs_auth=False)
-        for client in self._clients:
-            res = client.get_repository_service_status()
-            print(client.get_id())
-            print_data(res.to_dict(), TableFormat.YAML)
+        self._generic_node_action(LockssClient.get_repository_service_status,
+                                  _columns(rs.ApiStatus),
+                                  needs_auth=False)
 
     #
     # CONFIGURATION
     #
 
     def get_configuration_service_status(self, **kwargs) -> None:
-        self._initialize_clients()
-        for client in self._clients:
-            res = client.get_configuration_service_status()
-            print(client.get_id())
-            print_data(res.to_dict(), TableFormat.YAML)
+        self._generic_node_action(LockssClient.get_configuration_service_status,
+                                  _columns(config.ApiStatus),
+                                  needs_auth=False)
 
     #
     # POLLER
     #
 
     def get_poller_service_status(self, **kwargs) -> None:
-        self._initialize_clients()
-        for client in self._clients:
-            res = client.get_poller_service_status()
-            print(client.get_id())
-            print_data(res.to_dict(), TableFormat.YAML)
+        self._generic_node_action(LockssClient.get_poller_service_status,
+                                  _columns(poller.ApiStatus),
+                                  needs_auth=False)
 
     #
     # CRAWLER
     #
 
     def get_crawler_service_status(self, **kwargs) -> None:
-        self._initialize_clients()
-        for client in self._clients:
-            res = client.get_crawler_service_status()
-            print(client.get_id())
-            print_data(res.to_dict(), TableFormat.YAML)
+        self._generic_node_action(LockssClient.get_crawler_service_status,
+                                  _columns(crawler.ApiStatus),
+                                  needs_auth=False)
 
     #
     # METADATA
     #
 
     def get_metadata_service_status(self, **kwargs) -> None:
-        self._initialize_clients()
-        for client in self._clients:
-            res = client.get_metadata_service_status()
-            print(client.get_id())
-            print_data(res.to_dict(), TableFormat.YAML)
+        self._generic_node_action(LockssClient.get_metadata_service_status,
+                                  _columns(md.ApiStatus),
+                                  needs_auth=False)
 
     #
     # PROTECTED
     #
 
     def _generic_action(self,
-                        func: Callable[Concatenate[_OpArgs, dict[str, Any]], _OpResult],
-                        get_tuples: Callable[[], list[tuple[_OpArgs, Optional[dict[str, Any]]]]],
+                        operation: Callable[Concatenate[_OpArgs, dict[str, Any]], _OpResult],
+                        get_args_and_kwargs: Callable[[], list[tuple[_OpArgs, Optional[dict[str, Any]]]]],
                         get_result: Optional[Callable[[_OpResult], _ResultValue]] = None,
-                        init_funcs: Optional[list[Callable[[], None]]] = None,
-                        transform_key: Optional[Callable[[_OpArgs], _ResultKey]] = None,
-                        get_task_label: Optional[Callable[[_OpArgs], str]] = None) \
-            -> dict[_ResultKey, Union[_ResultValue, Exception]]:
+                        init_funcs: Optional[list[Optional[Callable[[], None]]]] = None,
+                        get_label: Optional[Callable[[_OpArgs], str]] = None) \
+            -> tuple[dict[_OpArgs, _ResultValue], Optional[dict[_OpArgs, Exception]]]:
         for init_func in init_funcs or []:
-            init_func()
-        tasks: list[tuple[_OpArgs, Optional[dict[str, Any]]]] = get_tuples()
-        actual_transform_key: Callable[[_OpArgs], _ResultKey] = transform_key or (lambda x: x)
+            if init_func:
+                init_func()
+        args_and_kwargs: list[tuple[_OpArgs, Optional[dict[str, Any]]]] = get_args_and_kwargs()
         actual_get_result: Callable[[_OpResult], _ResultValue] = get_result or (lambda x: x)
-        actual_get_task_label: Callable[[_OpArgs], str] = get_task_label or str
-        results: dict[_ResultKey, Union[_ResultValue, Exception]] = {}
-        with OperationTrail(jobs=(meta := self._ctx.meta)[JOBS], total=(total_tasks := len(tasks))) as trail:
-            def _one_task(args_and_kwargs: tuple[_OpArgs, Optional[dict[str, Any]]]) -> None:
-                result_key: _ResultKey = actual_transform_key(args := args_and_kwargs[0])
-                task_label = actual_get_task_label(args)
+        actual_get_label: Callable[[_OpArgs], str] = get_label or str
+        results: dict[_OpArgs, _ResultValue] = {}
+        errors: dict[_OpArgs, Exception] = {}
+        with OperationTrail(jobs=(meta := self._ctx.meta)[JOBS],
+                            total=(total_tasks := len(args_and_kwargs)),
+                            progress_bar=True,
+                            enabled=meta[PROGRESS]) as trail:
+            def _one_task(arg_and_kwarg: tuple[_OpArgs, Optional[dict[str, Any]]]) -> None:
+                arg: _OpArgs
+                kwarg: Optional[dict[str, Any]]
+                arg, kwarg = arg_and_kwarg
+                label: str = actual_get_label(arg)
                 try:
-                    results[result_key] = actual_get_result(func(*args, **(args_and_kwargs[1] or {})))
-                    trail.mark(True, task_label)
+                    results[arg] = actual_get_result(operation(*arg, **(kwarg or {})))
+                    trail.mark(True, label)
                 except Exception as exc:
-                    results[result_key] = exc
-                    trail.mark(False, task_label)
-            for task in run_jobs(_one_task, tasks):
+                    errors[arg] = exc
+                    trail.mark(False, label)
+            for _ in run_jobs(_one_task, args_and_kwargs):
                 pass # I guess?
             trail.finish(trail.ok_count == total_tasks, f'{trail.ok_count}/{total_tasks} succeeded')
-        return results
+        return results, (errors or None)
+
+    def _generic_output(self,
+                        get_args: Callable[[], list[_OpArgs]],
+                        results: dict[_OpArgs, _ResultValue],
+                        errors: Optional[dict[_OpArgs, Exception]],
+                        arg_columns: Sequence[ColumnSpec],
+                        obj_columns: Sequence[ColumnSpec]) -> None:
+        table: list[tuple[Optional[str], ...]] = []
+        selected_column_ids: Sequence[str] = (meta := self._ctx.meta)[COLUMNS] or ()
+        obj_column_ids: Sequence[str] = tuple(obj_column.id for obj_column in obj_columns)
+        for arg in get_args():
+            if arg in results:
+                obj: _ResultValue = results[arg]
+                d: dict = obj.to_dict() # FIXME only works if obj is SwaggerModel
+                table.append(tuple(map(str, (*arg, *select_row(d, selected_column_ids, obj_column_ids), ''))))
+            elif errors and arg in errors:
+                err: Exception = errors[arg]
+                table.append(tuple(map(str, (*arg, *(None for _ in obj_columns), str(err)))))
+            else:
+                raise InternalError from KeyError(arg)
+        print_table(table,
+                    headers=(*arg_columns, *select_columns(obj_columns, selected_column_ids or obj_column_ids), _ERROR_COLUMN),
+                    table_format=(meta := self._ctx.meta)[TABLE_FORMAT])
 
     def _generic_node_action(self,
-                             func: Callable[Concatenate[tuple[LockssClient], dict[str, Any]], _OpResult],
-                             needs_auth=True,
-                             **kwargs) \
-            -> dict[tuple[str], Union[_OpResult, Exception]]:
-        return self._generic_action(func,
-                                    lambda: [((client,), kwargs) for client in self._clients],
-                                    init_funcs=[self._initialize_clients, *([self._initialize_auth] if needs_auth else [])],
-                                    transform_key=lambda t: (t[0].get_id(),),
-                                    get_task_label=lambda t: f'{t[0].get_id()}')
+                             operation: Callable[Concatenate[tuple[LockssClient], dict[str, Any]], SwaggerModel],
+                             obj_columns: Sequence[ColumnSpec],
+                             needs_auth = True,
+                             **kwargs) -> None:
+        results: dict[tuple[LockssClient], SwaggerModel]
+        errors: Optional[dict[tuple[LockssClient], Exception]]
+        get_args: Callable[[], list[tuple[LockssClient]]] = lambda: [(client,) for client in self._clients]
+        results, errors = self._generic_action(operation,
+                                               lambda: [(arg, kwargs) for arg in get_args()],
+                                               init_funcs=[self._initialize_clients, self._initialize_auth if needs_auth else None],
+                                               get_label=lambda t: f'{t[0].get_id()}')
+        self._generic_output(get_args, results, errors, (_NODE_COLUMN,), obj_columns)
 
     def _initialize_auth(self) -> None:
         u = opts.username if (opts := self._opts).username else prompt('UI username')
@@ -260,15 +288,30 @@ _node_option_group = option_group(
 )
 
 
-def _columns(swagger_type: type[SwaggerObject]) -> list[ColumnSpec]:
-    return [ColumnSpec(obj_attr, ' '.join(word.capitalize() for word in obj_attr.split('_'))) for obj_attr in swagger_type.attribute_map]
+def _columns(swagger_model_type: SwaggerModelT) -> Sequence[ColumnSpec]:
+    return tuple(ColumnSpec(obj_attr, ' '.join(word.capitalize() for word in obj_attr.split('_'))) for obj_attr in swagger_model_type.attribute_map)
 
 
-def _output_option_group(swagger_type: type[SwaggerObject]):
+_NODE_COLUMN: ColumnSpec = ColumnSpec('node', 'Node')
+
+
+_AUID_COLUMN: ColumnSpec = ColumnSpec('auid', 'AUID')
+
+
+_ERROR_COLUMN: ColumnSpec = ColumnSpec('error', 'Error')
+
+
+_NODE_COLUMNS: Sequence[ColumnSpec] = (_NODE_COLUMN,)
+
+
+_NODE_AUID_COLUMNS: Sequence[ColumnSpec] = (*_NODE_COLUMNS, _AUID_COLUMN,)
+
+
+def _output_option_group(arg_columns: Sequence[ColumnSpec], swagger_model_type: SwaggerModelT):
     return option_group(
         'Output options',
-        columns_option(columns=_columns(swagger_type)),
-        sort_by_option(columns=_columns(swagger_type)),
+        columns_option(columns=_columns(swagger_model_type)),
+        sort_by_option(columns=(*arg_columns, *_columns(swagger_model_type), _ERROR_COLUMN)),
         table_format_option('--table-format', '-T'),
     )
 
@@ -296,6 +339,17 @@ _debug_option_group = option_group(
     timer_option
 )
 
+
+def _generic_options(arg_columns: Sequence[ColumnSpec],
+                     swagger_model_type: Optional[SwaggerModelT]=None):
+    return compose_decorators(
+        _node_option_group if _NODE_COLUMN in arg_columns else None,
+        _output_option_group(arg_columns, swagger_model_type) if swagger_model_type else None,
+        _job_option_group,
+        _display_option_group,
+        _debug_option_group,
+        pass_context
+    )
 
 #
 # CLICK INFRASTRUCTURE
@@ -338,11 +392,7 @@ _REPOSITORY_COMMANDS = Section('Repository Service commands')
 
 
 @locksscli.command(aliases=['grss'], section=_REPOSITORY_COMMANDS, help='Get the status of the LOCKSS Repository Service.')
-@_node_option_group
-@_output_option_group(rs.ApiStatus)
-@_display_option_group
-@_debug_option_group
-@pass_obj
+@_generic_options(_NODE_COLUMNS, rs.ApiStatus)
 def get_repository_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_repository_service_status()
 
@@ -355,10 +405,7 @@ _CONFIGURATION_COMMANDS = Section('Configuration Service commands')
 
 
 @locksscli.command(aliases=['gcss'], section=_CONFIGURATION_COMMANDS, help='Get the status of the LOCKSS Configuration Service.')
-@_node_option_group
-@_display_option_group
-@_debug_option_group
-@pass_obj
+@_generic_options(_NODE_COLUMNS, config.ApiStatus)
 def get_configuration_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_configuration_service_status()
 
@@ -371,10 +418,7 @@ _POLLER_COMMANDS = Section('Poller Service commands')
 
 
 @locksscli.command(aliases=['gpss'], section=_POLLER_COMMANDS, help='Get the status of the LOCKSS Poller Service.')
-@_node_option_group
-@_display_option_group
-@_debug_option_group
-@pass_obj
+@_generic_options(_NODE_COLUMNS, poller.ApiStatus)
 def get_poller_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_poller_service_status()
 
@@ -387,10 +431,7 @@ _CRAWLER_COMMANDS = Section('Crawler Service commands')
 
 
 @locksscli.command(aliases=['gwss'], section=_CRAWLER_COMMANDS, help='Get the status of the LOCKSS Crawler Service.')
-@_node_option_group
-@_display_option_group
-@_debug_option_group
-@pass_obj
+@_generic_options(_NODE_COLUMNS, crawler.ApiStatus)
 def get_crawler_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_crawler_service_status()
 
@@ -403,10 +444,7 @@ _METADATA_COMMANDS = Section('Metadata Service commands')
 
 
 @locksscli.command(aliases=['gmss'], section=_METADATA_COMMANDS, help='Get the status of the LOCKSS Metadata Service.')
-@_node_option_group
-@_display_option_group
-@_debug_option_group
-@pass_obj
+@_generic_options(_NODE_COLUMNS, md.ApiStatus)
 def get_metadata_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_metadata_service_status()
 

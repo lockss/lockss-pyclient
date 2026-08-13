@@ -112,3 +112,10 @@ class LockssClient(_LockssClientInterface):
 
     def get_metadata_service_status(self) -> md.ApiStatus:
         return self._impl.get_metadata_service_status()
+
+    #
+    # DUNDER
+    #
+
+    def __str__(self) -> str:
+        return self.get_id()
