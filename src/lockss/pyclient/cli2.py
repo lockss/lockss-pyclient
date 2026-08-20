@@ -34,13 +34,15 @@ Command line tool to interact with LOCKSS 1.x or 2.x via client interfaces.
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from functools import cache
 from itertools import chain
 from pathlib import Path
 from typing import Any, Concatenate, Optional, TypeAlias, TypeVar, Union
 
-from click_extra import ColumnSpec, Context, OperationTrail, Section, ProgressOption, TableFormat, accessible_option, color_option, columns_option, echo, group, jobs_option, no_color_option, option, option_group, pass_context, print_data, print_table, prompt, run_jobs, select_columns, select_row, show_params_option, sort_by_option, table_format_option, timer_option, tree_option
+from click_extra import ColumnSpec, Context, OperationTrail, Section, ProgressOption, accessible_option, color_option, columns_option, echo, group, jobs_option, no_color_option, option, option_group, pass_context, print_table, prompt, run_jobs, select_columns, select_row, show_params_option, sort_by_option, table_format_option, timer_option, tree_option
 from click_extra.context import COLUMNS, JOBS, PROGRESS, TABLE_FORMAT
 from click_extra.decorators import decorator_factory
+from click_extra.theme import KO_GLYPH, OK_GLYPH
 from lockss.pybasic.cliutil import click_path, compose_decorators
 from lockss.pybasic.errorutil import InternalError
 from lockss.pybasic.fileutil import file_lines
@@ -93,14 +95,8 @@ class _LockssCli(object):
         node_specs: tuple[Path, ...] = ()
         username: Optional[str] = None
         password: Optional[str] = field(default=None, repr=False)
-        # Job options
-        # jobs: Optional[int] = None
-        # Display options
-        # accessible: Optional[bool] = None
-        # color: Optional[bool] = None
-        # progress: Optional[bool] = None
-        # theme: Optional[str] = None
-        # time: Optional[bool] = None
+        # REPOSITORY
+        use_glyphs: Optional[bool] = None
 
     _ctx: Context
     _opts: _LockssCli._Opts
@@ -201,12 +197,12 @@ class _LockssCli(object):
             trail.finish(trail.ok_count == total_tasks, f'{trail.ok_count}/{total_tasks} succeeded')
         return results, (errors or None)
 
-    def _generic_output(self,
-                        get_args: Callable[[], list[_OpArgs]],
-                        results: dict[_OpArgs, _ResultValue],
-                        errors: Optional[dict[_OpArgs, Exception]],
-                        arg_columns: Sequence[ColumnSpec],
-                        obj_columns: Sequence[ColumnSpec]) -> None:
+    def _generic_tabular_output(self,
+                                get_args: Callable[[], list[_OpArgs]],
+                                results: dict[_OpArgs, _ResultValue],
+                                errors: Optional[dict[_OpArgs, Exception]],
+                                arg_columns: Sequence[ColumnSpec],
+                                obj_columns: Sequence[ColumnSpec]) -> None:
         table: list[tuple[Optional[str], ...]] = []
         selected_column_ids: Sequence[str] = (meta := self._ctx.meta)[COLUMNS] or ()
         obj_column_ids: Sequence[str] = tuple(obj_column.id for obj_column in obj_columns)
@@ -236,7 +232,7 @@ class _LockssCli(object):
                                                lambda: [(arg, kwargs) for arg in get_args()],
                                                init_funcs=[self._initialize_clients, self._initialize_auth if needs_auth else None],
                                                get_label=lambda t: f'{t[0].get_id()}')
-        self._generic_output(get_args, results, errors, (_NODE_COLUMN,), obj_columns)
+        self._generic_tabular_output(get_args, results, errors, (_NODE_COLUMN,), obj_columns)
 
     def _initialize_auth(self) -> None:
         u = opts.username if (opts := self._opts).username else prompt('UI username')
@@ -288,32 +284,82 @@ _node_option_group = option_group(
 )
 
 
+@cache
 def _columns(swagger_model_type: SwaggerModelT) -> Sequence[ColumnSpec]:
     return tuple(ColumnSpec(obj_attr, ' '.join(word.capitalize() for word in obj_attr.split('_'))) for obj_attr in swagger_model_type.attribute_map)
 
 
-_NODE_COLUMN: ColumnSpec = ColumnSpec('node', 'Node')
+_AUID_COLUMN_ID: str = 'auid'
 
 
-_AUID_COLUMN: ColumnSpec = ColumnSpec('auid', 'AUID')
+_AUID_COLUMN_DESCRIPTION: str = 'AUID'
 
 
-_ERROR_COLUMN: ColumnSpec = ColumnSpec('error', 'Error')
+_AUID_COLUMN: ColumnSpec = ColumnSpec(_AUID_COLUMN_ID, _AUID_COLUMN_DESCRIPTION)
+
+
+_CHECKSUM_ALGORITHM_COLUMN_ID: str = 'checksum_algorithm'
+
+
+_ERROR_COLUMN_ID: str = 'error'
+
+
+_ERROR_COLUMN_DESCRIPTION: str = 'Error'
+
+
+_ERROR_COLUMN: ColumnSpec = ColumnSpec(_ERROR_COLUMN_ID, _ERROR_COLUMN_DESCRIPTION)
+
+
+_NAMESPACE_COLUMN_ID: str = 'namespace'
+
+
+_NAMESPACE_COLUMN_DESCRIPTION: str = 'Namespace'
+
+
+_NAMESPACE_COLUMN: ColumnSpec = ColumnSpec(_NAMESPACE_COLUMN_ID, _NAMESPACE_COLUMN_DESCRIPTION)
+
+
+_NODE_COLUMN_ID: str = 'node'
+
+
+_NODE_COLUMN_DESCRIPTION: str = 'Node'
+
+
+_NODE_COLUMN: ColumnSpec = ColumnSpec(_NODE_COLUMN_ID, _NODE_COLUMN_DESCRIPTION)
+
+
+_AUID_COLUMNS: Sequence[ColumnSpec] = (_AUID_COLUMN,)
+
+
+_NAMESPACE_AUID_COLUMNS: Sequence[ColumnSpec] = (_NAMESPACE_COLUMN, _AUID_COLUMN)
 
 
 _NODE_COLUMNS: Sequence[ColumnSpec] = (_NODE_COLUMN,)
 
 
-_NODE_AUID_COLUMNS: Sequence[ColumnSpec] = (*_NODE_COLUMNS, _AUID_COLUMN,)
+_NODE_AUID_COLUMNS: Sequence[ColumnSpec] = (_NODE_COLUMN, _AUID_COLUMN)
 
 
-def _output_option_group(arg_columns: Sequence[ColumnSpec], swagger_model_type: SwaggerModelT):
+_TABLE_FORMAT_OPTION = table_format_option('--table-format', '-T')
+
+
+def _tabular_output_option_group(arg_columns: Sequence[ColumnSpec], swagger_model_type: SwaggerModelT):
     return option_group(
-        'Output options',
+        'Tabular output options',
         columns_option(columns=_columns(swagger_model_type)),
         sort_by_option(columns=(*arg_columns, *_columns(swagger_model_type), _ERROR_COLUMN)),
-        table_format_option('--table-format', '-T'),
+        _TABLE_FORMAT_OPTION,
     )
+
+
+def _list_output_option_group(arg_columns: Sequence[ColumnSpec]):
+    return option_group(
+        'List output options',
+        *((sort_by_option(columns=arg_columns),) if len(arg_columns) > 1 else ()),
+        _TABLE_FORMAT_OPTION,
+        option('--use-glyphs', type=bool, help=f'Display {OK_GLYPH}/{KO_GLYPH} instead of True/False'),
+    )
+
 
 #: The job option group: --jobs
 _job_option_group = option_group(
@@ -340,16 +386,29 @@ _debug_option_group = option_group(
 )
 
 
-def _generic_options(arg_columns: Sequence[ColumnSpec],
-                     swagger_model_type: Optional[SwaggerModelT]=None):
+def _generic_list_options(result_columns: Sequence[ColumnSpec],
+                          additional_option_groups: Optional[Sequence] = None):
     return compose_decorators(
-        _node_option_group if _NODE_COLUMN in arg_columns else None,
-        _output_option_group(arg_columns, swagger_model_type) if swagger_model_type else None,
+        _node_option_group,
+        *(additional_option_groups if additional_option_groups else ()),
+        _list_output_option_group(result_columns),
         _job_option_group,
         _display_option_group,
         _debug_option_group,
         pass_context
     )
+
+def _generic_tabular_options(arg_columns: Sequence[ColumnSpec],
+                             swagger_model_type: Optional[SwaggerModelT] = None):
+    return compose_decorators(
+        _node_option_group if _NODE_COLUMN in arg_columns else None,
+        _tabular_output_option_group(arg_columns, swagger_model_type) if swagger_model_type else None,
+        _job_option_group,
+        _display_option_group,
+        _debug_option_group,
+        pass_context
+    )
+
 
 #
 # CLICK INFRASTRUCTURE
@@ -391,8 +450,32 @@ def version(ctx: Context, **kwargs) -> None:
 _REPOSITORY_COMMANDS = Section('Repository Service commands')
 
 
+@locksscli.command(aliases=['gaa'], section=_REPOSITORY_COMMANDS, help='Get all namespaces and AUIDs.')
+@_generic_list_options(_NAMESPACE_AUID_COLUMNS)
+def get_all_auids(ctx: Context, **kwargs) -> None:
+    _LockssCli(ctx, **kwargs).get_all_auids()
+
+
+@locksscli.command(aliases=['gca'], section=_REPOSITORY_COMMANDS, help='Get checksum algorithms.')
+@_generic_tabular_options(_NODE_COLUMNS, rs.ApiStatus)
+def get_checksum_algorithms(ctx: Context, **kwargs) -> None:
+    _LockssCli(ctx, **kwargs).get_all_auids()
+
+
+@locksscli.command(aliases=['gna'], section=_REPOSITORY_COMMANDS, help='Get AUIDs in a namespace.')
+@_generic_list_options(_AUID_COLUMNS)
+def get_namespace_auids(ctx: Context, **kwargs) -> None:
+    _LockssCli(ctx, **kwargs).get_namespace_auids()
+
+
+@locksscli.command(aliases=['gn'], section=_REPOSITORY_COMMANDS, help='Get namespaces.')
+@_generic_tabular_options(_NODE_COLUMNS, rs.ApiStatus)
+def get_namespaces(ctx: Context, **kwargs) -> None:
+    _LockssCli(ctx, **kwargs).get_namespace_auids()
+
+
 @locksscli.command(aliases=['grss'], section=_REPOSITORY_COMMANDS, help='Get the status of the LOCKSS Repository Service.')
-@_generic_options(_NODE_COLUMNS, rs.ApiStatus)
+@_generic_tabular_options(_NODE_COLUMNS, rs.ApiStatus)
 def get_repository_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_repository_service_status()
 
@@ -405,7 +488,7 @@ _CONFIGURATION_COMMANDS = Section('Configuration Service commands')
 
 
 @locksscli.command(aliases=['gcss'], section=_CONFIGURATION_COMMANDS, help='Get the status of the LOCKSS Configuration Service.')
-@_generic_options(_NODE_COLUMNS, config.ApiStatus)
+@_generic_tabular_options(_NODE_COLUMNS, config.ApiStatus)
 def get_configuration_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_configuration_service_status()
 
@@ -418,7 +501,7 @@ _POLLER_COMMANDS = Section('Poller Service commands')
 
 
 @locksscli.command(aliases=['gpss'], section=_POLLER_COMMANDS, help='Get the status of the LOCKSS Poller Service.')
-@_generic_options(_NODE_COLUMNS, poller.ApiStatus)
+@_generic_tabular_options(_NODE_COLUMNS, poller.ApiStatus)
 def get_poller_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_poller_service_status()
 
@@ -431,7 +514,7 @@ _CRAWLER_COMMANDS = Section('Crawler Service commands')
 
 
 @locksscli.command(aliases=['gwss'], section=_CRAWLER_COMMANDS, help='Get the status of the LOCKSS Crawler Service.')
-@_generic_options(_NODE_COLUMNS, crawler.ApiStatus)
+@_generic_tabular_options(_NODE_COLUMNS, crawler.ApiStatus)
 def get_crawler_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_crawler_service_status()
 
@@ -444,7 +527,7 @@ _METADATA_COMMANDS = Section('Metadata Service commands')
 
 
 @locksscli.command(aliases=['gmss'], section=_METADATA_COMMANDS, help='Get the status of the LOCKSS Metadata Service.')
-@_generic_options(_NODE_COLUMNS, md.ApiStatus)
+@_generic_tabular_options(_NODE_COLUMNS, md.ApiStatus)
 def get_metadata_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_metadata_service_status()
 
