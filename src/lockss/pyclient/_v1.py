@@ -60,7 +60,13 @@ class _LockssClient1(_LockssClientInterface):
     # REPOSITORY
     #
 
+    def get_namespaces(self) -> list[str]:
+        raise NotImplementedError
+
     def get_repository_service_status(self) -> rs.ApiStatus:
+        raise NotImplementedError
+
+    def get_supported_checksum_algorithms(self) -> list[str]:
         raise NotImplementedError
 
     #

@@ -32,7 +32,7 @@
 LOCKSS 2.x client implementation.
 """
 
-from typing import TypeAlias, TypeVar, Union, TYPE_CHECKING
+from typing import Optional, TypeAlias, TypeVar, Union, TYPE_CHECKING
 
 from collections.abc import Callable
 
@@ -72,8 +72,10 @@ _ApiClientSupplier: TypeAlias = Callable[[_ApiConfT], _ApiClientT]
 
 _ApiInstanceT: TypeAlias = Union[
     config.StatusApi,
+    crawler.StatusApi,
+    md.StatusApi,
     poller.ServiceApi,
-    rs.StatusApi
+    rs.RepoApi, rs.StatusApi,
 ]
 
 
@@ -90,8 +92,8 @@ class _LockssClient2(_LockssClientInterface):
 
     _client: LockssClient
     _node_spec: NodeSpec2
-    _ul: Callable[[], str]
-    _pl: Callable[[], str]
+    _ul: Optional[Callable[[], str]] = None
+    _pl: Optional[Callable[[], str]] = None
 
     def __init__(self, client: LockssClient, node_spec: NodeSpec2) -> None:
         self._client = client
@@ -106,9 +108,17 @@ class _LockssClient2(_LockssClientInterface):
     # REPOSITORY
     #
 
+    def get_namespaces(self) -> list[str]:
+        return self._generic_single_repository_action(rs.RepoApi,
+                                                      lambda api: api.get_namespaces())
+
     def get_repository_service_status(self) -> rs.ApiStatus:
         return self._generic_single_repository_action(rs.StatusApi,
                                                       lambda api: api.get_status())
+
+    def get_supported_checksum_algorithms(self) -> list[str]:
+        return self._generic_single_repository_action(rs.RepoApi,
+                                                      lambda api: api.get_supported_checksum_algorithms())
 
     #
     # CONFIGURATION
@@ -154,6 +164,10 @@ class _LockssClient2(_LockssClientInterface):
                                api_action: Callable[[_ApiInstanceT], _ApiResult]) -> _ApiResult:
         conf: _ApiConfT = api_conf_supplier()
         conf.host = host_supplier()
+        if self._ul is not None:
+            conf.username = self._ul()
+        if self._pl is not None:
+            conf.password = self._pl()
         api_client: _ApiClientT = api_client_supplier(conf)
         api_instance: _ApiInstanceT = api_instance_supplier(api_client)
         api_result: _ApiResult = api_action(api_instance)

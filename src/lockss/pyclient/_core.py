@@ -81,8 +81,14 @@ class LockssClient(_LockssClientInterface):
     # REPOSITORY
     #
 
+    def get_namespaces(self) -> list[str]:
+        return self._impl.get_namespaces()
+
     def get_repository_service_status(self) -> rs.ApiStatus:
         return self._impl.get_repository_service_status()
+
+    def get_supported_checksum_algorithms(self) -> list[str]:
+        return self._impl.get_supported_checksum_algorithms()
 
     #
     # CONFIGURATION
