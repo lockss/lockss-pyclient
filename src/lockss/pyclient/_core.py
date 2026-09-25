@@ -81,6 +81,9 @@ class LockssClient(_LockssClientInterface):
     # REPOSITORY
     #
 
+    def get_auids(self, namespace: str) -> list[str]:
+        return self._impl.get_auids(namespace)
+
     def get_namespaces(self) -> list[str]:
         return self._impl.get_namespaces()
 

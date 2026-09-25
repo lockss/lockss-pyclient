@@ -60,6 +60,9 @@ class _LockssClient1(_LockssClientInterface):
     # REPOSITORY
     #
 
+    def get_auids(self, namespace: str) -> list[str]:
+        raise NotImplementedError
+
     def get_namespaces(self) -> list[str]:
         raise NotImplementedError
 

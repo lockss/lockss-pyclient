@@ -60,6 +60,10 @@ class _LockssClientInterface(ABC):
     #
 
     @abstractmethod
+    def get_auids(self, namespace: str) -> list[str]:
+        raise NotImplementedError
+
+    @abstractmethod
     def get_namespaces(self) -> list[str]:
         raise NotImplementedError
 

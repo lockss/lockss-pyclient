@@ -75,7 +75,7 @@ _ApiInstanceT: TypeAlias = Union[
     crawler.StatusApi,
     md.StatusApi,
     poller.ServiceApi,
-    rs.RepoApi, rs.StatusApi,
+    rs.AusApi, rs.RepoApi, rs.StatusApi,
 ]
 
 
@@ -107,6 +107,11 @@ class _LockssClient2(_LockssClientInterface):
     #
     # REPOSITORY
     #
+
+    def get_auids(self, namespace: str) -> list[str]:
+        return self._generic_single_repository_action(rs.AusApi,
+                                                      lambda api: api.get_auids(namespace=namespace))
+
 
     def get_namespaces(self) -> list[str]:
         return self._generic_single_repository_action(rs.RepoApi,

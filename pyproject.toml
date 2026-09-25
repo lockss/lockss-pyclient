@@ -44,14 +44,14 @@ maintainers = [
 dependencies = [
     "certifi", # from swagger-codegen generated code
     "click-command-tree (>=1.2.0,<1.3.0)",
-    "click-extra[hjson,json,pygments,toml,xml,yaml] (>=8.8.0,<8.9.0)",
+    "click-extra[hjson,json,pygments,toml,xml,yaml] (>=8.9.0,<8.10.0)",
     "click-plugins (>=1.1.1.2,<1.2.0)",
-    "lockss-pybasic (==0.3.0-dev21)",
+    "lockss-pybasic (==0.3.0-dev24)",
     "multipart (>=1.3.0,<1.4.0)",
-    "pydantic (>=2.13.0,<2.14.0)", # from lockss-pybasic 0.3.0-dev21
+    "pydantic (>=2.13.0,<2.14.0)", # from lockss-pybasic 0.3.0-dev24
     "python-dateutil (>=2.9.0,<2.10.0)",
     "python-jsonpath[strict] (>=2.0.0,<2.1.0)",
-    "pyyaml (>=6.0.0,<6.1.0)",
+    "pyyaml (>=6.0.0,<6.1.0)", # from lockss-pybasic 0.3.0-dev24
     "six (>=1.17,<1.18)",
     "urllib3 (>=2.6.0,<2.7.0)",
 ]

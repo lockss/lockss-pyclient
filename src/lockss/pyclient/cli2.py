@@ -46,9 +46,9 @@ from click_extra.theme import KO_GLYPH, OK_GLYPH
 from lockss.pybasic.cliutil import click_path, compose_decorators
 from lockss.pybasic.errorutil import InternalError
 from lockss.pybasic.fileutil import file_lines
-from lockss.pybasic.nodeutil import NodeSet, get_node_spec_adapter
+from lockss.pybasic.nodeutil import NodeHelper
 from pydantic import ValidationError
-import yaml
+from yaml import YAMLError
 
 from . import config, crawler, md, poller, rs, __copyright__, __license__, __version__
 from ._core import LockssClient
@@ -97,7 +97,10 @@ class _LockssCli(object):
         # Node options
         node_set: tuple[Path, ...] = ()
         node_spec: tuple[str, ...] = ()
-        node_specs: tuple[Path, ...] = ()
+        include_node_set: tuple[str, ...] = ()
+        exclude_node_set: tuple[str, ...] = ()
+        include_node: tuple[str, ...] = ()
+        exclude_node: tuple[str, ...] = ()
         username: Optional[str] = None
         password: Optional[str] = field(default=None, repr=False)
         # REPOSITORY
@@ -124,24 +127,43 @@ class _LockssCli(object):
     # REPOSITORY
     #
 
-    def get_checksum_algorithms(self) -> None:
-        self._generic_node_matrix_action(LockssClient.get_supported_checksum_algorithms,
-                                         _CHECKSUM_ALGORITHM_COLUMNS)
+    def get_auids(self) -> None:
+        namespaces: list[str]
+        if nmsp := (opts := self._opts).namespace:
+            self._initialize_clients()
+            self._initialize_auth()
+            namespaces = [nmsp]
+        else:
+            results, errors = self._generic_node_action(LockssClient.get_namespaces) # initializes clients and auth
+            row_values: set = set()
+            for potential_row_value in results.values(): # Assumes potential_row_value is a sequence
+                row_values.update(potential_row_value)
+            namespaces = [x for x in row_values]
+        results2, errors2 = self._generic_action(LockssClient.get_auids,
+                                                 [((client, namespace), None) for namespace in namespaces for client in self._clients],
+                                                 get_label=lambda t: f'{t[0].get_id()} {t[1]}')
+        self._generic_matrix_output()
+
+
 
     def get_namespaces(self) -> None:
         self._generic_node_matrix_action(LockssClient.get_namespaces,
-                                         _NAMESPACE_COLUMNS)
+                                         (_NAMESPACE_COLUMN,))
 
-    def get_repository_service_status(self, **kwargs) -> None:
+    def get_repository_service_status(self) -> None:
         self._generic_node_table_action(LockssClient.get_repository_service_status,
                                         _columns(rs.ApiStatus),
                                         needs_auth=False)
+
+    def get_supported_checksum_algorithms(self) -> None:
+        self._generic_node_matrix_action(LockssClient.get_supported_checksum_algorithms,
+                                         (_CHECKSUM_ALGORITHM_COLUMN,))
 
     #
     # CONFIGURATION
     #
 
-    def get_configuration_service_status(self, **kwargs) -> None:
+    def get_configuration_service_status(self) -> None:
         self._generic_node_table_action(LockssClient.get_configuration_service_status,
                                         _columns(config.ApiStatus),
                                         needs_auth=False)
@@ -150,7 +172,7 @@ class _LockssCli(object):
     # POLLER
     #
 
-    def get_poller_service_status(self, **kwargs) -> None:
+    def get_poller_service_status(self) -> None:
         self._generic_node_table_action(LockssClient.get_poller_service_status,
                                         _columns(poller.ApiStatus),
                                         needs_auth=False)
@@ -159,7 +181,7 @@ class _LockssCli(object):
     # CRAWLER
     #
 
-    def get_crawler_service_status(self, **kwargs) -> None:
+    def get_crawler_service_status(self) -> None:
         self._generic_node_table_action(LockssClient.get_crawler_service_status,
                                         _columns(crawler.ApiStatus),
                                         needs_auth=False)
@@ -168,7 +190,7 @@ class _LockssCli(object):
     # METADATA
     #
 
-    def get_metadata_service_status(self, **kwargs) -> None:
+    def get_metadata_service_status(self) -> None:
         self._generic_node_table_action(LockssClient.get_metadata_service_status,
                                         _columns(md.ApiStatus),
                                         needs_auth=False)
@@ -208,18 +230,18 @@ class _LockssCli(object):
         return results, (errors or None)
 
     def _generic_node_action(self,
-                             operation: Callable[Concatenate[tuple[LockssClient], dict[str, Any]], SwaggerModel],
+                             operation: Callable[Concatenate[tuple[LockssClient], dict[str, Any]], _OpResult],
                              needs_auth = True,
                              **kwargs) \
-            -> tuple[dict[tuple[LockssClient], SwaggerModel], Optional[dict[tuple[LockssClient], Exception]]]:
+            -> tuple[dict[tuple[LockssClient], _OpResult], Optional[dict[tuple[LockssClient], Exception]]]:
         self._initialize_clients()
         if needs_auth:
             self._initialize_auth()
         # Could be a return statement but need to satisfy the type checker
-        results: dict[tuple[LockssClient], SwaggerModel]
+        results: dict[tuple[LockssClient], _OpResult]
         errors: Optional[dict[tuple[LockssClient], Exception]]
         results, errors = self._generic_action(operation,
-                                               [(arg, kwargs) for arg in [(client,) for client in self._clients]],
+                                               [((client,), kwargs) for client in self._clients],
                                                get_label=lambda t: f'{t[0].get_id()}')
         return results, errors
 
@@ -272,19 +294,19 @@ class _LockssCli(object):
                               result_columns: Sequence[ColumnSpec]) -> None:
         table: list[Sequence[Optional[str]]] = []
         selected_column_ids: Sequence[str] = (meta := self._ctx.meta)[COLUMNS] or ()
-        obj_column_ids: Sequence[str] = tuple(obj_column.id for obj_column in result_columns)
+        result_column_ids: Sequence[str] = tuple(result_column.id for result_column in result_columns)
         for arg in args:
             if arg in results:
                 obj: _ResultValue = results[arg]
                 d: dict = obj.to_dict() # FIXME only works if obj is SwaggerModel
-                table.append([*map(str, [*arg, *select_row(d, selected_column_ids, obj_column_ids), ''])])
+                table.append([*map(str, [*arg, *select_row(d, selected_column_ids, result_column_ids), ''])])
             elif errors and arg in errors:
                 err: Exception = errors[arg]
-                table.append([*map(str, [*arg, *[None for _ in result_columns], str(err)])])
+                table.append([*map(str, [*arg, *['' for _ in result_columns], str(err) if err and str(err) else type(err).__name__])])
             else:
                 raise InternalError from KeyError(arg)
         print_table(table,
-                    headers=(*arg_columns, *select_columns(result_columns, selected_column_ids or obj_column_ids), _ERROR_COLUMN),
+                    headers=(*arg_columns, *select_columns(result_columns, selected_column_ids or result_column_ids), _ERROR_COLUMN),
                     table_format=(meta := self._ctx.meta)[TABLE_FORMAT])
 
     def _initialize_auth(self) -> None:
@@ -298,27 +320,20 @@ class _LockssCli(object):
         Initializes the list of clients. Fails if the list of nodes ends up
         being empty.
         """
-        clients: list[LockssClient] = list()
-        # First from node sets
-        for node_set_path in (opts := self._opts).node_set:
-            with node_set_path.open('r') as node_set_input:
-                try:
-                    node_set_yaml: _YamlT = yaml.safe_load(node_set_input)
-                    node_set: NodeSet = NodeSet.model_validate(node_set_yaml)
-                    for node_spec in node_set.nodes:
-                        clients.append(LockssClient(node_spec))
-                except (yaml.YAMLError, ValidationError) as exc:
-                    self._ctx.fail(str(exc))
-        # Then from compact node specifications
-        for compact_node_spec in [*opts.node_spec, *chain.from_iterable(file_lines(file_path) for file_path in opts.node_specs)]:
-            try:
-                clients.append(LockssClient(get_node_spec_adapter().validate_python(compact_node_spec)))
-            except ValidationError as exc:
-                self._ctx.fail(str(exc))
-        # Fail if empty
-        if len(clients) == 0:
+        node_helper: NodeHelper = NodeHelper()
+        try:
+            for node_set_path in (opts := self._opts).node_set:
+                node_helper.add_node_sets_from_file(node_set_path)
+            for compact_node_spec in opts.node_spec:
+                node_helper.add_node_from_spec(compact_node_spec)
+            self._clients = [LockssClient(node_spec) for node_spec in node_helper.nodes_iter(include_node_sets=opts.include_node_set,
+                                                                                             exclude_node_sets=opts.exclude_node_set,
+                                                                                             include_nodes=opts.include_node,
+                                                                                             exclude_nodes=opts.exclude_node)]
+        except (OSError, YAMLError, ValidationError, KeyError, ValueError) as exc:
+            self._ctx.fail(str(exc))
+        if len(self._clients) == 0:
             self._ctx.fail('The list of nodes to process is empty')
-        self._clients = clients
 
 
 #
@@ -375,22 +390,7 @@ _NODE_COLUMN: ColumnSpec = ColumnSpec(_NODE_COLUMN_ID, _NODE_COLUMN_DESCRIPTION)
 #
 
 
-_AUID_COLUMNS: Sequence[ColumnSpec] = (_AUID_COLUMN,)
-
-
-_CHECKSUM_ALGORITHM_COLUMNS: Sequence[ColumnSpec] = (_CHECKSUM_ALGORITHM_COLUMN,)
-
-
 _NAMESPACE_AUID_COLUMNS: Sequence[ColumnSpec] = (_NAMESPACE_COLUMN, _AUID_COLUMN)
-
-
-_NAMESPACE_COLUMNS: Sequence[ColumnSpec] = (_NAMESPACE_COLUMN,)
-
-
-_NODE_COLUMNS: Sequence[ColumnSpec] = (_NODE_COLUMN,)
-
-
-_NODE_AUID_COLUMNS: Sequence[ColumnSpec] = (_NODE_COLUMN, _AUID_COLUMN)
 
 
 #
@@ -445,14 +445,18 @@ def _table_output_option_group(key_columns: Sequence[ColumnSpec],
     )
 
 
-#: The node option group: --node-set, -s; --node-spec; --node-specs; --username, -U; --password, -P
+#: The node option group:
+#: --node-set, -s; --node-spec, --node; --include-node-set, -I; --exclude-node-set, -E; --include-node, -i; --exclude-node, -e; --username, -U; --password, -P
 _node_option_group = option_group(
     'Node options',
-    option('--node-set', '-s', metavar='FILE', type=click_path('ferz'), multiple=True, help='Add the nodes from the node set in FILE to the list of nodes to process.'),
-    option('--node-spec', '--node', metavar='NODE', multiple=True, help='Add the compact node specification NODE to the list of nodes to process.'),
-    option('--node-specs', '--nodes', metavar='FILE', type=click_path('ferz'), multiple=True, help='Add the compact node specifications in FILE to the list of nodes to process.'),
+    option('--node-set', '-s', metavar='FILE', type=click_path('ferz'), multiple=True, help='Load the node sets in FILE.'),
+    option('--node-spec', '--node', metavar='NSPEC', multiple=True, help='Add the compact node specification NSPEC to a default node set.'),
+    option('--include-node-set', '-I', metavar='NSID', multiple=True, show_default='process all node sets', help='Add the node set identifier NSID to the list of node sets to process.'),
+    option('--exclude-node-set', '-E', metavar='NSID', multiple=True, show_default='exclude no node set', help='Add the node set identifier NSID to the list of node sets to skip.'),
+    option('--include-node', '-i', metavar='NID', multiple=True, show_default='process all nodes', help='Add the node identifier NID to the list of nodes to process.'),
+    option('--exclude-node', '-e', metavar='NID', multiple=True, show_default='exclude no node', help='Add the node identifier NID to the list of nodes to skip.'),
     option('--username', '-U', metavar='USER', show_default='interactive prompt', help='Set the UI username to USER.'),
-    option('--password', '-P', metavar='PASS', show_default='interactive prompt', help='Set the UI password to PASS.'),
+    option('--password', '-P', metavar='PASS', show_default='interactive prompt', help='Set the UI password to PASS.')
 )
 
 
@@ -546,27 +550,28 @@ _REPOSITORY_COMMANDS = Section('Repository Service commands')
 
 
 @locksscli.command(aliases=['ga'], section=_REPOSITORY_COMMANDS, help='Get AUIDs.')
-@_generic_matrix_options(_NAMESPACE_AUID_COLUMNS, additional_option_groups=(option_group('Namespace options', _namespace_option),))
+@_generic_matrix_options((_AUID_COLUMN,), additional_option_groups=(option_group('Namespace options', _namespace_option),))
 def get_auids(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_auids()
 
 
 @locksscli.command(aliases=['gn'], section=_REPOSITORY_COMMANDS, help='Get namespaces.')
-@_generic_matrix_options(_NAMESPACE_COLUMNS)
+@_generic_matrix_options((_NAMESPACE_COLUMN,))
 def get_namespaces(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_namespaces()
 
 
-@locksscli.command(aliases=['grss'], section=_REPOSITORY_COMMANDS, help='Get the status of the LOCKSS Repository Service.')
-@_generic_table_options(_NODE_COLUMNS, rs.ApiStatus)
+@locksscli.command(aliases=['grss'], section=_REPOSITORY_COMMANDS,
+                   help='Get the status of the LOCKSS Repository Service.')
+@_generic_table_options((_NODE_COLUMN,), rs.ApiStatus)
 def get_repository_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_repository_service_status()
 
 
 @locksscli.command(aliases=['gsca'], section=_REPOSITORY_COMMANDS, help='Get supported checksum algorithms.')
-@_generic_matrix_options(_CHECKSUM_ALGORITHM_COLUMNS)
+@_generic_matrix_options((_CHECKSUM_ALGORITHM_COLUMN,))
 def get_supported_checksum_algorithms(ctx: Context, **kwargs) -> None:
-    _LockssCli(ctx, **kwargs).get_checksum_algorithms()
+    _LockssCli(ctx, **kwargs).get_supported_checksum_algorithms()
 
 
 #
@@ -576,8 +581,9 @@ def get_supported_checksum_algorithms(ctx: Context, **kwargs) -> None:
 _CONFIGURATION_COMMANDS = Section('Configuration Service commands')
 
 
-@locksscli.command(aliases=['gcss'], section=_CONFIGURATION_COMMANDS, help='Get the status of the LOCKSS Configuration Service.')
-@_generic_table_options(_NODE_COLUMNS, config.ApiStatus)
+@locksscli.command(aliases=['gcss'], section=_CONFIGURATION_COMMANDS,
+                   help='Get the status of the LOCKSS Configuration Service.')
+@_generic_table_options((_NODE_COLUMN,), config.ApiStatus)
 def get_configuration_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_configuration_service_status()
 
@@ -590,7 +596,7 @@ _POLLER_COMMANDS = Section('Poller Service commands')
 
 
 @locksscli.command(aliases=['gpss'], section=_POLLER_COMMANDS, help='Get the status of the LOCKSS Poller Service.')
-@_generic_table_options(_NODE_COLUMNS, poller.ApiStatus)
+@_generic_table_options((_NODE_COLUMN,), poller.ApiStatus)
 def get_poller_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_poller_service_status()
 
@@ -603,7 +609,7 @@ _CRAWLER_COMMANDS = Section('Crawler Service commands')
 
 
 @locksscli.command(aliases=['gwss'], section=_CRAWLER_COMMANDS, help='Get the status of the LOCKSS Crawler Service.')
-@_generic_table_options(_NODE_COLUMNS, crawler.ApiStatus)
+@_generic_table_options((_NODE_COLUMN,), crawler.ApiStatus)
 def get_crawler_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_crawler_service_status()
 
@@ -616,7 +622,7 @@ _METADATA_COMMANDS = Section('Metadata Service commands')
 
 
 @locksscli.command(aliases=['gmss'], section=_METADATA_COMMANDS, help='Get the status of the LOCKSS Metadata Service.')
-@_generic_table_options(_NODE_COLUMNS, md.ApiStatus)
+@_generic_table_options((_NODE_COLUMN,), md.ApiStatus)
 def get_metadata_service_status(ctx: Context, **kwargs) -> None:
     _LockssCli(ctx, **kwargs).get_metadata_service_status()
 
