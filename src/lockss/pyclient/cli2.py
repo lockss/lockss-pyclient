@@ -70,6 +70,11 @@ _ResultKey = TypeVar('_ResultKey')
 _ResultValue = TypeVar('_ResultValue')
 
 
+_ArgT = TypeVar('_ArgT')
+_ResT = TypeVar('_ResT')
+_ValT = TypeVar('_ValT')
+
+
 #
 # TYPE ALIASES
 #
@@ -134,17 +139,19 @@ class _LockssCli(object):
             self._initialize_auth()
             namespaces = [nmsp]
         else:
-            results, errors = self._generic_node_action(LockssClient.get_namespaces) # initializes clients and auth
-            row_values: set = set()
-            for potential_row_value in results.values(): # Assumes potential_row_value is a sequence
-                row_values.update(potential_row_value)
-            namespaces = [x for x in row_values]
+            results1, errors1 = self._generic_node_action(LockssClient.get_namespaces) # initializes clients and auth
+            namespaces: set[str] = set(nmsp for nmsp_list in results1.values() for nmsp in nmsp_list)
         results2, errors2 = self._generic_action(LockssClient.get_auids,
                                                  [((client, namespace), None) for namespace in namespaces for client in self._clients],
                                                  get_label=lambda t: f'{t[0].get_id()} {t[1]}')
-        self._generic_matrix_output()
 
-
+        if errors2: ### FIXME
+            for k, v in errors2.items(): print(repr(k), repr(v))
+        self._new_generic_matrix_output({((client,), (nmsp, auid)): True for client in self._clients for nmsp in namespaces for auid in results2.get((client, nmsp), ())},
+                                        [client for client in self._clients],
+                                        (_NODE_COLUMN,),
+                                        _NAMESPACE_AUID_COLUMNS,
+                                        val_is_bool=True)
 
     def get_namespaces(self) -> None:
         self._generic_node_matrix_action(LockssClient.get_namespaces,
@@ -258,20 +265,39 @@ class _LockssCli(object):
 
     def _generic_node_table_action(self,
                                    operation: Callable[Concatenate[tuple[LockssClient], dict[str, Any]], SwaggerModel],
-                                   obj_columns: Sequence[ColumnSpec],
+                                   result_columns: Sequence[ColumnSpec],
                                    needs_auth = True,
                                    **kwargs) -> None:
         results, errors = self._generic_node_action(operation,
                                                     needs_auth=needs_auth,
                                                     **kwargs)
-        self._generic_table_output(results, errors, [(client,) for client in self._clients], (_NODE_COLUMN,), obj_columns)
+        self._generic_table_output(results, errors, [(client,) for client in self._clients], (_NODE_COLUMN,), result_columns)
+
+    def _new_generic_matrix_output(self,
+                                   data: dict[tuple[_ArgT, _ResT], _ValT],
+                                   args: Sequence[_ArgT],
+                                   arg_columns: Sequence[ColumnSpec],
+                                   result_columns: Sequence[ColumnSpec],
+                                   val_is_bool: bool = False):
+        table: list[Sequence[Optional[str]]] = []
+        results: set[_ResT] = {res_tup for arg_tup, res_tup in data}
+        make_str: Callable[[Any], str]
+        if not val_is_bool:
+            make_str = str
+        elif (glyphs := (opts := self._opts).glyphs):
+            make_str = lambda x: OK_GLYPH if x else KO_GLYPH
+        else:
+            make_str = lambda x: 'True' if x else 'False'
+        table: list[Sequence[Optional[str]]] = [[*res, *[make_str(data.get((arg, res))) for arg in args]] for res in results]
+        print_table(table,
+                    headers=(*result_columns, *arg_columns))
 
     def _generic_matrix_output(self,
                                results: dict[_OpArgs, _ResultValue],
                                errors: Optional[dict[_OpArgs, Exception]],
                                args: Sequence[_OpArgs],
                                arg_columns: Sequence[ColumnSpec],
-                               obj_columns: Sequence[ColumnSpec]) -> None:
+                               result_columns: Sequence[ColumnSpec]) -> None:
         if errors: ### FIXME
             for k, v in errors.items(): print(repr(k), repr(v))
         table: list[Sequence[Optional[str]]] = []
@@ -283,7 +309,7 @@ class _LockssCli(object):
         for row_value in row_values:
             table.append([*[r if isinstance(r := row_value, Sequence) else [r]], *(yes if r in results[arg] else no for arg in args)])
         print_table(table,
-                    headers=(*obj_columns, *arg_columns),
+                    headers=(*result_columns, *arg_columns),
                     table_format=(meta := self._ctx.meta)[TABLE_FORMAT])
 
     def _generic_table_output(self,
@@ -398,7 +424,7 @@ _NAMESPACE_AUID_COLUMNS: Sequence[ColumnSpec] = (_NAMESPACE_COLUMN, _AUID_COLUMN
 #
 
 #: The use glyphs option: --use-glyphs
-_glyphs_option = option('--glyphs/--no-glyphs', is_flag=True, show_default=True, help=f'Whether to use {OK_GLYPH}/{KO_GLYPH} glyphs instead of True/False')
+_glyphs_option = option('--glyphs/--no-glyphs', default=True, is_flag=True, show_default=True, help=f'Whether to use {OK_GLYPH}/{KO_GLYPH} glyphs instead of True/False')
 
 
 #: The namespace option: --namespace, -n
