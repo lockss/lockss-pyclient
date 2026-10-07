@@ -66,42 +66,42 @@ class _LockssClient12Pair(_LockssClientInterface):
     # REPOSITORY
     #
 
-    def get_auids(self, namespace: str) -> list[str]:
+    def get_auids(self, namespace: str, **kwargs) -> list[str]:
         return self._v2.get_auids(namespace)
 
-    def get_namespaces(self) -> list[str]:
+    def get_namespaces(self, **kwargs) -> list[str]:
         return self._v2.get_namespaces()
 
-    def get_repository_service_status(self) -> rs.ApiStatus:
+    def get_repository_service_status(self, **kwargs) -> rs.ApiStatus:
         return self._v2.get_repository_service_status()
 
-    def get_supported_checksum_algorithms(self) -> list[str]:
+    def get_supported_checksum_algorithms(self, **kwargs) -> list[str]:
         return self._v2.get_supported_checksum_algorithms()
 
     #
     # CONFIGURATION
     #
 
-    def get_configuration_service_status(self) -> config.ApiStatus:
+    def get_configuration_service_status(self, **kwargs) -> config.ApiStatus:
         return self._v2.get_configuration_service_status()
 
     #
     # POLLER
     #
 
-    def get_poller_service_status(self) -> poller.ApiStatus:
+    def get_poller_service_status(self, **kwargs) -> poller.ApiStatus:
         return self._v2.get_poller_service_status()
 
     #
     # CRAWLER
     #
 
-    def get_crawler_service_status(self) -> crawler.ApiStatus:
+    def get_crawler_service_status(self, **kwargs) -> crawler.ApiStatus:
         return self._v2.get_crawler_service_status()
 
     #
     # METADATA
     #
 
-    def get_metadata_service_status(self) -> md.ApiStatus:
+    def get_metadata_service_status(self, **kwargs) -> md.ApiStatus:
         return self._v2.get_metadata_service_status()

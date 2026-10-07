@@ -146,9 +146,9 @@ class _LockssCli(object):
                                                  get_label=lambda t: f'{t[0].get_id()} {t[1]}')
 
         if errors2: ### FIXME
-            for k, v in errors2.items(): print(repr(k), repr(v))
-        self._new_generic_matrix_output({((client,), (nmsp, auid)): True for client in self._clients for nmsp in namespaces for auid in results2.get((client, nmsp), ())},
-                                        [client for client in self._clients],
+            for k, v in errors2.items(): print(f'Error: {k!r}: {v!r}')
+        self._new_generic_matrix_output(fixme := {((client,), (nmsp, auid)): True for client in self._clients for nmsp in namespaces for auid in results2.get((client, nmsp), ())},
+                                        [(client,) for client in self._clients],
                                         (_NODE_COLUMN,),
                                         _NAMESPACE_AUID_COLUMNS,
                                         val_is_bool=True)
@@ -279,8 +279,7 @@ class _LockssCli(object):
                                    arg_columns: Sequence[ColumnSpec],
                                    result_columns: Sequence[ColumnSpec],
                                    val_is_bool: bool = False):
-        table: list[Sequence[Optional[str]]] = []
-        results: set[_ResT] = {res_tup for arg_tup, res_tup in data}
+        results: set[_ResT] = {res_tup for arg_tup, res_tup in data} # sic, not data.items()
         make_str: Callable[[Any], str]
         if not val_is_bool:
             make_str = str

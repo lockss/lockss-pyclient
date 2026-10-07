@@ -60,42 +60,42 @@ class _LockssClient1(_LockssClientInterface):
     # REPOSITORY
     #
 
-    def get_auids(self, namespace: str) -> list[str]:
+    def get_auids(self, namespace: str, **kwargs) -> list[str]:
         raise NotImplementedError
 
-    def get_namespaces(self) -> list[str]:
+    def get_namespaces(self, **kwargs) -> list[str]:
         raise NotImplementedError
 
-    def get_repository_service_status(self) -> rs.ApiStatus:
+    def get_repository_service_status(self, **kwargs) -> rs.ApiStatus:
         raise NotImplementedError
 
-    def get_supported_checksum_algorithms(self) -> list[str]:
+    def get_supported_checksum_algorithms(self, **kwargs) -> list[str]:
         raise NotImplementedError
 
     #
     # CONFIGURATION
     #
 
-    def get_configuration_service_status(self) -> config.ApiStatus:
+    def get_configuration_service_status(self, **kwargs) -> config.ApiStatus:
         raise NotImplementedError
 
     #
     # POLLER
     #
 
-    def get_poller_service_status(self) -> poller.ApiStatus:
+    def get_poller_service_status(self, **kwargs) -> poller.ApiStatus:
         raise NotImplementedError
 
     #
     # CRAWLER
     #
 
-    def get_crawler_service_status(self) -> crawler.ApiStatus:
+    def get_crawler_service_status(self, **kwargs) -> crawler.ApiStatus:
         raise NotImplementedError
 
     #
     # METADATA
     #
 
-    def get_metadata_service_status(self) -> md.ApiStatus:
+    def get_metadata_service_status(self, **kwargs) -> md.ApiStatus:
         raise NotImplementedError
